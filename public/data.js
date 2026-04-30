@@ -1,0 +1,176 @@
+// 稀有度对应的连续命中次数
+const HITS_BY_RARITY = {
+  trash: 1,
+  common: 2,
+  rare: 3,
+  legendary: 5,
+  hidden: 7,
+  treasure: 4,
+};
+
+// 稀有度颜色
+const RARITY_COLOR = {
+  trash: '#888',
+  common: '#bbb',
+  rare: '#4ec9b0',
+  legendary: '#c586c0',
+  hidden: '#ffd700',
+  treasure: '#ff8c42',
+};
+
+const RARITY_NAME = {
+  trash: '垃圾',
+  common: '普通',
+  rare: '稀有',
+  legendary: '传说',
+  hidden: '隐藏',
+  treasure: '宝藏',
+};
+
+// 鱼饵：每种 5普通 + 3稀有 + 2传说 + 1隐藏
+const BAITS = {
+  worm: {
+    name: '蚯蚓',
+    price: 10,
+    desc: '入门鱼饵，能钓到些小鱼小虾',
+    color: '#8b4513',
+    fishes: [
+      { id: 'sardine',     name: '沙丁鱼',   rarity: 'common',    minW: 0.05, maxW: 0.3,  price: 30,   icon: '🐟' },
+      { id: 'crucian_s',   name: '小鲫鱼',   rarity: 'common',    minW: 0.1,  maxW: 0.6,  price: 25,   icon: '🐟' },
+      { id: 'tadpole',     name: '蝌蚪',     rarity: 'common',    minW: 0.01, maxW: 0.05, price: 200,  icon: '🐸' },
+      { id: 'minnow',      name: '米诺鱼',   rarity: 'common',    minW: 0.05, maxW: 0.2,  price: 40,   icon: '🐠' },
+      { id: 'frog',        name: '青蛙',     rarity: 'common',    minW: 0.1,  maxW: 0.4,  price: 50,   icon: '🐸' },
+      { id: 'catfish_s',   name: '小鲶鱼',   rarity: 'rare',      minW: 0.5,  maxW: 2,    price: 60,   icon: '🐡' },
+      { id: 'eel_s',       name: '小鳗鱼',   rarity: 'rare',      minW: 0.3,  maxW: 1.2,  price: 100,  icon: '🐍' },
+      { id: 'crucian_k',   name: '鲫鱼王',   rarity: 'rare',      minW: 1,    maxW: 3,    price: 80,   icon: '🐟' },
+      { id: 'koi',         name: '锦鲤',     rarity: 'legendary', minW: 2,    maxW: 5,    price: 400,  icon: '🎏' },
+      { id: 'old_turtle',  name: '千年龟',   rarity: 'legendary', minW: 5,    maxW: 15,   price: 250,  icon: '🐢' },
+      { id: 'mud_dragon',  name: '泥龙',     rarity: 'hidden',    minW: 10,   maxW: 30,   price: 800,  icon: '🐉' },
+    ],
+  },
+  shrimp: {
+    name: '鲜虾',
+    price: 50,
+    desc: '海钓鱼饵，能引来肉食鱼',
+    color: '#ff7f7f',
+    fishes: [
+      { id: 'mackerel',    name: '鲭鱼',     rarity: 'common',    minW: 0.5,  maxW: 1.5,  price: 60,   icon: '🐟' },
+      { id: 'flounder_s',  name: '小比目鱼', rarity: 'common',    minW: 0.4,  maxW: 1.2,  price: 80,   icon: '🐠' },
+      { id: 'squid_s',     name: '小鱿鱼',   rarity: 'common',    minW: 0.3,  maxW: 1,    price: 90,   icon: '🦑' },
+      { id: 'snapper',     name: '红鲷',     rarity: 'common',    minW: 0.5,  maxW: 2,    price: 70,   icon: '🐟' },
+      { id: 'crab',        name: '螃蟹',     rarity: 'common',    minW: 0.2,  maxW: 1,    price: 120,  icon: '🦀' },
+      { id: 'tuna_s',      name: '小金枪鱼', rarity: 'rare',      minW: 2,    maxW: 6,    price: 200,  icon: '🐟' },
+      { id: 'octopus',     name: '章鱼',     rarity: 'rare',      minW: 1,    maxW: 4,    price: 250,  icon: '🐙' },
+      { id: 'lobster',     name: '龙虾',     rarity: 'rare',      minW: 0.5,  maxW: 2,    price: 400,  icon: '🦞' },
+      { id: 'sword',       name: '剑鱼',     rarity: 'legendary', minW: 10,   maxW: 30,   price: 600,  icon: '🗡️' },
+      { id: 'manta',       name: '蝠鲼',     rarity: 'legendary', minW: 15,   maxW: 50,   price: 500,  icon: '🐠' },
+      { id: 'kraken_baby', name: '幼海妖',   rarity: 'hidden',    minW: 20,   maxW: 60,   price: 1500, icon: '🦑' },
+    ],
+  },
+  lure: {
+    name: '亮片假饵',
+    price: 200,
+    desc: '吸引深海大鱼',
+    color: '#c0c0c0',
+    fishes: [
+      { id: 'bass',        name: '鲈鱼',     rarity: 'common',    minW: 1,    maxW: 4,    price: 150,  icon: '🐟' },
+      { id: 'pike',        name: '梭鱼',     rarity: 'common',    minW: 2,    maxW: 5,    price: 120,  icon: '🐠' },
+      { id: 'salmon',      name: '三文鱼',   rarity: 'common',    minW: 2,    maxW: 6,    price: 200,  icon: '🐟' },
+      { id: 'trout',       name: '鳟鱼',     rarity: 'common',    minW: 1,    maxW: 3,    price: 180,  icon: '🐟' },
+      { id: 'walleye',     name: '梭鲈',     rarity: 'common',    minW: 1.5,  maxW: 4,    price: 220,  icon: '🐠' },
+      { id: 'marlin_s',    name: '小马林鱼', rarity: 'rare',      minW: 5,    maxW: 20,   price: 400,  icon: '🗡️' },
+      { id: 'shark_s',     name: '小鲨鱼',   rarity: 'rare',      minW: 8,    maxW: 25,   price: 350,  icon: '🦈' },
+      { id: 'barracuda',   name: '梭子鱼',   rarity: 'rare',      minW: 3,    maxW: 10,   price: 500,  icon: '🐟' },
+      { id: 'megalodon_b', name: '幼巨齿鲨', rarity: 'legendary', minW: 30,   maxW: 80,   price: 800,  icon: '🦈' },
+      { id: 'whale_s',     name: '小鲸',     rarity: 'legendary', minW: 50,   maxW: 200,  price: 600,  icon: '🐋' },
+      { id: 'leviathan_s', name: '幼海蛇神', rarity: 'hidden',    minW: 80,   maxW: 300,  price: 2000, icon: '🐉' },
+    ],
+  },
+  magic: {
+    name: '魔法鱼饵',
+    price: 1000,
+    desc: '神秘鱼饵，能召唤奇异生物',
+    color: '#c586c0',
+    fishes: [
+      { id: 'coelacanth',  name: '腔棘鱼',   rarity: 'common',    minW: 5,    maxW: 20,   price: 500,  icon: '🐟' },
+      { id: 'angler',      name: '深海琵琶', rarity: 'common',    minW: 3,    maxW: 10,   price: 600,  icon: '🐠' },
+      { id: 'hatchet',     name: '斧鱼',     rarity: 'common',    minW: 0.5,  maxW: 2,    price: 1200, icon: '🐟' },
+      { id: 'gulper',      name: '吞噬鳗',   rarity: 'common',    minW: 2,    maxW: 8,    price: 800,  icon: '🐍' },
+      { id: 'oarfish',     name: '皇带鱼',   rarity: 'common',    minW: 10,   maxW: 50,   price: 400,  icon: '🐍' },
+      { id: 'siren',       name: '人鱼',     rarity: 'rare',      minW: 40,   maxW: 80,   price: 1500, icon: '🧜' },
+      { id: 'sea_ghost',   name: '海妖',     rarity: 'rare',      minW: 20,   maxW: 60,   price: 2000, icon: '👻' },
+      { id: 'crystal',     name: '水晶鱼',   rarity: 'rare',      minW: 1,    maxW: 5,    price: 4000, icon: '💎' },
+      { id: 'phoenix_f',   name: '凤凰鱼',   rarity: 'legendary', minW: 5,    maxW: 20,   price: 5000, icon: '🔥' },
+      { id: 'kraken',      name: '海妖王',   rarity: 'legendary', minW: 100,  maxW: 500,  price: 1500, icon: '🦑' },
+      { id: 'leviathan',   name: '海蛇神',   rarity: 'hidden',    minW: 200,  maxW: 1000, price: 8000, icon: '🐉' },
+    ],
+  },
+};
+
+// 通用垃圾池（每种鱼饵都可能钓到）
+const TRASH_POOL = [
+  { id: 'boot',     name: '破靴子',   rarity: 'trash', value: 0,  icon: '👢' },
+  { id: 'bottle',   name: '空瓶',     rarity: 'trash', value: 0,  icon: '🍾' },
+  { id: 'can',      name: '易拉罐',   rarity: 'trash', value: 0,  icon: '🥫' },
+  { id: 'seaweed',  name: '水草',     rarity: 'trash', value: 0,  icon: '🌿' },
+  { id: 'tire',     name: '废轮胎',   rarity: 'trash', value: 0,  icon: '⚫' },
+];
+
+// 通用宝藏池（极小概率钓到，价值高）
+const TREASURE_POOL = [
+  { id: 'coin',     name: '金币',     rarity: 'treasure', value: 500,   icon: '🪙' },
+  { id: 'ring',     name: '金戒指',   rarity: 'treasure', value: 1500,  icon: '💍' },
+  { id: 'gem',      name: '宝石',     rarity: 'treasure', value: 3000,  icon: '💎' },
+  { id: 'chest',    name: '宝箱',     rarity: 'treasure', value: 10000, icon: '🏆' },
+  { id: 'gold_bar', name: '金条',     rarity: 'treasure', value: 20000, icon: '🟨' },
+];
+
+// 抽取概率（基于鱼饵价格做收益平衡，期望约 1.5 × 鱼饵价格）
+// trash: 20%, treasure: 2%, fish: 78%
+//   fish 内: common 70%, rare 25%, legendary 4.5%, hidden 0.5%
+const ROLL = {
+  trash: 0.20,
+  treasure: 0.02,
+  fish: 0.78,
+};
+const FISH_RARITY_ROLL = {
+  common: 0.70,
+  rare: 0.255,
+  legendary: 0.040,
+  hidden: 0.005,
+};
+
+function pickFromArr(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function rollCatch(baitId) {
+  const r = Math.random();
+  if (r < ROLL.trash) {
+    const item = pickFromArr(TRASH_POOL);
+    return { kind: 'trash', item, weight: 0, value: 0 };
+  }
+  if (r < ROLL.trash + ROLL.treasure) {
+    const item = pickFromArr(TREASURE_POOL);
+    return { kind: 'treasure', item, weight: 0, value: item.value };
+  }
+  // 鱼
+  const bait = BAITS[baitId];
+  let rr = Math.random();
+  let rarity;
+  let acc = 0;
+  for (const k of ['common', 'rare', 'legendary', 'hidden']) {
+    acc += FISH_RARITY_ROLL[k];
+    if (rr < acc) { rarity = k; break; }
+  }
+  if (!rarity) rarity = 'common';
+  const pool = bait.fishes.filter((f) => f.rarity === rarity);
+  const fish = pickFromArr(pool);
+  const weight = +(fish.minW + Math.random() * (fish.maxW - fish.minW)).toFixed(2);
+  const value = Math.round(weight * fish.price);
+  return { kind: 'fish', item: fish, weight, value };
+}
+
+window.GAME_DATA = {
+  HITS_BY_RARITY, RARITY_COLOR, RARITY_NAME,
+  BAITS, TRASH_POOL, TREASURE_POOL,
+  rollCatch,
+};

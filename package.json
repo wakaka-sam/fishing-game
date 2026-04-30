@@ -1,0 +1,9 @@
+{
+  "name": "fishing-game",
+  "version": "0.1.0",
+  "description": "Pixel fishing game with bestiary",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

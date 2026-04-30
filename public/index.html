@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>像素钓鱼</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<!-- 登录界面 -->
+<div id="login-screen" class="screen active">
+  <div class="login-box">
+    <h1>🎣 像素钓鱼</h1>
+    <p>输入用户名开始游戏</p>
+    <input id="username-input" type="text" maxlength="24" placeholder="用户名" />
+    <button id="login-btn">开始钓鱼</button>
+    <p class="hint">数据将以用户名为键保存到服务器</p>
+    <p id="login-error" class="error-msg"></p>
+  </div>
+</div>
+
+<!-- 主游戏界面 -->
+<div id="game-screen" class="screen">
+  <div class="topbar">
+    <div class="user-info">
+      <span id="player-name">玩家</span>
+      <span id="player-money">💰 0</span>
+    </div>
+    <div class="actions">
+      <button id="shop-btn">🎁 鱼饵商店</button>
+      <button id="dex-btn">📖 图鉴</button>
+      <button id="logout-btn">退出</button>
+    </div>
+  </div>
+
+  <canvas id="game" width="640" height="360"></canvas>
+
+  <div class="gamebar">
+    <div class="bait-info">
+      <span>当前鱼饵:</span>
+      <select id="bait-select"></select>
+      <span id="bait-count"></span>
+    </div>
+    <button id="cast-btn" class="primary">抛竿钓鱼 (空格)</button>
+    <div id="status">准备好后选择鱼饵抛竿</div>
+  </div>
+
+  <!-- 命中条 -->
+  <div id="hitbar-overlay" class="hitbar-overlay hidden">
+    <div class="hitbar-info">
+      <div id="hitbar-msg">鱼上钩了！点击红色区域</div>
+      <div class="hitbar-progress">
+        <span id="hits-current">0</span> / <span id="hits-needed">0</span> 命中
+      </div>
+      <div id="hitbar-timer">10.0s</div>
+    </div>
+    <div class="hitbar">
+      <div id="hitbar-zone" class="hitbar-zone"></div>
+      <div id="hitbar-cursor" class="hitbar-cursor"></div>
+    </div>
+    <button id="hit-btn" class="primary big">击 中! (空格)</button>
+  </div>
+
+  <!-- 结果弹窗 -->
+  <div id="result-overlay" class="overlay hidden">
+    <div class="modal">
+      <div id="result-content"></div>
+      <button id="result-close" class="primary">继续</button>
+    </div>
+  </div>
+
+  <!-- 商店 -->
+  <div id="shop-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <h2>鱼饵商店</h2>
+      <div id="shop-list" class="shop-list"></div>
+      <button class="close-x" data-close="shop-overlay">关闭</button>
+    </div>
+  </div>
+
+  <!-- 图鉴 -->
+  <div id="dex-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <h2>钓鱼图鉴</h2>
+      <div id="dex-tabs" class="dex-tabs"></div>
+      <div id="dex-list" class="dex-list"></div>
+      <div class="dex-stats" id="dex-stats"></div>
+      <button class="close-x" data-close="dex-overlay">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
