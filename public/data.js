@@ -6,6 +6,7 @@ const HITS_BY_RARITY = {
   legendary: 5,
   hidden: 7,
   treasure: 4,
+  limited: 4,
 };
 
 // 稀有度颜色
@@ -16,6 +17,7 @@ const RARITY_COLOR = {
   legendary: '#c586c0',
   hidden: '#ffd700',
   treasure: '#ff8c42',
+  limited: '#ff7ac8',
 };
 
 const RARITY_NAME = {
@@ -25,6 +27,7 @@ const RARITY_NAME = {
   legendary: '传说',
   hidden: '隐藏',
   treasure: '宝藏',
+  limited: '限定',
 };
 
 // 鱼饵：每种 5普通 + 3稀有 + 2传说 + 1隐藏
@@ -105,6 +108,21 @@ const BAITS = {
       { id: 'leviathan',   name: '海蛇神',   rarity: 'hidden',    minW: 200,  maxW: 1000, price: 8000, icon: '🐉' },
     ],
   },
+  black_silk: {
+    name: '黑丝饵',
+    dexName: '黑丝图鉴',
+    price: 0,
+    purchasable: false,
+    desc: '只能通过钓鱼获得的特殊鱼饵，只会钓到黑丝图鉴限定鱼',
+    color: '#ff7ac8',
+    specialOnly: true,
+    fishes: [
+      { id: 'candy_fish',      name: '糖果鱼', rarity: 'limited', minW: 1, maxW: 1, diamondValue: 100, icon: '🍬' },
+      { id: 'black_silk_fish', name: '黑丝鱼', rarity: 'limited', minW: 1, maxW: 1, diamondValue: 100, icon: '🖤' },
+      { id: 'water_fish',      name: '水鱼',   rarity: 'limited', minW: 1, maxW: 1, diamondValue: 100, icon: '💧' },
+      { id: 'big_goldfish',    name: '大金鱼', rarity: 'limited', minW: 1, maxW: 1, diamondValue: 100, icon: '🐠' },
+    ],
+  },
 };
 
 // 通用垃圾池（每种鱼饵都可能钓到）
@@ -143,6 +161,13 @@ const FISH_RARITY_ROLL = {
 function pickFromArr(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function rollCatch(baitId) {
+  const bait = BAITS[baitId] || BAITS.worm;
+  if (bait.specialOnly) {
+    const fish = pickFromArr(bait.fishes);
+    const weight = +(fish.minW + Math.random() * (fish.maxW - fish.minW)).toFixed(2);
+    return { kind: 'fish', item: fish, weight, value: 0, diamondValue: fish.diamondValue || 0 };
+  }
+
   const r = Math.random();
   if (r < ROLL.trash) {
     const item = pickFromArr(TRASH_POOL);
@@ -153,7 +178,6 @@ function rollCatch(baitId) {
     return { kind: 'treasure', item, weight: 0, value: item.value };
   }
   // 鱼
-  const bait = BAITS[baitId];
   let rr = Math.random();
   let rarity;
   let acc = 0;
@@ -189,12 +213,17 @@ const GACHA_RODS = [
   { id: 'greenxuanwu', name: '极品绿玄武鱼竿', rodColor: '#14532d', rodHighlight: '#86efac', lineColor: 'rgba(134,239,172,1.0)', desc: '抽奖限定，成功钓获时会浮现乌龟', rarity: 'ultimate', fx: null, catchFx: 'turtle', catchEmoji: '🐢', emoji: '🐢' },
 ];
 
-const ALL_RODS = [...ROD_SKINS, ...GACHA_RODS];
+const SPECIAL_RODS = [
+  { id: 'black_silk_rod', name: '黑丝鱼竿', rodColor: '#181018', rodHighlight: '#ff7ac8', lineColor: 'rgba(255,122,200,1.0)', desc: '集齐黑丝图鉴后获得的限定鱼竿', rarity: 'limited', unlock: 'black_silk_dex', emoji: '🖤' },
+];
+
+const ALL_RODS = [...ROD_SKINS, ...GACHA_RODS, ...SPECIAL_RODS];
+const OWNED_RODS = [...GACHA_RODS, ...SPECIAL_RODS];
 
 function getCurrentRodSkin(dex, selectedId, ownedRods) {
   if (selectedId) {
-    const gachaRod = GACHA_RODS.find(s => s.id === selectedId);
-    if (gachaRod && (ownedRods || []).includes(selectedId)) return gachaRod;
+    const ownedRod = OWNED_RODS.find(s => s.id === selectedId);
+    if (ownedRod && (ownedRods || []).includes(selectedId)) return ownedRod;
     const selected = ROD_SKINS.find(s => s.id === selectedId);
     const count = Object.keys(dex || {}).length;
     if (selected && count >= selected.threshold) return selected;
@@ -218,6 +247,6 @@ function getNextRodSkin(dex) {
 window.GAME_DATA = {
   HITS_BY_RARITY, RARITY_COLOR, RARITY_NAME,
   BAITS, TRASH_POOL, TREASURE_POOL,
-  ROD_SKINS, GACHA_RODS, ALL_RODS, getCurrentRodSkin, getNextRodSkin,
+  ROD_SKINS, GACHA_RODS, SPECIAL_RODS, ALL_RODS, getCurrentRodSkin, getNextRodSkin,
   rollCatch,
 };

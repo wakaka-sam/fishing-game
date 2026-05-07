@@ -220,6 +220,8 @@ input, select {
 .result-fish .stats { font-size: 14px; line-height: 1.8; }
 .result-fish .value { color: #ffd700; font-size: 18px; margin-top: 8px; }
 .result-fish .diamond-value { color: #66e6ff; font-size: 16px; margin-top: 4px; }
+.result-fish .bait-drop { color: #ff7ac8; font-size: 15px; margin-top: 4px; }
+.result-fish .rod-unlock { color: #ff7ac8; font-size: 16px; margin-top: 6px; font-weight: bold; }
 .result-fish.miss { color: #ff5722; }
 .result-fish.miss .icon { font-size: 48px; }
 

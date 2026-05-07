@@ -29,6 +29,9 @@ const castBtn = $('cast-btn');
 const statusEl = $('status');
 
 const DIAMOND_JACKPOT_CHANCE = 0.01;
+const BLACK_SILK_BAIT_ID = 'black_silk';
+const BLACK_SILK_BAIT_DROP_CHANCE = 0.10;
+const BLACK_SILK_ROD_ID = 'black_silk_rod';
 
 // ====== 登录 ======
 $('login-btn').onclick = login;
@@ -110,10 +113,13 @@ function ensureUserDefaults() {
   user.money = Math.max(0, Math.floor(user.money || 0));
   user.diamonds = Math.max(0, Math.floor(user.diamonds || 0));
   user.baits = user.baits || {};
+  user.baits.worm = Math.max(0, Math.floor(user.baits.worm || 0));
+  user.baits[BLACK_SILK_BAIT_ID] = Math.max(0, Math.floor(user.baits[BLACK_SILK_BAIT_ID] || 0));
   user.dex = user.dex || {};
   user.stats = user.stats || {};
   user.history = user.history || [];
   user.ownedRods = user.ownedRods || [];
+  unlockBlackSilkRodIfComplete();
 }
 
 function refreshUI() {
@@ -484,12 +490,17 @@ function endHitbar(success, failMsg) {
 
 // ====== 应用钓获 ======
 function applyCatch(c) {
-  const diamonds = rollDiamondReward();
+  const bonusDiamonds = rollDiamondReward();
+  const saleDiamonds = c.diamondValue || 0;
+  const blackSilkBaitDrop = rollBlackSilkBaitDrop();
   user.money += c.value;
-  user.diamonds = (user.diamonds || 0) + diamonds;
+  user.diamonds = (user.diamonds || 0) + saleDiamonds + bonusDiamonds;
+  if (blackSilkBaitDrop > 0) {
+    user.baits[BLACK_SILK_BAIT_ID] = (user.baits[BLACK_SILK_BAIT_ID] || 0) + blackSilkBaitDrop;
+  }
   user.stats.totalCatches = (user.stats.totalCatches || 0) + 1;
   user.stats.totalEarned = (user.stats.totalEarned || 0) + c.value;
-  user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + diamonds;
+  user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + saleDiamonds + bonusDiamonds;
   user.stats.totalWeight = +(((user.stats.totalWeight || 0) + (c.weight || 0)).toFixed(2));
   // 今日统计
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -511,9 +522,14 @@ function applyCatch(c) {
     rarity: c.kind === 'fish' ? c.item.rarity : c.kind,
     weight: c.weight,
     value: c.value,
-    diamonds,
+    diamondValue: saleDiamonds,
+    diamonds: bonusDiamonds,
+    baitDrop: blackSilkBaitDrop ? { id: BLACK_SILK_BAIT_ID, count: blackSilkBaitDrop } : null,
   });
-  c.diamonds = diamonds;
+  const unlockedBlackSilkRod = unlockBlackSilkRodIfComplete();
+  c.diamonds = bonusDiamonds;
+  c.baitDrop = blackSilkBaitDrop ? { id: BLACK_SILK_BAIT_ID, count: blackSilkBaitDrop } : null;
+  c.unlockedRod = unlockedBlackSilkRod ? BLACK_SILK_ROD_ID : null;
   if (user.history.length > 50) user.history.shift();
   refreshUI();
   saveUser();
@@ -522,6 +538,22 @@ function applyCatch(c) {
 function rollDiamondReward() {
   if (Math.random() < DIAMOND_JACKPOT_CHANCE) return 100;
   return 1 + Math.floor(Math.random() * 3);
+}
+
+function rollBlackSilkBaitDrop() {
+  return Math.random() < BLACK_SILK_BAIT_DROP_CHANCE ? 1 : 0;
+}
+
+function isBaitDexComplete(baitId) {
+  const bait = BAITS[baitId];
+  return !!bait && bait.fishes.every((f) => user.dex[f.id] && user.dex[f.id].count > 0);
+}
+
+function unlockBlackSilkRodIfComplete() {
+  if (!user || !isBaitDexComplete(BLACK_SILK_BAIT_ID)) return false;
+  if (user.ownedRods.includes(BLACK_SILK_ROD_ID)) return false;
+  user.ownedRods.push(BLACK_SILK_ROD_ID);
+  return true;
 }
 
 function playCatchRodEffect() {
@@ -558,21 +590,37 @@ function showResult(c) {
   const color = RARITY_COLOR[rarity];
   let weightLine = '';
   if (c.kind === 'fish') {
-    weightLine = `<div>重量：${c.weight} kg</div><div>单价：${c.item.price} 金/kg</div>`;
+    const priceLine = c.diamondValue
+      ? `<div>售价：${c.diamondValue} 钻石</div>`
+      : `<div>单价：${c.item.price} 金/kg</div>`;
+    weightLine = `<div>重量：${c.weight} kg</div>${priceLine}`;
   }
-  const diamondLine = c.diamonds ? `<div class="diamond-value">+${c.diamonds} 钻石</div>` : '';
+  const coinLine = c.value ? `<div class="value">+${c.value} 金币</div>` : '';
+  const saleDiamondLine = c.diamondValue ? `<div class="diamond-value">+${c.diamondValue} 钻石</div>` : '';
+  const diamondLine = c.diamonds ? `<div class="diamond-value">额外 +${c.diamonds} 钻石</div>` : '';
+  const baitDropLine = c.baitDrop ? `<div class="bait-drop">获得 ${BAITS[c.baitDrop.id].name} ×${c.baitDrop.count}</div>` : '';
+  const rodLine = c.unlockedRod ? '<div class="rod-unlock">解锁 黑丝鱼竿</div>' : '';
   resultContent.innerHTML = `
     <div class="result-fish">
       <span class="icon">${c.item.icon}</span>
       <div class="name" style="color:${color}">${c.item.name}</div>
       <div class="rarity" style="color:${color}">★ ${RARITY_NAME[rarity]} ★</div>
       <div class="stats">${weightLine}</div>
-      <div class="value">+${c.value} 金币</div>
+      ${coinLine}
+      ${saleDiamondLine}
       ${diamondLine}
+      ${baitDropLine}
+      ${rodLine}
     </div>
   `;
   resultOverlay.classList.remove('hidden');
-  statusEl.textContent = `钓到了 ${c.item.name}！+${c.value} 金币，+${c.diamonds || 0} 钻石`;
+  const rewards = [];
+  if (c.value) rewards.push(`+${c.value} 金币`);
+  if (c.diamondValue) rewards.push(`+${c.diamondValue} 钻石`);
+  if (c.diamonds) rewards.push(`额外 +${c.diamonds} 钻石`);
+  if (c.baitDrop) rewards.push(`获得 ${BAITS[c.baitDrop.id].name} ×${c.baitDrop.count}`);
+  if (c.unlockedRod) rewards.push('解锁黑丝鱼竿');
+  statusEl.textContent = `钓到了 ${c.item.name}！${rewards.join('，')}`;
 }
 
 function showMiss(msg) {
@@ -593,7 +641,7 @@ $('shop-btn').onclick = () => { renderShop(); shopOverlay.classList.remove('hidd
 function renderShop() {
   const list = $('shop-list');
   list.innerHTML = '';
-  for (const [id, b] of Object.entries(BAITS)) {
+  for (const [id, b] of Object.entries(BAITS).filter(([, bait]) => bait.purchasable !== false)) {
     const owned = user.baits[id] || 0;
     const div = document.createElement('div');
     div.className = 'shop-item';
@@ -637,7 +685,7 @@ function renderDex() {
   tabs.innerHTML = '';
   for (const [id, b] of Object.entries(BAITS)) {
     const btn = document.createElement('button');
-    btn.textContent = b.name;
+    btn.textContent = b.dexName || b.name;
     if (id === activeDexBait) btn.classList.add('active');
     btn.onclick = () => { activeDexBait = id; renderDex(); };
     tabs.appendChild(btn);
@@ -664,9 +712,10 @@ function renderDex() {
   }
 
   $('dex-stats').innerHTML = `
-    <div>当前鱼饵图鉴：${unlocked} / ${fishes.length}</div>
+    <div>${BAITS[activeDexBait].dexName || '当前鱼饵图鉴'}：${unlocked} / ${fishes.length}</div>
     <div>累计钓获：${user.stats.totalCatches || 0} 次</div>
     <div>累计收入：${user.stats.totalEarned || 0} 金币</div>
+    <div>累计钻石：${user.stats.totalDiamonds || 0} 钻石</div>
   `;
 }
 
@@ -744,7 +793,8 @@ function renderRodSkins() {
   const owned = user.ownedRods || [];
   for (const skin of GAME_DATA.ALL_RODS) {
     const isGacha = GAME_DATA.GACHA_RODS.some(g => g.id === skin.id);
-    const unlocked = isGacha ? owned.includes(skin.id) : dexCount >= skin.threshold;
+    const isSpecial = (GAME_DATA.SPECIAL_RODS || []).some(s => s.id === skin.id);
+    const unlocked = (isGacha || isSpecial) ? owned.includes(skin.id) : dexCount >= skin.threshold;
     const isActive = skin.id === current.id;
     const div = document.createElement('div');
     div.className = 'rod-item' + (unlocked ? ' unlocked' : ' locked') + (isActive ? ' active' : '') + (isGacha ? ' gacha' : '');
@@ -756,6 +806,7 @@ function renderRodSkins() {
     let reqText;
     if (unlocked) reqText = isActive ? '✅ 装备中' : '点击装备';
     else if (isGacha) reqText = '🎰 抽奖限定';
+    else if (skin.unlock === 'black_silk_dex') reqText = `🔒 集齐黑丝图鉴解锁 (${countUnlockedBaitDex(BLACK_SILK_BAIT_ID)}/${BAITS[BLACK_SILK_BAIT_ID].fishes.length})`;
     else reqText = `🔒 收集 ${skin.threshold} 种鱼解锁 (${dexCount}/${skin.threshold})`;
     div.innerHTML = `
       <div class="rod-preview"></div>
@@ -764,6 +815,7 @@ function renderRodSkins() {
       <div class="rod-req">${reqText}</div>
       ${isActive ? '<div class="rod-badge">装备中</div>' : ''}
       ${isGacha && !unlocked ? '<div class="rod-badge" style="background:#c586c0">限定</div>' : ''}
+      ${isSpecial && !unlocked ? '<div class="rod-badge" style="background:#ff7ac8">图鉴</div>' : ''}
     `;
     div.querySelector('.rod-preview').appendChild(canvas);
     if (unlocked && !isActive) {
@@ -959,6 +1011,12 @@ function setGachaTab(currency) {
   $('gacha-coins-panel').classList.toggle('hidden', activeGachaCurrency !== 'coins');
   $('gacha-diamonds-panel').classList.toggle('hidden', activeGachaCurrency !== 'diamonds');
   $('gacha-result').classList.add('hidden');
+}
+
+function countUnlockedBaitDex(baitId) {
+  const bait = BAITS[baitId];
+  if (!bait) return 0;
+  return bait.fishes.filter((f) => user.dex[f.id] && user.dex[f.id].count > 0).length;
 }
 
 function getGachaCost(count, currency) {

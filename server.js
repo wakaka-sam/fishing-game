@@ -51,7 +51,7 @@ function defaultUser(name) {
     username: name,
     money: 100,
     diamonds: 0,
-    baits: { worm: 5 },
+    baits: { worm: 5, black_silk: 0 },
     currentBait: 'worm',
     dex: {}, // fishId -> { count, maxWeight }
     stats: { totalCatches: 0, totalEarned: 0, totalDiamonds: 0 },
