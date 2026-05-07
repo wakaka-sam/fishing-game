@@ -221,6 +221,37 @@ input, select {
 .result-fish.miss { color: #ff5722; }
 .result-fish.miss .icon { font-size: 48px; }
 
+/* 排行榜 */
+.rank-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+.rank-list table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.rank-list th {
+  background: #0d1421;
+  color: #ffd700;
+  padding: 8px 12px;
+  text-align: left;
+  position: sticky;
+  top: 0;
+}
+.rank-list td {
+  padding: 6px 12px;
+  border-bottom: 1px solid #333;
+}
+.rank-list tr.me { background: rgba(78,201,176,0.15); }
+.rank-list .rank-num { color: #ffd700; font-weight: bold; width: 40px; }
+.rank-list .rank-1 { color: #ffd700; font-size: 16px; }
+.rank-list .rank-2 { color: #c0c0c0; font-size: 15px; }
+.rank-list .rank-3 { color: #cd7f32; font-size: 15px; }
+.rank-list .rank-val { color: #4ec9b0; text-align: right; }
+.rank-loading { text-align: center; padding: 20px; color: #888; }
+.rank-loading.hidden { display: none; }
+
 /* 鱼竿信息 */
 .rod-info {
   font-size: 12px;

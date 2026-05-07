@@ -35,6 +35,7 @@ function defaultUser(name) {
     history: [], // last 50 catches
     lastShareDate: '',
     rodSkin: '',
+    dailyStats: { date: '', catches: 0, weight: 0 },
   };
 }
 
@@ -82,9 +83,33 @@ function serveStatic(req, res) {
   });
 }
 
+function getLeaderboard() {
+  const today = new Date().toISOString().slice(0, 10);
+  const files = fs.readdirSync(USERS_DIR).filter(f => f.endsWith('.json'));
+  const entries = [];
+  for (const f of files) {
+    try {
+      const u = JSON.parse(fs.readFileSync(path.join(USERS_DIR, f), 'utf8'));
+      const daily = (u.dailyStats && u.dailyStats.date === today) ? u.dailyStats : { catches: 0, weight: 0 };
+      entries.push({
+        username: u.username,
+        todayCatches: daily.catches || 0,
+        todayWeight: +(daily.weight || 0).toFixed(2),
+        totalCatches: (u.stats && u.stats.totalCatches) || 0,
+        totalWeight: +((u.stats && u.stats.totalWeight) || 0).toFixed(2),
+      });
+    } catch (_) {}
+  }
+  return entries;
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.url.startsWith('/api/')) {
     try {
+      if (req.url === '/api/leaderboard') {
+        return json(res, 200, getLeaderboard());
+      }
+
       const body = req.method === 'POST' ? await readBody(req) : {};
       const name = sanitize(body.username || '');
       if (!name) return json(res, 400, { error: '用户名无效' });
@@ -108,6 +133,7 @@ const server = http.createServer(async (req, res) => {
           history: (incoming.history || existing.history).slice(-50),
           lastShareDate: incoming.lastShareDate || existing.lastShareDate || '',
           rodSkin: incoming.rodSkin || existing.rodSkin || '',
+          dailyStats: incoming.dailyStats || existing.dailyStats || { date: '', catches: 0, weight: 0 },
         };
         saveUser(merged);
         return json(res, 200, merged);

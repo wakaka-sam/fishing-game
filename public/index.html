@@ -30,6 +30,7 @@
       <button id="shop-btn">🎁 商店</button>
       <button id="dex-btn">📖 图鉴</button>
       <button id="rod-btn">🎣 鱼竿</button>
+      <button id="rank-btn">🏆 排行</button>
       <button id="share-btn">📤 分享</button>
       <button id="logout-btn">退出</button>
     </div>
@@ -103,6 +104,22 @@
       <h2>🎣 鱼竿收藏</h2>
       <div id="rod-list" class="rod-list"></div>
       <button class="close-x" data-close="rod-overlay">关闭</button>
+    </div>
+  </div>
+
+  <!-- 排行榜 -->
+  <div id="rank-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <h2>🏆 排行榜</h2>
+      <div id="rank-tabs" class="dex-tabs">
+        <button class="active" data-rank="today-catches">今日钓鱼数</button>
+        <button data-rank="today-weight">今日总重量</button>
+        <button data-rank="total-catches">累计钓鱼数</button>
+        <button data-rank="total-weight">累计总重量</button>
+      </div>
+      <div id="rank-list" class="rank-list"></div>
+      <div id="rank-loading" class="rank-loading">加载中...</div>
+      <button class="close-x" data-close="rank-overlay">关闭</button>
     </div>
   </div>
 

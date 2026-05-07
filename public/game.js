@@ -48,6 +48,7 @@ async function login() {
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     user = await res.json();
+    try { localStorage.setItem('fishing_username', name); } catch (_) {}
     enterGame();
   } catch (e) {
     errEl.textContent = '登录失败: ' + e.message + '（请确认服务器已启动）';
@@ -57,9 +58,29 @@ async function login() {
 
 $('logout-btn').onclick = () => {
   user = null;
+  try { localStorage.removeItem('fishing_username'); } catch (_) {}
   loginScreen.classList.add('active');
   gameScreen.classList.remove('active');
 };
+
+// 自动登录
+(async () => {
+  try {
+    const saved = localStorage.getItem('fishing_username');
+    if (saved && location.protocol !== 'file:') {
+      usernameInput.value = saved;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: saved }),
+      });
+      if (res.ok) {
+        user = await res.json();
+        enterGame();
+      }
+    }
+  } catch (_) {}
+})();
 
 async function saveUser() {
   if (!user) return;
@@ -426,6 +447,14 @@ function applyCatch(c) {
   user.money += c.value;
   user.stats.totalCatches = (user.stats.totalCatches || 0) + 1;
   user.stats.totalEarned = (user.stats.totalEarned || 0) + c.value;
+  user.stats.totalWeight = +(((user.stats.totalWeight || 0) + (c.weight || 0)).toFixed(2));
+  // 今日统计
+  const todayKey = new Date().toISOString().slice(0, 10);
+  if (!user.dailyStats || user.dailyStats.date !== todayKey) {
+    user.dailyStats = { date: todayKey, catches: 0, weight: 0 };
+  }
+  user.dailyStats.catches++;
+  user.dailyStats.weight = +((user.dailyStats.weight + (c.weight || 0)).toFixed(2));
   if (c.kind === 'fish') {
     const id = c.item.id;
     if (!user.dex[id]) user.dex[id] = { count: 0, maxWeight: 0 };
@@ -563,6 +592,68 @@ function renderDex() {
     <div>累计钓获：${user.stats.totalCatches || 0} 次</div>
     <div>累计收入：${user.stats.totalEarned || 0} 金币</div>
   `;
+}
+
+// ====== 排行榜 ======
+const rankOverlay = $('rank-overlay');
+let activeRankTab = 'today-catches';
+let rankData = null;
+
+$('rank-btn').onclick = () => {
+  rankOverlay.classList.remove('hidden');
+  loadLeaderboard();
+};
+
+$('rank-tabs').onclick = (e) => {
+  const btn = e.target.closest('button[data-rank]');
+  if (!btn) return;
+  activeRankTab = btn.dataset.rank;
+  $('rank-tabs').querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLeaderboard();
+};
+
+async function loadLeaderboard() {
+  const loading = $('rank-loading');
+  const list = $('rank-list');
+  loading.classList.remove('hidden');
+  list.innerHTML = '';
+  try {
+    const res = await fetch('/api/leaderboard');
+    rankData = await res.json();
+    renderLeaderboard();
+  } catch (e) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#ff5722">加载失败</div>';
+  }
+  loading.classList.add('hidden');
+}
+
+function renderLeaderboard() {
+  const list = $('rank-list');
+  if (!rankData) return;
+  const sortKey = {
+    'today-catches': 'todayCatches',
+    'today-weight': 'todayWeight',
+    'total-catches': 'totalCatches',
+    'total-weight': 'totalWeight',
+  }[activeRankTab];
+  const isWeight = activeRankTab.includes('weight');
+  const sorted = [...rankData].sort((a, b) => b[sortKey] - a[sortKey]).filter(e => e[sortKey] > 0);
+  if (sorted.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#888">暂无数据</div>';
+    return;
+  }
+  const medalMap = { 1: '🥇', 2: '🥈', 3: '🥉' };
+  let html = '<table><tr><th>#</th><th>玩家</th><th style="text-align:right">' + (isWeight ? '重量 (kg)' : '数量') + '</th></tr>';
+  sorted.forEach((e, i) => {
+    const rank = i + 1;
+    const isMe = user && e.username === user.username;
+    const medal = medalMap[rank] || rank;
+    const rankClass = rank <= 3 ? ` rank-${rank}` : '';
+    html += `<tr class="${isMe ? 'me' : ''}"><td class="rank-num${rankClass}">${medal}</td><td>${e.username}</td><td class="rank-val">${isWeight ? e[sortKey].toFixed(2) : e[sortKey]}</td></tr>`;
+  });
+  html += '</table>';
+  list.innerHTML = html;
 }
 
 // ====== 鱼竿皮肤 ======
