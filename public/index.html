@@ -31,6 +31,7 @@
       <button id="dex-btn">📖 图鉴</button>
       <button id="rod-btn">🎣 鱼竿</button>
       <button id="rank-btn">🏆 排行</button>
+      <button id="redeem-btn">🎫 兑换</button>
       <button id="share-btn">📤 分享</button>
       <button id="logout-btn">退出</button>
     </div>
@@ -120,6 +121,22 @@
       <div id="rank-list" class="rank-list"></div>
       <div id="rank-loading" class="rank-loading">加载中...</div>
       <button class="close-x" data-close="rank-overlay">关闭</button>
+    </div>
+  </div>
+
+  <!-- 兑换码 -->
+  <div id="redeem-overlay" class="overlay hidden">
+    <div class="modal">
+      <h2>🎫 兑换码</h2>
+      <div class="redeem-content">
+        <p>输入兑换码获取金币奖励</p>
+        <div class="redeem-input-box">
+          <input id="redeem-input" type="text" maxlength="20" placeholder="输入兑换码" />
+          <button id="redeem-submit" class="primary">兑换</button>
+        </div>
+        <div id="redeem-status" class="redeem-status"></div>
+      </div>
+      <button class="close-x" data-close="redeem-overlay">关闭</button>
     </div>
   </div>
 

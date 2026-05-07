@@ -9,6 +9,27 @@ const USERS_DIR = path.join(ROOT, 'data', 'users');
 
 if (!fs.existsSync(USERS_DIR)) fs.mkdirSync(USERS_DIR, { recursive: true });
 
+const CODES_FILE = path.join(ROOT, 'data', 'codes.json');
+
+function loadCodes() {
+  if (!fs.existsSync(CODES_FILE)) {
+    const defaults = {
+      'WELCOME2024': { coins: 500, desc: '欢迎礼包', usedBy: [] },
+      'FISHING666': { coins: 200, desc: '钓鱼大吉', usedBy: [] },
+      'GOLDENROD': { coins: 1000, desc: '黄金鱼竿基金', usedBy: [] },
+      'LUCKYDAY': { coins: 300, desc: '幸运日', usedBy: [] },
+      'VIP888': { coins: 888, desc: 'VIP大礼', usedBy: [] },
+    };
+    fs.writeFileSync(CODES_FILE, JSON.stringify(defaults, null, 2));
+    return defaults;
+  }
+  return JSON.parse(fs.readFileSync(CODES_FILE, 'utf8'));
+}
+
+function saveCodes(codes) {
+  fs.writeFileSync(CODES_FILE, JSON.stringify(codes, null, 2));
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -137,6 +158,20 @@ const server = http.createServer(async (req, res) => {
         };
         saveUser(merged);
         return json(res, 200, merged);
+      }
+      if (req.url === '/api/redeem') {
+        const code = String(body.code || '').trim().toUpperCase();
+        if (!code) return json(res, 400, { error: '请输入兑换码' });
+        const codes = loadCodes();
+        const entry = codes[code];
+        if (!entry) return json(res, 400, { error: '兑换码不存在' });
+        if (entry.usedBy.includes(name)) return json(res, 400, { error: '你已经使用过这个兑换码了' });
+        entry.usedBy.push(name);
+        saveCodes(codes);
+        const u = loadUser(name);
+        u.money = (u.money || 0) + entry.coins;
+        saveUser(u);
+        return json(res, 200, { success: true, coins: entry.coins, desc: entry.desc, user: u });
       }
       return json(res, 404, { error: 'unknown api' });
     } catch (e) {

@@ -330,6 +330,30 @@ input, select {
   opacity: 0.8;
 }
 
+/* 兑换码 */
+.redeem-content { text-align: center; padding: 12px 0; }
+.redeem-content p { margin-bottom: 16px; }
+.redeem-input-box {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+.redeem-input-box input {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-align: center;
+  font-size: 16px;
+}
+.redeem-status {
+  font-size: 14px;
+  min-height: 20px;
+  margin: 12px 0;
+  line-height: 1.6;
+}
+.redeem-status.success { color: #4ec9b0; }
+.redeem-status.error { color: #ff5722; }
+
 /* 手机端操作按钮 */
 .mobile-action-btn {
   display: none;

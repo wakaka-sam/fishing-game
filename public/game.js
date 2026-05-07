@@ -728,6 +728,45 @@ function updateRodInfo() {
   el.innerHTML = `<span class="rod-icon">🎣</span> ${skin.name} ${nextText}`;
 }
 
+// ====== 兑换码 ======
+const redeemOverlay = $('redeem-overlay');
+$('redeem-btn').onclick = () => {
+  $('redeem-input').value = '';
+  $('redeem-status').textContent = '';
+  $('redeem-status').className = 'redeem-status';
+  redeemOverlay.classList.remove('hidden');
+};
+
+$('redeem-submit').onclick = redeemCode;
+$('redeem-input').onkeydown = (e) => { if (e.key === 'Enter') redeemCode(); };
+
+async function redeemCode() {
+  const code = $('redeem-input').value.trim();
+  const status = $('redeem-status');
+  if (!code) { status.textContent = '请输入兑换码'; status.className = 'redeem-status error'; return; }
+  try {
+    const res = await fetch('/api/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user.username, code }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      user = data.user;
+      refreshUI();
+      status.innerHTML = `兑换成功！<br>${data.desc} +${data.coins} 金币 🎉`;
+      status.className = 'redeem-status success';
+      $('redeem-input').value = '';
+    } else {
+      status.textContent = data.error || '兑换失败';
+      status.className = 'redeem-status error';
+    }
+  } catch (e) {
+    status.textContent = '网络错误，请重试';
+    status.className = 'redeem-status error';
+  }
+}
+
 // ====== 分享功能 ======
 const shareOverlay = $('share-overlay');
 $('share-btn').onclick = () => { openShare(); shareOverlay.classList.remove('hidden'); };
