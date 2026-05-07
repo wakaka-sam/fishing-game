@@ -22,10 +22,13 @@ const gameScreen = $('game-screen');
 const usernameInput = $('username-input');
 const playerNameEl = $('player-name');
 const playerMoneyEl = $('player-money');
+const playerDiamondsEl = $('player-diamonds');
 const baitSelect = $('bait-select');
 const baitCountEl = $('bait-count');
 const castBtn = $('cast-btn');
 const statusEl = $('status');
+
+const DIAMOND_JACKPOT_CHANCE = 0.01;
 
 // ====== 登录 ======
 $('login-btn').onclick = login;
@@ -91,18 +94,32 @@ async function saveUser() {
       body: JSON.stringify({ username: user.username, state: user }),
     });
     user = await res.json();
+    ensureUserDefaults();
   } catch (e) { console.warn('save failed', e); }
 }
 
 function enterGame() {
+  ensureUserDefaults();
   loginScreen.classList.remove('active');
   gameScreen.classList.add('active');
   refreshUI();
 }
 
+function ensureUserDefaults() {
+  if (!user) return;
+  user.money = Math.max(0, Math.floor(user.money || 0));
+  user.diamonds = Math.max(0, Math.floor(user.diamonds || 0));
+  user.baits = user.baits || {};
+  user.dex = user.dex || {};
+  user.stats = user.stats || {};
+  user.history = user.history || [];
+  user.ownedRods = user.ownedRods || [];
+}
+
 function refreshUI() {
   playerNameEl.textContent = user.username;
   playerMoneyEl.textContent = '💰 ' + user.money;
+  playerDiamondsEl.textContent = '💎 ' + user.diamonds;
   if (typeof updateRodInfo === 'function') updateRodInfo();
   if (typeof updateMobileBtn === 'function') updateMobileBtn();
   // 鱼饵下拉
@@ -458,6 +475,7 @@ function endHitbar(success, failMsg) {
   if (success) {
     applyCatch(hb.catch);
     showResult(hb.catch);
+    playCatchRodEffect();
   } else {
     showMiss(failMsg || '操作失败，鱼跑了');
   }
@@ -466,9 +484,12 @@ function endHitbar(success, failMsg) {
 
 // ====== 应用钓获 ======
 function applyCatch(c) {
+  const diamonds = rollDiamondReward();
   user.money += c.value;
+  user.diamonds = (user.diamonds || 0) + diamonds;
   user.stats.totalCatches = (user.stats.totalCatches || 0) + 1;
   user.stats.totalEarned = (user.stats.totalEarned || 0) + c.value;
+  user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + diamonds;
   user.stats.totalWeight = +(((user.stats.totalWeight || 0) + (c.weight || 0)).toFixed(2));
   // 今日统计
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -490,10 +511,41 @@ function applyCatch(c) {
     rarity: c.kind === 'fish' ? c.item.rarity : c.kind,
     weight: c.weight,
     value: c.value,
+    diamonds,
   });
+  c.diamonds = diamonds;
   if (user.history.length > 50) user.history.shift();
   refreshUI();
   saveUser();
+}
+
+function rollDiamondReward() {
+  if (Math.random() < DIAMOND_JACKPOT_CHANCE) return 100;
+  return 1 + Math.floor(Math.random() * 3);
+}
+
+function playCatchRodEffect() {
+  const skin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
+  if (!skin.catchEmoji) return;
+
+  const layer = document.createElement('div');
+  layer.className = 'catch-fx-layer';
+  document.body.appendChild(layer);
+
+  for (let i = 0; i < 16; i++) {
+    const emoji = document.createElement('span');
+    emoji.className = 'catch-fx-emoji';
+    emoji.textContent = skin.catchEmoji;
+    emoji.style.left = (8 + Math.random() * 84) + 'vw';
+    emoji.style.bottom = (4 + Math.random() * 26) + 'vh';
+    emoji.style.fontSize = (22 + Math.random() * 24) + 'px';
+    emoji.style.animationDelay = (Math.random() * 0.16) + 's';
+    emoji.style.setProperty('--drift', ((Math.random() - 0.5) * 90) + 'px');
+    emoji.style.setProperty('--rise', -(70 + Math.random() * 110) + 'px');
+    layer.appendChild(emoji);
+  }
+
+  setTimeout(() => layer.remove(), 700);
 }
 
 // ====== 结果弹窗 ======
@@ -508,6 +560,7 @@ function showResult(c) {
   if (c.kind === 'fish') {
     weightLine = `<div>重量：${c.weight} kg</div><div>单价：${c.item.price} 金/kg</div>`;
   }
+  const diamondLine = c.diamonds ? `<div class="diamond-value">+${c.diamonds} 钻石</div>` : '';
   resultContent.innerHTML = `
     <div class="result-fish">
       <span class="icon">${c.item.icon}</span>
@@ -515,10 +568,11 @@ function showResult(c) {
       <div class="rarity" style="color:${color}">★ ${RARITY_NAME[rarity]} ★</div>
       <div class="stats">${weightLine}</div>
       <div class="value">+${c.value} 金币</div>
+      ${diamondLine}
     </div>
   `;
   resultOverlay.classList.remove('hidden');
-  statusEl.textContent = `钓到了 ${c.item.name}！+${c.value} 金币`;
+  statusEl.textContent = `钓到了 ${c.item.name}！+${c.value} 金币，+${c.diamonds || 0} 钻石`;
 }
 
 function showMiss(msg) {
@@ -883,22 +937,53 @@ mobileBtn.addEventListener('mousedown', handleMobileAction);
 
 // ====== 抽奖系统 ======
 const gachaOverlay = $('gacha-overlay');
-$('gacha-btn').onclick = () => { $('gacha-result').classList.add('hidden'); gachaOverlay.classList.remove('hidden'); };
-$('gacha-single').onclick = () => doGacha(1);
-$('gacha-ten').onclick = () => doGacha(10);
+let activeGachaCurrency = 'coins';
+$('gacha-btn').onclick = () => {
+  $('gacha-result').classList.add('hidden');
+  setGachaTab(activeGachaCurrency);
+  gachaOverlay.classList.remove('hidden');
+};
+document.querySelectorAll('[data-gacha]').forEach((btn) => {
+  btn.onclick = () => setGachaTab(btn.dataset.gacha);
+});
+$('gacha-coin-single').onclick = () => doGacha(1, 'coins');
+$('gacha-coin-ten').onclick = () => doGacha(10, 'coins');
+$('gacha-diamond-single').onclick = () => doGacha(1, 'diamonds');
+$('gacha-diamond-ten').onclick = () => doGacha(10, 'diamonds');
 
-async function doGacha(count) {
-  const cost = count === 1 ? 1000 : 9000;
-  if (user.money < cost) { alert('金币不足！需要 ' + cost + ' 金币'); return; }
+function setGachaTab(currency) {
+  activeGachaCurrency = currency === 'diamonds' ? 'diamonds' : 'coins';
+  document.querySelectorAll('[data-gacha]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.gacha === activeGachaCurrency);
+  });
+  $('gacha-coins-panel').classList.toggle('hidden', activeGachaCurrency !== 'coins');
+  $('gacha-diamonds-panel').classList.toggle('hidden', activeGachaCurrency !== 'diamonds');
+  $('gacha-result').classList.add('hidden');
+}
+
+function getGachaCost(count, currency) {
+  if (currency === 'diamonds') return count === 1 ? 10 : 90;
+  return count === 1 ? 1000 : 9000;
+}
+
+async function doGacha(count, currency = activeGachaCurrency) {
+  const cost = getGachaCost(count, currency);
+  if (currency === 'diamonds') {
+    if ((user.diamonds || 0) < cost) { alert('钻石不足！需要 ' + cost + ' 钻石'); return; }
+  } else if (user.money < cost) {
+    alert('金币不足！需要 ' + cost + ' 金币');
+    return;
+  }
   try {
     const res = await fetch('/api/gacha', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user.username, count }),
+      body: JSON.stringify({ username: user.username, count, currency }),
     });
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
     user = data.user;
+    ensureUserDefaults();
     refreshUI();
     showGachaResult(data.results);
   } catch (e) {
@@ -915,10 +1000,14 @@ function showGachaResult(results) {
     let cls = 'gacha-item';
     let icon, name;
     if (r.type === 'rod') {
-      icon = r.id === 'nightmyst' ? '🌙' : '🐼';
       const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
+      icon = (rod && rod.emoji) || '🎣';
       name = rod ? rod.name : r.id;
-      cls += r.id === 'nightmyst' ? ' gi-legendary' : ' gi-rare';
+      cls += ' gi-' + ((rod && rod.rarity) || 'rare');
+    } else if (r.type === 'diamonds') {
+      icon = '💎';
+      name = r.diamonds + ' 钻石';
+      cls += ' gi-diamond';
     } else {
       icon = r.coins >= 1000 ? '💰' : '🪙';
       name = r.coins + ' 金币';
@@ -930,10 +1019,17 @@ function showGachaResult(results) {
   html += '</div>';
   const rods = results.filter(r => r.type === 'rod');
   const totalCoins = results.filter(r => r.type === 'coins').reduce((s, r) => s + r.coins, 0);
-  let summary = '<div class="gacha-summary">';
-  if (rods.length > 0) summary += rods.map(r => `🎉 获得 ${r.id === 'nightmyst' ? '神秘暗夜竿' : '熊猫竿'}！`).join('<br>');
-  if (totalCoins > 0) summary += `${rods.length ? '<br>' : ''}💰 共获得 ${totalCoins} 金币`;
-  summary += '</div>';
+  const totalDiamonds = results.filter(r => r.type === 'diamonds').reduce((s, r) => s + r.diamonds, 0);
+  const summaryParts = [];
+  if (rods.length > 0) {
+    summaryParts.push(rods.map((r) => {
+      const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
+      return `🎉 获得 ${rod ? rod.name : r.id}！`;
+    }).join('<br>'));
+  }
+  if (totalDiamonds > 0) summaryParts.push(`💎 共获得 ${totalDiamonds} 钻石`);
+  if (totalCoins > 0) summaryParts.push(`💰 共获得 ${totalCoins} 金币`);
+  const summary = `<div class="gacha-summary">${summaryParts.join('<br>')}</div>`;
   el.innerHTML = html + summary;
 }
 

@@ -76,9 +76,10 @@ input, select {
   background: #1a1a2e;
   border: 2px solid #ffd700;
 }
-.user-info { display: flex; gap: 20px; font-size: 16px; }
+.user-info { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 16px; }
 #player-name { color: #4ec9b0; }
 #player-money { color: #ffd700; }
+#player-diamonds { color: #66e6ff; }
 .actions { display: flex; gap: 8px; }
 
 #game {
@@ -218,6 +219,7 @@ input, select {
 .result-fish .rarity { font-size: 14px; margin-bottom: 12px; letter-spacing: 2px; }
 .result-fish .stats { font-size: 14px; line-height: 1.8; }
 .result-fish .value { color: #ffd700; font-size: 18px; margin-top: 8px; }
+.result-fish .diamond-value { color: #66e6ff; font-size: 16px; margin-top: 4px; }
 .result-fish.miss { color: #ff5722; }
 .result-fish.miss .icon { font-size: 48px; }
 
@@ -332,6 +334,8 @@ input, select {
 
 /* 抽奖 */
 .gacha-content { text-align: center; }
+.gacha-tabs { margin-bottom: 14px; }
+.gacha-panel.hidden { display: none; }
 .gacha-prizes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -345,9 +349,11 @@ input, select {
   font-size: 13px;
 }
 .gacha-prize span { display: block; font-size: 11px; opacity: 0.6; margin-top: 2px; }
+.gacha-prize.ultimate { border-color: #ff6b00; color: #ffae42; box-shadow: inset 0 0 10px rgba(255,107,0,0.15); }
 .gacha-prize.legendary { border-color: #8b5cf6; color: #c4b5fd; }
 .gacha-prize.rare { border-color: #4ec9b0; color: #4ec9b0; }
 .gacha-prize.coin-prize { border-color: #ffd700; color: #ffd700; }
+.gacha-prize.diamond-prize { border-color: #66e6ff; color: #66e6ff; }
 .gacha-prize.common-prize { border-color: #888; color: #aaa; }
 .gacha-buttons {
   display: flex;
@@ -376,12 +382,16 @@ input, select {
 }
 .gacha-item .gi-icon { font-size: 28px; display: block; margin-bottom: 4px; }
 .gacha-item .gi-name { font-weight: bold; }
+.gacha-item.gi-ultimate { border-color: #ff6b00; box-shadow: 0 0 14px rgba(255,107,0,0.55); }
+.gacha-item.gi-ultimate .gi-name { color: #ffae42; }
 .gacha-item.gi-legendary { border-color: #8b5cf6; box-shadow: 0 0 12px rgba(139,92,246,0.5); }
 .gacha-item.gi-legendary .gi-name { color: #c4b5fd; }
 .gacha-item.gi-rare { border-color: #4ec9b0; box-shadow: 0 0 8px rgba(78,201,176,0.4); }
 .gacha-item.gi-rare .gi-name { color: #4ec9b0; }
 .gacha-item.gi-coin { border-color: #ffd700; }
 .gacha-item.gi-coin .gi-name { color: #ffd700; }
+.gacha-item.gi-diamond { border-color: #66e6ff; box-shadow: 0 0 8px rgba(102,230,255,0.4); }
+.gacha-item.gi-diamond .gi-name { color: #66e6ff; }
 .gacha-item.gi-common { border-color: #555; }
 .gacha-item.gi-common .gi-name { color: #888; }
 .gacha-summary { margin-top: 12px; font-size: 14px; color: #4ec9b0; }
@@ -392,6 +402,25 @@ input, select {
 
 /* 鱼竿限定标签 */
 .rod-item.gacha { border-style: dashed; }
+
+/* 钓获鱼竿特效 */
+.catch-fx-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 300;
+}
+.catch-fx-emoji {
+  position: absolute;
+  animation: catchEmojiRise 0.5s ease-out forwards;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
+}
+@keyframes catchEmojiRise {
+  from { transform: translate(0, 0) scale(0.7); opacity: 0; }
+  18% { opacity: 1; }
+  to { transform: translate(var(--drift), var(--rise)) scale(1.25); opacity: 0; }
+}
 
 /* 兑换码 */
 .redeem-content { text-align: center; padding: 12px 0; }
@@ -458,6 +487,7 @@ input, select {
     gap: 6px;
     padding: 6px 8px;
   }
+  .user-info { gap: 10px; font-size: 14px; }
   .actions { flex-wrap: wrap; gap: 4px; }
   .actions button { font-size: 12px; padding: 6px 8px; }
 

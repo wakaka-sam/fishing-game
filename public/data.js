@@ -183,8 +183,10 @@ const ROD_SKINS = [
 
 // 抽奖限定鱼竿
 const GACHA_RODS = [
-  { id: 'panda',    name: '熊猫竿',     rodColor: '#222', rodHighlight: '#fff', lineColor: 'rgba(255,255,255,0.9)', desc: '黑白配色的可爱熊猫竿', rarity: 'rare', fx: null },
-  { id: 'nightmyst', name: '神秘暗夜竿', rodColor: '#0a0a2e', rodHighlight: '#8b5cf6', lineColor: 'rgba(139,92,246,1.0)', desc: '散发神秘暗紫光芒的传说之竿', rarity: 'legendary', fx: 'night' },
+  { id: 'panda',       name: '熊猫竿',         rodColor: '#222',    rodHighlight: '#fff',    lineColor: 'rgba(255,255,255,0.9)', desc: '黑白配色的可爱熊猫竿', rarity: 'rare',      fx: null,    emoji: '🐼' },
+  { id: 'nightmyst',   name: '神秘暗夜竿',     rodColor: '#0a0a2e', rodHighlight: '#8b5cf6', lineColor: 'rgba(139,92,246,1.0)', desc: '散发神秘暗紫光芒的传说之竿', rarity: 'legendary', fx: 'night', emoji: '🌙' },
+  { id: 'firekirin',   name: '极品火麒麟鱼竿', rodColor: '#8f1d0b', rodHighlight: '#ff6b00', lineColor: 'rgba(255,120,40,1.0)', desc: '抽奖限定，成功钓获时会浮现火焰', rarity: 'ultimate', fx: null, catchFx: 'fire',   catchEmoji: '🔥', emoji: '🔥' },
+  { id: 'greenxuanwu', name: '极品绿玄武鱼竿', rodColor: '#14532d', rodHighlight: '#86efac', lineColor: 'rgba(134,239,172,1.0)', desc: '抽奖限定，成功钓获时会浮现乌龟', rarity: 'ultimate', fx: null, catchFx: 'turtle', catchEmoji: '🐢', emoji: '🐢' },
 ];
 
 const ALL_RODS = [...ROD_SKINS, ...GACHA_RODS];

@@ -49,10 +49,11 @@ function defaultUser(name) {
   return {
     username: name,
     money: 100,
+    diamonds: 0,
     baits: { worm: 5 },
     currentBait: 'worm',
     dex: {}, // fishId -> { count, maxWeight }
-    stats: { totalCatches: 0, totalEarned: 0 },
+    stats: { totalCatches: 0, totalEarned: 0, totalDiamonds: 0 },
     history: [], // last 50 catches
     lastShareDate: '',
     rodSkin: '',
@@ -68,7 +69,20 @@ function loadUser(name) {
     fs.writeFileSync(p, JSON.stringify(u, null, 2));
     return u;
   }
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
+  const existing = JSON.parse(fs.readFileSync(p, 'utf8'));
+  const defaults = defaultUser(name);
+  return {
+    ...defaults,
+    ...existing,
+    money: Math.max(0, Math.floor(existing.money ?? defaults.money)),
+    diamonds: Math.max(0, Math.floor(existing.diamonds ?? defaults.diamonds)),
+    baits: { ...defaults.baits, ...(existing.baits || {}) },
+    dex: existing.dex || defaults.dex,
+    stats: { ...defaults.stats, ...(existing.stats || {}) },
+    history: existing.history || defaults.history,
+    dailyStats: existing.dailyStats || defaults.dailyStats,
+    ownedRods: existing.ownedRods || defaults.ownedRods,
+  };
 }
 
 function saveUser(user) {
@@ -148,6 +162,7 @@ const server = http.createServer(async (req, res) => {
         const merged = {
           ...existing,
           money: Math.max(0, Math.floor(incoming.money ?? existing.money)),
+          diamonds: Math.max(0, Math.floor(incoming.diamonds ?? existing.diamonds ?? 0)),
           baits: incoming.baits || existing.baits,
           currentBait: incoming.currentBait || existing.currentBait,
           dex: incoming.dex || existing.dex,
@@ -163,23 +178,48 @@ const server = http.createServer(async (req, res) => {
       }
       if (req.url === '/api/gacha') {
         const count = body.count === 10 ? 10 : 1;
-        const cost = count === 1 ? 1000 : 9000;
+        const currency = body.currency === 'diamonds' ? 'diamonds' : 'coins';
+        const cost = currency === 'diamonds'
+          ? (count === 1 ? 10 : 90)
+          : (count === 1 ? 1000 : 9000);
         const u = loadUser(name);
-        if ((u.money || 0) < cost) return json(res, 400, { error: '金币不足' });
-        u.money -= cost;
+        u.diamonds = Math.max(0, Math.floor(u.diamonds || 0));
+        if (currency === 'diamonds') {
+          if (u.diamonds < cost) return json(res, 400, { error: '钻石不足' });
+          u.diamonds -= cost;
+        } else {
+          if ((u.money || 0) < cost) return json(res, 400, { error: '金币不足' });
+          u.money -= cost;
+        }
         if (!u.ownedRods) u.ownedRods = [];
         const results = [];
         for (let i = 0; i < count; i++) {
           const roll = Math.random() * 100;
-          if (roll < 0.1) {
-            results.push({ type: 'rod', id: 'nightmyst' });
-            if (!u.ownedRods.includes('nightmyst')) u.ownedRods.push('nightmyst');
-          } else if (roll < 1.1) {
-            results.push({ type: 'rod', id: 'panda' });
-            if (!u.ownedRods.includes('panda')) u.ownedRods.push('panda');
+          if (currency === 'diamonds') {
+            if (roll < 1) {
+              results.push({ type: 'rod', id: 'firekirin' });
+              if (!u.ownedRods.includes('firekirin')) u.ownedRods.push('firekirin');
+            } else if (roll < 2) {
+              results.push({ type: 'rod', id: 'greenxuanwu' });
+              if (!u.ownedRods.includes('greenxuanwu')) u.ownedRods.push('greenxuanwu');
+            } else if (roll < 10) {
+              results.push({ type: 'diamonds', diamonds: 10 });
+              u.diamonds += 10;
+            } else {
+              results.push({ type: 'coins', coins: 1000 });
+              u.money += 1000;
+            }
           } else if (roll < 10) {
-            results.push({ type: 'coins', coins: 1000 });
-            u.money += 1000;
+            if (roll < 0.1) {
+              results.push({ type: 'rod', id: 'nightmyst' });
+              if (!u.ownedRods.includes('nightmyst')) u.ownedRods.push('nightmyst');
+            } else if (roll < 1.1) {
+              results.push({ type: 'rod', id: 'panda' });
+              if (!u.ownedRods.includes('panda')) u.ownedRods.push('panda');
+            } else {
+              results.push({ type: 'coins', coins: 1000 });
+              u.money += 1000;
+            }
           } else {
             results.push({ type: 'coins', coins: 1 });
             u.money += 1;
