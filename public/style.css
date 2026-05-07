@@ -323,6 +323,19 @@ input, select {
 }
 .share-status.success { color: #4ec9b0; }
 .share-status.info { color: #ffae42; }
+.share-qr-box {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0;
+}
+.share-qr-box img {
+  width: min(240px, 72vw);
+  height: auto;
+  border: 3px solid #ffd700;
+  background: #fff;
+  padding: 6px;
+  image-rendering: auto;
+}
 .share-wechat-hint {
   margin-top: 12px;
   padding: 12px;
