@@ -33,6 +33,7 @@ function defaultUser(name) {
     dex: {}, // fishId -> { count, maxWeight }
     stats: { totalCatches: 0, totalEarned: 0 },
     history: [], // last 50 catches
+    lastShareDate: '',
   };
 }
 
@@ -104,6 +105,7 @@ const server = http.createServer(async (req, res) => {
           dex: incoming.dex || existing.dex,
           stats: incoming.stats || existing.stats,
           history: (incoming.history || existing.history).slice(-50),
+          lastShareDate: incoming.lastShareDate || existing.lastShareDate || '',
         };
         saveUser(merged);
         return json(res, 200, merged);

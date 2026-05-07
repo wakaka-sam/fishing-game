@@ -82,6 +82,8 @@ function enterGame() {
 function refreshUI() {
   playerNameEl.textContent = user.username;
   playerMoneyEl.textContent = '💰 ' + user.money;
+  if (typeof updateRodInfo === 'function') updateRodInfo();
+  if (typeof updateMobileBtn === 'function') updateMobileBtn();
   // 鱼饵下拉
   baitSelect.innerHTML = '';
   for (const id of Object.keys(BAITS)) {
@@ -174,18 +176,19 @@ function render() {
   px(W - 84, 48, 32, 8, '#ffeb3b');
   px(W - 80, 36, 24, 4, '#ffeb3b');
 
-  // 钓竿（第一视角，从右下伸出）
+  // 钓竿（第一视角，从右下伸出）— 使用当前鱼竿皮肤
+  const rodSkin = user ? GAME_DATA.getCurrentRodSkin(user.dex) : GAME_DATA.ROD_SKINS[0];
   const rodTipX = W * 0.45 + Math.sin(t * 1.5) * 4;
   const rodTipY = H * 0.35;
   const rodBaseX = W * 0.95;
   const rodBaseY = H + 10;
-  ctx.strokeStyle = '#3e2723';
+  ctx.strokeStyle = rodSkin.rodColor;
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.moveTo(rodBaseX, rodBaseY);
   ctx.lineTo(rodTipX, rodTipY);
   ctx.stroke();
-  ctx.strokeStyle = '#5d4037';
+  ctx.strokeStyle = rodSkin.rodHighlight;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(rodBaseX, rodBaseY);
@@ -194,7 +197,7 @@ function render() {
 
   // 钓鱼线
   if (state.phase !== 'idle' || hookY > rodTipY + 10) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.strokeStyle = rodSkin.lineColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(rodTipX, rodTipY);
@@ -266,6 +269,7 @@ function startCast() {
   waitTimer = setTimeout(() => {
     state.phase = 'hooked';
     statusEl.textContent = '鱼上钩了！点击响应';
+    if (typeof updateMobileBtn === 'function') updateMobileBtn();
     // 玩家有 3 秒响应时间，否则跑掉
     waitTimer = setTimeout(() => {
       state.phase = 'idle';
@@ -560,6 +564,164 @@ function renderDex() {
     <div>累计收入：${user.stats.totalEarned || 0} 金币</div>
   `;
 }
+
+// ====== 鱼竿皮肤 ======
+const rodOverlay = $('rod-overlay');
+$('rod-btn').onclick = () => { renderRodSkins(); rodOverlay.classList.remove('hidden'); };
+
+function renderRodSkins() {
+  const list = $('rod-list');
+  list.innerHTML = '';
+  const dexCount = Object.keys(user.dex).length;
+  const current = GAME_DATA.getCurrentRodSkin(user.dex);
+  for (const skin of GAME_DATA.ROD_SKINS) {
+    const unlocked = dexCount >= skin.threshold;
+    const isActive = skin.id === current.id;
+    const div = document.createElement('div');
+    div.className = 'rod-item' + (unlocked ? ' unlocked' : ' locked') + (isActive ? ' active' : '');
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 60;
+    drawRodPreview(canvas, skin);
+    div.innerHTML = `
+      <div class="rod-preview"></div>
+      <div class="rod-name" style="color:${skin.rodHighlight}">${skin.name}</div>
+      <div class="rod-desc">${skin.desc}</div>
+      <div class="rod-req">${unlocked ? '✅ 已解锁' : `🔒 收集 ${skin.threshold} 种鱼解锁 (${dexCount}/${skin.threshold})`}</div>
+      ${isActive ? '<div class="rod-badge">装备中</div>' : ''}
+    `;
+    div.querySelector('.rod-preview').appendChild(canvas);
+    list.appendChild(div);
+  }
+}
+
+function drawRodPreview(canvas, skin) {
+  const c = canvas.getContext('2d');
+  c.strokeStyle = skin.rodColor;
+  c.lineWidth = 5;
+  c.beginPath();
+  c.moveTo(180, 55);
+  c.lineTo(20, 10);
+  c.stroke();
+  c.strokeStyle = skin.rodHighlight;
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(180, 55);
+  c.lineTo(20, 10);
+  c.stroke();
+  c.strokeStyle = skin.lineColor;
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(20, 10);
+  c.quadraticCurveTo(10, 30, 15, 50);
+  c.stroke();
+}
+
+function updateRodInfo() {
+  const el = $('rod-info');
+  const skin = GAME_DATA.getCurrentRodSkin(user.dex);
+  const next = GAME_DATA.getNextRodSkin(user.dex);
+  const dexCount = Object.keys(user.dex).length;
+  let nextText = '';
+  if (next) nextText = `<span class="rod-next">下一把: ${next.name} (${dexCount}/${next.threshold})</span>`;
+  el.innerHTML = `<span class="rod-icon">🎣</span> ${skin.name} ${nextText}`;
+}
+
+// ====== 分享功能 ======
+const shareOverlay = $('share-overlay');
+$('share-btn').onclick = () => { openShare(); shareOverlay.classList.remove('hidden'); };
+
+function openShare() {
+  const link = window.location.origin + '?ref=' + encodeURIComponent(user.username);
+  $('share-link').value = link;
+  const status = $('share-status');
+  const todayKey = new Date().toISOString().slice(0, 10);
+  if (user.lastShareDate === todayKey) {
+    status.textContent = '今日已领取分享奖励';
+    status.className = 'share-status info';
+  } else {
+    status.textContent = '';
+    status.className = 'share-status';
+  }
+}
+
+$('copy-link-btn').onclick = () => {
+  const input = $('share-link');
+  const status = $('share-status');
+  navigator.clipboard.writeText(input.value).then(() => {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    if (user.lastShareDate !== todayKey) {
+      user.money += 10;
+      user.lastShareDate = todayKey;
+      refreshUI();
+      saveUser();
+      status.textContent = '链接已复制！获得 10 金币奖励 🎉';
+      status.className = 'share-status success';
+    } else {
+      status.textContent = '链接已复制！（今日奖励已领取）';
+      status.className = 'share-status info';
+    }
+  }).catch(() => {
+    input.select();
+    document.execCommand('copy');
+    const todayKey = new Date().toISOString().slice(0, 10);
+    if (user.lastShareDate !== todayKey) {
+      user.money += 10;
+      user.lastShareDate = todayKey;
+      refreshUI();
+      saveUser();
+      status.textContent = '链接已复制！获得 10 金币奖励 🎉';
+      status.className = 'share-status success';
+    } else {
+      status.textContent = '链接已复制！（今日奖励已领取）';
+      status.className = 'share-status info';
+    }
+  });
+};
+
+// ====== 手机端按钮 ======
+const mobileBtn = $('mobile-action-btn');
+const mobileBtnText = $('mobile-btn-text');
+
+function updateMobileBtn() {
+  if (state.phase === 'idle') {
+    mobileBtnText.textContent = '抛竿';
+    mobileBtn.style.background = 'linear-gradient(135deg, #d35400, #ff6f00)';
+  } else if (state.phase === 'waiting') {
+    mobileBtnText.textContent = '等待...';
+    mobileBtn.style.background = 'linear-gradient(135deg, #2c3e50, #34495e)';
+  } else if (state.phase === 'hooked') {
+    mobileBtnText.textContent = '拉!';
+    mobileBtn.style.background = 'linear-gradient(135deg, #c0392b, #e74c3c)';
+  } else if (state.phase === 'reeling') {
+    mobileBtnText.textContent = '击中!';
+    mobileBtn.style.background = 'linear-gradient(135deg, #c0392b, #e74c3c)';
+  }
+}
+
+mobileBtn.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (state.phase === 'idle') {
+    startCast();
+  } else if (state.phase === 'hooked') {
+    startHitbar();
+  } else if (state.phase === 'reeling') {
+    hitbarClick();
+  }
+  updateMobileBtn();
+}, { passive: false });
+
+mobileBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (state.phase === 'idle') {
+    startCast();
+  } else if (state.phase === 'hooked') {
+    startHitbar();
+  } else if (state.phase === 'reeling') {
+    hitbarClick();
+  }
+  updateMobileBtn();
+});
 
 // 关闭按钮
 document.querySelectorAll('[data-close]').forEach((btn) => {

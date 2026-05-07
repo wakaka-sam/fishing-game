@@ -169,8 +169,38 @@ function rollCatch(baitId) {
   return { kind: 'fish', item: fish, weight, value };
 }
 
+// 鱼竿皮肤：按解锁的图鉴鱼种数量递增
+const ROD_SKINS = [
+  { id: 'wood',      name: '木竿',     threshold: 0,  rodColor: '#5d4037', rodHighlight: '#8d6e63', lineColor: 'rgba(255,255,255,0.7)', desc: '朴素的木质鱼竿' },
+  { id: 'bamboo',    name: '竹竿',     threshold: 3,  rodColor: '#6d9b3a', rodHighlight: '#8bc34a', lineColor: 'rgba(200,255,200,0.8)', desc: '翠绿的竹节鱼竿' },
+  { id: 'iron',      name: '铁竿',     threshold: 8,  rodColor: '#607d8b', rodHighlight: '#90a4ae', lineColor: 'rgba(200,220,255,0.8)', desc: '坚固的铁质鱼竿' },
+  { id: 'gold',      name: '黄金竿',   threshold: 15, rodColor: '#f9a825', rodHighlight: '#ffd54f', lineColor: 'rgba(255,215,0,0.8)',   desc: '闪耀的黄金鱼竿' },
+  { id: 'crystal',   name: '水晶竿',   threshold: 22, rodColor: '#4fc3f7', rodHighlight: '#b3e5fc', lineColor: 'rgba(150,220,255,0.9)', desc: '晶莹剔透的水晶竿' },
+  { id: 'fire',      name: '烈焰竿',   threshold: 30, rodColor: '#e65100', rodHighlight: '#ff6d00', lineColor: 'rgba(255,100,0,0.9)',   desc: '燃烧着火焰的神器' },
+  { id: 'dragon',    name: '龙骨竿',   threshold: 38, rodColor: '#7b1fa2', rodHighlight: '#ce93d8', lineColor: 'rgba(200,150,255,0.9)', desc: '以龙骨锻造的传说之竿' },
+  { id: 'star',      name: '星辰竿',   threshold: 44, rodColor: '#1a237e', rodHighlight: '#ffd700', lineColor: 'rgba(255,255,150,1.0)', desc: '蕴含星辰之力的终极鱼竿' },
+];
+
+function getCurrentRodSkin(dex) {
+  const count = Object.keys(dex || {}).length;
+  let skin = ROD_SKINS[0];
+  for (const s of ROD_SKINS) {
+    if (count >= s.threshold) skin = s;
+  }
+  return skin;
+}
+
+function getNextRodSkin(dex) {
+  const count = Object.keys(dex || {}).length;
+  for (const s of ROD_SKINS) {
+    if (count < s.threshold) return s;
+  }
+  return null;
+}
+
 window.GAME_DATA = {
   HITS_BY_RARITY, RARITY_COLOR, RARITY_NAME,
   BAITS, TRASH_POOL, TREASURE_POOL,
+  ROD_SKINS, getCurrentRodSkin, getNextRodSkin,
   rollCatch,
 };
