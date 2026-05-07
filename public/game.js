@@ -198,11 +198,32 @@ function render() {
   px(W - 80, 36, 24, 4, '#ffeb3b');
 
   // 钓竿（第一视角，从右下伸出）— 使用当前鱼竿皮肤
-  const rodSkin = user ? GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin) : GAME_DATA.ROD_SKINS[0];
+  const rodSkin = user ? GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods) : GAME_DATA.ROD_SKINS[0];
   const rodTipX = W * 0.45 + Math.sin(t * 1.5) * 4;
   const rodTipY = H * 0.35;
   const rodBaseX = W * 0.95;
   const rodBaseY = H + 10;
+  // 暗夜竿特效：发光光晕
+  if (rodSkin.fx === 'night') {
+    ctx.save();
+    ctx.shadowColor = '#8b5cf6';
+    ctx.shadowBlur = 12 + Math.sin(t * 3) * 6;
+    ctx.strokeStyle = '#8b5cf6';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(rodBaseX, rodBaseY);
+    ctx.lineTo(rodTipX, rodTipY);
+    ctx.stroke();
+    ctx.restore();
+    // 粒子特效
+    for (let i = 0; i < 6; i++) {
+      const frac = (i + t * 0.5) % 1;
+      const px2 = rodBaseX + (rodTipX - rodBaseX) * frac;
+      const py2 = rodBaseY + (rodTipY - rodBaseY) * frac + Math.sin(t * 4 + i * 2) * 4;
+      const alpha = 0.4 + Math.sin(t * 5 + i) * 0.3;
+      px(px2 - 2, py2 - 2, 4, 4, `rgba(139,92,246,${alpha})`);
+    }
+  }
   ctx.strokeStyle = rodSkin.rodColor;
   ctx.lineWidth = 6;
   ctx.beginPath();
@@ -665,23 +686,30 @@ function renderRodSkins() {
   const list = $('rod-list');
   list.innerHTML = '';
   const dexCount = Object.keys(user.dex).length;
-  const current = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin);
-  for (const skin of GAME_DATA.ROD_SKINS) {
-    const unlocked = dexCount >= skin.threshold;
+  const current = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
+  const owned = user.ownedRods || [];
+  for (const skin of GAME_DATA.ALL_RODS) {
+    const isGacha = GAME_DATA.GACHA_RODS.some(g => g.id === skin.id);
+    const unlocked = isGacha ? owned.includes(skin.id) : dexCount >= skin.threshold;
     const isActive = skin.id === current.id;
     const div = document.createElement('div');
-    div.className = 'rod-item' + (unlocked ? ' unlocked' : ' locked') + (isActive ? ' active' : '');
+    div.className = 'rod-item' + (unlocked ? ' unlocked' : ' locked') + (isActive ? ' active' : '') + (isGacha ? ' gacha' : '');
     if (unlocked && !isActive) div.style.cursor = 'pointer';
     const canvas = document.createElement('canvas');
     canvas.width = 200;
     canvas.height = 60;
     drawRodPreview(canvas, skin);
+    let reqText;
+    if (unlocked) reqText = isActive ? '✅ 装备中' : '点击装备';
+    else if (isGacha) reqText = '🎰 抽奖限定';
+    else reqText = `🔒 收集 ${skin.threshold} 种鱼解锁 (${dexCount}/${skin.threshold})`;
     div.innerHTML = `
       <div class="rod-preview"></div>
       <div class="rod-name" style="color:${skin.rodHighlight}">${skin.name}</div>
       <div class="rod-desc">${skin.desc}</div>
-      <div class="rod-req">${unlocked ? (isActive ? '✅ 装备中' : '点击装备') : `🔒 收集 ${skin.threshold} 种鱼解锁 (${dexCount}/${skin.threshold})`}</div>
+      <div class="rod-req">${reqText}</div>
       ${isActive ? '<div class="rod-badge">装备中</div>' : ''}
+      ${isGacha && !unlocked ? '<div class="rod-badge" style="background:#c586c0">限定</div>' : ''}
     `;
     div.querySelector('.rod-preview').appendChild(canvas);
     if (unlocked && !isActive) {
@@ -720,7 +748,7 @@ function drawRodPreview(canvas, skin) {
 
 function updateRodInfo() {
   const el = $('rod-info');
-  const skin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin);
+  const skin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
   const next = GAME_DATA.getNextRodSkin(user.dex);
   const dexCount = Object.keys(user.dex).length;
   let nextText = '';
@@ -852,6 +880,62 @@ function handleMobileAction(e) {
 }
 mobileBtn.addEventListener('touchstart', handleMobileAction, { passive: false });
 mobileBtn.addEventListener('mousedown', handleMobileAction);
+
+// ====== 抽奖系统 ======
+const gachaOverlay = $('gacha-overlay');
+$('gacha-btn').onclick = () => { $('gacha-result').classList.add('hidden'); gachaOverlay.classList.remove('hidden'); };
+$('gacha-single').onclick = () => doGacha(1);
+$('gacha-ten').onclick = () => doGacha(10);
+
+async function doGacha(count) {
+  const cost = count === 1 ? 1000 : 9000;
+  if (user.money < cost) { alert('金币不足！需要 ' + cost + ' 金币'); return; }
+  try {
+    const res = await fetch('/api/gacha', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user.username, count }),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    user = data.user;
+    refreshUI();
+    showGachaResult(data.results);
+  } catch (e) {
+    alert('网络错误，请重试');
+  }
+}
+
+function showGachaResult(results) {
+  const el = $('gacha-result');
+  el.classList.remove('hidden');
+  let html = '<div class="gacha-result-items">';
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    let cls = 'gacha-item';
+    let icon, name;
+    if (r.type === 'rod') {
+      icon = r.id === 'nightmyst' ? '🌙' : '🐼';
+      const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
+      name = rod ? rod.name : r.id;
+      cls += r.id === 'nightmyst' ? ' gi-legendary' : ' gi-rare';
+    } else {
+      icon = r.coins >= 1000 ? '💰' : '🪙';
+      name = r.coins + ' 金币';
+      cls += r.coins >= 1000 ? ' gi-coin' : ' gi-common';
+    }
+    const delay = i * 0.1;
+    html += `<div class="${cls}" style="animation-delay:${delay}s"><span class="gi-icon">${icon}</span><span class="gi-name">${name}</span></div>`;
+  }
+  html += '</div>';
+  const rods = results.filter(r => r.type === 'rod');
+  const totalCoins = results.filter(r => r.type === 'coins').reduce((s, r) => s + r.coins, 0);
+  let summary = '<div class="gacha-summary">';
+  if (rods.length > 0) summary += rods.map(r => `🎉 获得 ${r.id === 'nightmyst' ? '神秘暗夜竿' : '熊猫竿'}！`).join('<br>');
+  if (totalCoins > 0) summary += `${rods.length ? '<br>' : ''}💰 共获得 ${totalCoins} 金币`;
+  summary += '</div>';
+  el.innerHTML = html + summary;
+}
 
 // 关闭按钮
 document.querySelectorAll('[data-close]').forEach((btn) => {

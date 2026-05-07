@@ -181,8 +181,18 @@ const ROD_SKINS = [
   { id: 'star',      name: '星辰竿',   threshold: 44, rodColor: '#1a237e', rodHighlight: '#ffd700', lineColor: 'rgba(255,255,150,1.0)', desc: '蕴含星辰之力的终极鱼竿' },
 ];
 
-function getCurrentRodSkin(dex, selectedId) {
+// 抽奖限定鱼竿
+const GACHA_RODS = [
+  { id: 'panda',    name: '熊猫竿',     rodColor: '#222', rodHighlight: '#fff', lineColor: 'rgba(255,255,255,0.9)', desc: '黑白配色的可爱熊猫竿', rarity: 'rare', fx: null },
+  { id: 'nightmyst', name: '神秘暗夜竿', rodColor: '#0a0a2e', rodHighlight: '#8b5cf6', lineColor: 'rgba(139,92,246,1.0)', desc: '散发神秘暗紫光芒的传说之竿', rarity: 'legendary', fx: 'night' },
+];
+
+const ALL_RODS = [...ROD_SKINS, ...GACHA_RODS];
+
+function getCurrentRodSkin(dex, selectedId, ownedRods) {
   if (selectedId) {
+    const gachaRod = GACHA_RODS.find(s => s.id === selectedId);
+    if (gachaRod && (ownedRods || []).includes(selectedId)) return gachaRod;
     const selected = ROD_SKINS.find(s => s.id === selectedId);
     const count = Object.keys(dex || {}).length;
     if (selected && count >= selected.threshold) return selected;
@@ -206,6 +216,6 @@ function getNextRodSkin(dex) {
 window.GAME_DATA = {
   HITS_BY_RARITY, RARITY_COLOR, RARITY_NAME,
   BAITS, TRASH_POOL, TREASURE_POOL,
-  ROD_SKINS, getCurrentRodSkin, getNextRodSkin,
+  ROD_SKINS, GACHA_RODS, ALL_RODS, getCurrentRodSkin, getNextRodSkin,
   rollCatch,
 };

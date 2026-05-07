@@ -31,6 +31,7 @@
       <button id="dex-btn">📖 图鉴</button>
       <button id="rod-btn">🎣 鱼竿</button>
       <button id="rank-btn">🏆 排行</button>
+      <button id="gacha-btn">🎰 抽奖</button>
       <button id="redeem-btn">🎫 兑换</button>
       <button id="share-btn">📤 分享</button>
       <button id="logout-btn">退出</button>
@@ -121,6 +122,27 @@
       <div id="rank-list" class="rank-list"></div>
       <div id="rank-loading" class="rank-loading">加载中...</div>
       <button class="close-x" data-close="rank-overlay">关闭</button>
+    </div>
+  </div>
+
+  <!-- 抽奖 -->
+  <div id="gacha-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <h2>🎰 幸运抽奖</h2>
+      <div class="gacha-content">
+        <div class="gacha-prizes">
+          <div class="gacha-prize legendary">🌙 神秘暗夜竿 <span>0.1%</span></div>
+          <div class="gacha-prize rare">🐼 熊猫竿 <span>1%</span></div>
+          <div class="gacha-prize coin-prize">💰 1000金币 <span>8.9%</span></div>
+          <div class="gacha-prize common-prize">🪙 1金币 <span>90%</span></div>
+        </div>
+        <div class="gacha-buttons">
+          <button id="gacha-single" class="primary">单抽 💰1000</button>
+          <button id="gacha-ten" class="primary">十连抽 💰9000</button>
+        </div>
+        <div id="gacha-result" class="gacha-result hidden"></div>
+      </div>
+      <button class="close-x" data-close="gacha-overlay">关闭</button>
     </div>
   </div>
 

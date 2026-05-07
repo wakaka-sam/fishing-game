@@ -57,6 +57,7 @@ function defaultUser(name) {
     lastShareDate: '',
     rodSkin: '',
     dailyStats: { date: '', catches: 0, weight: 0 },
+    ownedRods: [],
   };
 }
 
@@ -155,9 +156,37 @@ const server = http.createServer(async (req, res) => {
           lastShareDate: incoming.lastShareDate || existing.lastShareDate || '',
           rodSkin: incoming.rodSkin || existing.rodSkin || '',
           dailyStats: incoming.dailyStats || existing.dailyStats || { date: '', catches: 0, weight: 0 },
+          ownedRods: incoming.ownedRods || existing.ownedRods || [],
         };
         saveUser(merged);
         return json(res, 200, merged);
+      }
+      if (req.url === '/api/gacha') {
+        const count = body.count === 10 ? 10 : 1;
+        const cost = count === 1 ? 1000 : 9000;
+        const u = loadUser(name);
+        if ((u.money || 0) < cost) return json(res, 400, { error: '金币不足' });
+        u.money -= cost;
+        if (!u.ownedRods) u.ownedRods = [];
+        const results = [];
+        for (let i = 0; i < count; i++) {
+          const roll = Math.random() * 100;
+          if (roll < 0.1) {
+            results.push({ type: 'rod', id: 'nightmyst' });
+            if (!u.ownedRods.includes('nightmyst')) u.ownedRods.push('nightmyst');
+          } else if (roll < 1.1) {
+            results.push({ type: 'rod', id: 'panda' });
+            if (!u.ownedRods.includes('panda')) u.ownedRods.push('panda');
+          } else if (roll < 10) {
+            results.push({ type: 'coins', coins: 1000 });
+            u.money += 1000;
+          } else {
+            results.push({ type: 'coins', coins: 1 });
+            u.money += 1;
+          }
+        }
+        saveUser(u);
+        return json(res, 200, { results, user: u });
       }
       if (req.url === '/api/redeem') {
         const code = String(body.code || '').trim().toUpperCase();
