@@ -395,7 +395,7 @@ function rafLoop() {
   if (hb.cursorPos >= 1) { hb.cursorPos = 1; hb.cursorDir = -1; }
   if (hb.cursorPos <= 0) { hb.cursorPos = 0; hb.cursorDir = 1; }
 
-  const barW = 500;
+  const barW = hitbarZoneEl.parentElement.offsetWidth;
   hitbarZoneEl.style.left = (hb.zoneStart * barW) + 'px';
   hitbarZoneEl.style.width = (hb.zoneWidth * barW) + 'px';
   hitbarCursorEl.style.left = (hb.cursorPos * barW) + 'px';
