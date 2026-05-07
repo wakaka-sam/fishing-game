@@ -402,7 +402,8 @@ function rafLoop() {
   hb.rafId = requestAnimationFrame(rafLoop);
 }
 
-hitBtn.onclick = hitbarClick;
+hitBtn.addEventListener('mousedown', (e) => { e.preventDefault(); hitbarClick(); });
+hitBtn.addEventListener('touchstart', (e) => { e.preventDefault(); hitbarClick(); }, { passive: false });
 
 function hitbarClick() {
   if (!hb.active) return;
@@ -799,7 +800,7 @@ function updateMobileBtn() {
   }
 }
 
-mobileBtn.addEventListener('touchstart', (e) => {
+function handleMobileAction(e) {
   e.preventDefault();
   if (state.phase === 'idle') {
     startCast();
@@ -809,19 +810,9 @@ mobileBtn.addEventListener('touchstart', (e) => {
     hitbarClick();
   }
   updateMobileBtn();
-}, { passive: false });
-
-mobileBtn.addEventListener('click', (e) => {
-  e.preventDefault();
-  if (state.phase === 'idle') {
-    startCast();
-  } else if (state.phase === 'hooked') {
-    startHitbar();
-  } else if (state.phase === 'reeling') {
-    hitbarClick();
-  }
-  updateMobileBtn();
-});
+}
+mobileBtn.addEventListener('touchstart', handleMobileAction, { passive: false });
+mobileBtn.addEventListener('mousedown', handleMobileAction);
 
 // 关闭按钮
 document.querySelectorAll('[data-close]').forEach((btn) => {
