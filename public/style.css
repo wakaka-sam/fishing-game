@@ -392,7 +392,9 @@ input, select {
   .rod-list { grid-template-columns: 1fr; }
 
   .hitbar { width: 90vw; max-width: 500px; }
-  #hit-btn { display: none; }
+  .hitbar-overlay { padding: 20px; }
+  #hitbar-msg { font-size: 18px; }
+  #hit-btn { padding: 16px 40px; font-size: 20px; }
 
   .share-link-box { flex-direction: column; }
 }
@@ -400,5 +402,4 @@ input, select {
 @media (hover: none) and (pointer: coarse) {
   .mobile-action-btn { display: flex; }
   #cast-btn { display: none; }
-  #hit-btn { display: none; }
 }
