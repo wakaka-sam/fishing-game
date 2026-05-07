@@ -177,7 +177,7 @@ function render() {
   px(W - 80, 36, 24, 4, '#ffeb3b');
 
   // 钓竿（第一视角，从右下伸出）— 使用当前鱼竿皮肤
-  const rodSkin = user ? GAME_DATA.getCurrentRodSkin(user.dex) : GAME_DATA.ROD_SKINS[0];
+  const rodSkin = user ? GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin) : GAME_DATA.ROD_SKINS[0];
   const rodTipX = W * 0.45 + Math.sin(t * 1.5) * 4;
   const rodTipY = H * 0.35;
   const rodBaseX = W * 0.95;
@@ -573,12 +573,13 @@ function renderRodSkins() {
   const list = $('rod-list');
   list.innerHTML = '';
   const dexCount = Object.keys(user.dex).length;
-  const current = GAME_DATA.getCurrentRodSkin(user.dex);
+  const current = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin);
   for (const skin of GAME_DATA.ROD_SKINS) {
     const unlocked = dexCount >= skin.threshold;
     const isActive = skin.id === current.id;
     const div = document.createElement('div');
     div.className = 'rod-item' + (unlocked ? ' unlocked' : ' locked') + (isActive ? ' active' : '');
+    if (unlocked && !isActive) div.style.cursor = 'pointer';
     const canvas = document.createElement('canvas');
     canvas.width = 200;
     canvas.height = 60;
@@ -587,10 +588,18 @@ function renderRodSkins() {
       <div class="rod-preview"></div>
       <div class="rod-name" style="color:${skin.rodHighlight}">${skin.name}</div>
       <div class="rod-desc">${skin.desc}</div>
-      <div class="rod-req">${unlocked ? '✅ 已解锁' : `🔒 收集 ${skin.threshold} 种鱼解锁 (${dexCount}/${skin.threshold})`}</div>
+      <div class="rod-req">${unlocked ? (isActive ? '✅ 装备中' : '点击装备') : `🔒 收集 ${skin.threshold} 种鱼解锁 (${dexCount}/${skin.threshold})`}</div>
       ${isActive ? '<div class="rod-badge">装备中</div>' : ''}
     `;
     div.querySelector('.rod-preview').appendChild(canvas);
+    if (unlocked && !isActive) {
+      div.onclick = () => {
+        user.rodSkin = skin.id;
+        saveUser();
+        refreshUI();
+        renderRodSkins();
+      };
+    }
     list.appendChild(div);
   }
 }
@@ -619,7 +628,7 @@ function drawRodPreview(canvas, skin) {
 
 function updateRodInfo() {
   const el = $('rod-info');
-  const skin = GAME_DATA.getCurrentRodSkin(user.dex);
+  const skin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin);
   const next = GAME_DATA.getNextRodSkin(user.dex);
   const dexCount = Object.keys(user.dex).length;
   let nextText = '';

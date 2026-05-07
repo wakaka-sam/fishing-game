@@ -34,6 +34,7 @@ function defaultUser(name) {
     stats: { totalCatches: 0, totalEarned: 0 },
     history: [], // last 50 catches
     lastShareDate: '',
+    rodSkin: '',
   };
 }
 
@@ -106,6 +107,7 @@ const server = http.createServer(async (req, res) => {
           stats: incoming.stats || existing.stats,
           history: (incoming.history || existing.history).slice(-50),
           lastShareDate: incoming.lastShareDate || existing.lastShareDate || '',
+          rodSkin: incoming.rodSkin || existing.rodSkin || '',
         };
         saveUser(merged);
         return json(res, 200, merged);

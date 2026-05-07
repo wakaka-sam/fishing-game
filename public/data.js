@@ -181,7 +181,12 @@ const ROD_SKINS = [
   { id: 'star',      name: '星辰竿',   threshold: 44, rodColor: '#1a237e', rodHighlight: '#ffd700', lineColor: 'rgba(255,255,150,1.0)', desc: '蕴含星辰之力的终极鱼竿' },
 ];
 
-function getCurrentRodSkin(dex) {
+function getCurrentRodSkin(dex, selectedId) {
+  if (selectedId) {
+    const selected = ROD_SKINS.find(s => s.id === selectedId);
+    const count = Object.keys(dex || {}).length;
+    if (selected && count >= selected.threshold) return selected;
+  }
   const count = Object.keys(dex || {}).length;
   let skin = ROD_SKINS[0];
   for (const s of ROD_SKINS) {
