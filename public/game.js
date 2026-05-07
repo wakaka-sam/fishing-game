@@ -13,6 +13,7 @@ const state = {
   castStart: 0,
   biteAt: 0,
   rodAngle: 0,
+  castBait: null,
 };
 
 // ====== DOM ======
@@ -138,8 +139,9 @@ function refreshUI() {
     if (owned <= 0) opt.disabled = true;
     baitSelect.appendChild(opt);
   }
-  if (user.baits[user.currentBait] > 0) {
-    baitSelect.value = user.currentBait;
+  const selectedBait = state.castBait || user.currentBait;
+  if (state.castBait || user.baits[selectedBait] > 0) {
+    baitSelect.value = selectedBait;
   } else {
     const avail = Object.keys(user.baits).find((k) => user.baits[k] > 0);
     if (avail) { user.currentBait = avail; baitSelect.value = avail; }
@@ -152,6 +154,7 @@ function updateBaitCount() {
   const n = user.baits[id] || 0;
   baitCountEl.textContent = n > 0 ? `剩余 ${n} 个` : '没有鱼饵';
   castBtn.disabled = !(n > 0 && state.phase === 'idle');
+  baitSelect.disabled = state.phase !== 'idle';
 }
 
 baitSelect.onchange = () => {
@@ -315,11 +318,13 @@ castBtn.onclick = startCast;
 
 function startCast() {
   if (state.phase !== 'idle') return;
-  const baitId = user.currentBait;
+  const baitId = baitSelect.value || user.currentBait;
   if (!user.baits[baitId] || user.baits[baitId] <= 0) {
     alert('没有鱼饵了，去商店买点吧！');
     return;
   }
+  user.currentBait = baitId;
+  state.castBait = baitId;
   // 消耗鱼饵
   user.baits[baitId]--;
   state.phase = 'waiting';
@@ -338,6 +343,7 @@ function startCast() {
     // 玩家有 3 秒响应时间，否则跑掉
     waitTimer = setTimeout(() => {
       state.phase = 'idle';
+      state.castBait = null;
       statusEl.textContent = '反应太慢，鱼跑了 😢';
       refreshUI();
     }, 3000);
@@ -391,7 +397,7 @@ function startHitbar() {
   state.phase = 'reeling';
 
   // 提前 roll 出钓获结果
-  const result = rollCatch(user.currentBait);
+  const result = rollCatch(state.castBait || user.currentBait);
   hb.catch = result;
   const rarity = result.kind === 'fish' ? result.item.rarity : result.kind;
   hb.hitsNeeded = HITS_BY_RARITY[rarity] || 2;
@@ -407,6 +413,7 @@ function startHitbar() {
     legendary: { speed: 1.5, zone: 0.13 },
     hidden: { speed: 1.9, zone: 0.10 },
     treasure: { speed: 1.2, zone: 0.16 },
+    limited: { speed: 1.3, zone: 0.16 },
   }[rarity];
   hb.cursorSpeed = difficulty.speed;
   hb.zoneWidth = difficulty.zone;
@@ -477,6 +484,7 @@ function endHitbar(success, failMsg) {
   if (hb.rafId) cancelAnimationFrame(hb.rafId);
   hitbarOverlay.classList.add('hidden');
   state.phase = 'idle';
+  state.castBait = null;
 
   if (success) {
     applyCatch(hb.catch);
