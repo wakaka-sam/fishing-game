@@ -11,20 +11,26 @@ if (!fs.existsSync(USERS_DIR)) fs.mkdirSync(USERS_DIR, { recursive: true });
 
 const CODES_FILE = path.join(ROOT, 'data', 'codes.json');
 
+const DEFAULT_CODES = {
+  'WELCOME2024': { coins: 500, desc: '欢迎礼包', usedBy: [] },
+  'FISHING666': { coins: 200, desc: '钓鱼大吉', usedBy: [] },
+  'GOLDENROD': { coins: 1000, desc: '黄金鱼竿基金', usedBy: [] },
+  'LUCKYDAY': { coins: 300, desc: '幸运日', usedBy: [] },
+  'VIP888': { coins: 888, desc: 'VIP大礼', usedBy: [] },
+  'WAKAKA_NB': { coins: 0, diamonds: 900, desc: 'WAKAKA钻石大礼', usedBy: [] },
+};
+
 function loadCodes() {
-  if (!fs.existsSync(CODES_FILE)) {
-    const defaults = {
-      'WELCOME2024': { coins: 500, desc: '欢迎礼包', usedBy: [] },
-      'FISHING666': { coins: 200, desc: '钓鱼大吉', usedBy: [] },
-      'GOLDENROD': { coins: 1000, desc: '黄金鱼竿基金', usedBy: [] },
-      'LUCKYDAY': { coins: 300, desc: '幸运日', usedBy: [] },
-      'VIP888': { coins: 888, desc: 'VIP大礼', usedBy: [] },
-      'WAKAKA_NB': { coins: 0, diamonds: 900, desc: 'WAKAKA钻石大礼', usedBy: [] },
-    };
-    fs.writeFileSync(CODES_FILE, JSON.stringify(defaults, null, 2));
-    return defaults;
+  let codes = {};
+  if (fs.existsSync(CODES_FILE)) {
+    codes = JSON.parse(fs.readFileSync(CODES_FILE, 'utf8'));
   }
-  return JSON.parse(fs.readFileSync(CODES_FILE, 'utf8'));
+  let updated = false;
+  for (const [key, val] of Object.entries(DEFAULT_CODES)) {
+    if (!codes[key]) { codes[key] = val; updated = true; }
+  }
+  if (updated) fs.writeFileSync(CODES_FILE, JSON.stringify(codes, null, 2));
+  return codes;
 }
 
 function saveCodes(codes) {
