@@ -725,10 +725,12 @@ function renderDex() {
     const div = document.createElement('div');
     div.className = 'dex-item ' + (isU ? 'unlocked' : 'locked');
     div.style.borderColor = RARITY_COLOR[f.rarity];
+    const timeInfo = f.timeSlot ? `<div class="info time-info">⏰ ${GAME_DATA.TIME_SLOT_NAMES[f.timeSlot]}</div>` : '';
     div.innerHTML = `
       <span class="icon">${isU ? f.icon : '❓'}</span>
       <div class="name" style="color:${RARITY_COLOR[f.rarity]}">${isU ? f.name : '???'}</div>
       <div class="info">${RARITY_NAME[f.rarity]}</div>
+      ${timeInfo}
       <div class="info">${isU ? `×${dex.count} | 最大 ${dex.maxWeight}kg` : '未解锁'}</div>
     `;
     list.appendChild(div);

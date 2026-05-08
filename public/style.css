@@ -217,6 +217,7 @@ input, select {
 .dex-item.unlocked .icon { filter: none; }
 .dex-item .name { font-weight: bold; }
 .dex-item .info { font-size: 10px; opacity: 0.8; margin-top: 4px; }
+.dex-item .time-info { color: #ffae42; opacity: 1; }
 .dex-stats { margin-top: 12px; padding: 8px; background: #0d1421; border: 1px solid #555; font-size: 13px; }
 
 /* 结果 */

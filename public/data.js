@@ -46,6 +46,9 @@ const BAITS = {
       { id: 'catfish_s',   name: '小鲶鱼',   rarity: 'rare',      minW: 0.5,  maxW: 2,    price: 60,   icon: '🐡' },
       { id: 'eel_s',       name: '小鳗鱼',   rarity: 'rare',      minW: 0.3,  maxW: 1.2,  price: 100,  icon: '🐍' },
       { id: 'crucian_k',   name: '鲫鱼王',   rarity: 'rare',      minW: 1,    maxW: 3,    price: 80,   icon: '🐟' },
+      { id: 'dawn_carp',   name: '晨曦鲤',   rarity: 'rare',      minW: 0.8,  maxW: 2.5,  price: 150,  icon: '🌅', timeSlot: 'morning' },
+      { id: 'dusk_catfish', name: '暮光鲶',   rarity: 'rare',      minW: 1,    maxW: 3,    price: 120,  icon: '🌇', timeSlot: 'afternoon' },
+      { id: 'glow_eel',    name: '夜光鳗',   rarity: 'rare',      minW: 0.5,  maxW: 1.8,  price: 200,  icon: '🌙', timeSlot: 'night' },
       { id: 'koi',         name: '锦鲤',     rarity: 'legendary', minW: 2,    maxW: 5,    price: 400,  icon: '🎏' },
       { id: 'old_turtle',  name: '千年龟',   rarity: 'legendary', minW: 5,    maxW: 15,   price: 250,  icon: '🐢' },
       { id: 'mud_dragon',  name: '泥龙',     rarity: 'hidden',    minW: 10,   maxW: 30,   price: 800,  icon: '🐉' },
@@ -65,6 +68,9 @@ const BAITS = {
       { id: 'tuna_s',      name: '小金枪鱼', rarity: 'rare',      minW: 2,    maxW: 6,    price: 200,  icon: '🐟' },
       { id: 'octopus',     name: '章鱼',     rarity: 'rare',      minW: 1,    maxW: 4,    price: 250,  icon: '🐙' },
       { id: 'lobster',     name: '龙虾',     rarity: 'rare',      minW: 0.5,  maxW: 2,    price: 400,  icon: '🦞' },
+      { id: 'dawn_crab',   name: '朝霞蟹',   rarity: 'rare',      minW: 0.3,  maxW: 1.5,  price: 300,  icon: '🌅', timeSlot: 'morning' },
+      { id: 'sunset_ray',  name: '落日鳐',   rarity: 'rare',      minW: 2,    maxW: 8,    price: 280,  icon: '🌇', timeSlot: 'afternoon' },
+      { id: 'moon_jelly',  name: '月光水母', rarity: 'rare',      minW: 0.5,  maxW: 3,    price: 350,  icon: '🌙', timeSlot: 'night' },
       { id: 'sword',       name: '剑鱼',     rarity: 'legendary', minW: 10,   maxW: 30,   price: 600,  icon: '🗡️' },
       { id: 'manta',       name: '蝠鲼',     rarity: 'legendary', minW: 15,   maxW: 50,   price: 500,  icon: '🐠' },
       { id: 'kraken_baby', name: '幼海妖',   rarity: 'hidden',    minW: 20,   maxW: 60,   price: 1500, icon: '🦑' },
@@ -84,6 +90,9 @@ const BAITS = {
       { id: 'marlin_s',    name: '小马林鱼', rarity: 'rare',      minW: 5,    maxW: 20,   price: 400,  icon: '🗡️' },
       { id: 'shark_s',     name: '小鲨鱼',   rarity: 'rare',      minW: 8,    maxW: 25,   price: 350,  icon: '🦈' },
       { id: 'barracuda',   name: '梭子鱼',   rarity: 'rare',      minW: 3,    maxW: 10,   price: 500,  icon: '🐟' },
+      { id: 'dawn_sword',  name: '破晓旗鱼', rarity: 'rare',      minW: 5,    maxW: 15,   price: 450,  icon: '🌅', timeSlot: 'morning' },
+      { id: 'dusk_shark',  name: '黄昏鲨',   rarity: 'rare',      minW: 10,   maxW: 30,   price: 400,  icon: '🌇', timeSlot: 'afternoon' },
+      { id: 'abyss_lantern', name: '深渊灯笼鱼', rarity: 'rare',  minW: 2,    maxW: 8,    price: 600,  icon: '🌙', timeSlot: 'night' },
       { id: 'megalodon_b', name: '幼巨齿鲨', rarity: 'legendary', minW: 30,   maxW: 80,   price: 800,  icon: '🦈' },
       { id: 'whale_s',     name: '小鲸',     rarity: 'legendary', minW: 50,   maxW: 200,  price: 600,  icon: '🐋' },
       { id: 'leviathan_s', name: '幼海蛇神', rarity: 'hidden',    minW: 80,   maxW: 300,  price: 2000, icon: '🐉' },
@@ -103,6 +112,9 @@ const BAITS = {
       { id: 'siren',       name: '人鱼',     rarity: 'rare',      minW: 40,   maxW: 80,   price: 1500, icon: '🧜' },
       { id: 'sea_ghost',   name: '海妖',     rarity: 'rare',      minW: 20,   maxW: 60,   price: 2000, icon: '👻' },
       { id: 'crystal',     name: '水晶鱼',   rarity: 'rare',      minW: 1,    maxW: 5,    price: 4000, icon: '💎' },
+      { id: 'dew_fairy',   name: '仙露鱼',   rarity: 'rare',      minW: 3,    maxW: 12,   price: 3000, icon: '🌅', timeSlot: 'morning' },
+      { id: 'solar_ray',   name: '日炎蝶鱼', rarity: 'rare',      minW: 2,    maxW: 8,    price: 3500, icon: '🌇', timeSlot: 'afternoon' },
+      { id: 'star_horse',  name: '星辰海马', rarity: 'rare',      minW: 1,    maxW: 6,    price: 5000, icon: '🌙', timeSlot: 'night' },
       { id: 'phoenix_f',   name: '凤凰鱼',   rarity: 'legendary', minW: 5,    maxW: 20,   price: 5000, icon: '🔥' },
       { id: 'kraken',      name: '海妖王',   rarity: 'legendary', minW: 100,  maxW: 500,  price: 1500, icon: '🦑' },
       { id: 'leviathan',   name: '海蛇神',   rarity: 'hidden',    minW: 200,  maxW: 1000, price: 8000, icon: '🐉' },
@@ -182,6 +194,15 @@ const FISH_RARITY_ROLL = {
 
 function pickFromArr(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+const TIME_SLOT_NAMES = { morning: '7:00-14:00', afternoon: '14:00-21:00', night: '21:00-7:00' };
+
+function getCurrentTimeSlot() {
+  const h = new Date(Date.now() + 8 * 3600000).getUTCHours();
+  if (h >= 7 && h < 14) return 'morning';
+  if (h >= 14 && h < 21) return 'afternoon';
+  return 'night';
+}
+
 function rollCatch(baitId) {
   const bait = BAITS[baitId] || BAITS.worm;
   if (bait.specialOnly) {
@@ -209,8 +230,11 @@ function rollCatch(baitId) {
     if (rr < acc) { rarity = k; break; }
   }
   if (!rarity) rarity = 'common';
-  const pool = bait.fishes.filter((f) => f.rarity === rarity);
-  const fish = pickFromArr(pool);
+  const slot = getCurrentTimeSlot();
+  const pool = bait.fishes.filter((f) => f.rarity === rarity && (!f.timeSlot || f.timeSlot === slot));
+  if (pool.length === 0) { rarity = 'common'; }
+  const finalPool = pool.length > 0 ? pool : bait.fishes.filter((f) => f.rarity === 'common');
+  const fish = pickFromArr(finalPool);
   const weight = +(fish.minW + Math.random() * (fish.maxW - fish.minW)).toFixed(2);
   const value = Math.round(weight * fish.price);
   return { kind: 'fish', item: fish, weight, value };
@@ -273,5 +297,5 @@ window.GAME_DATA = {
   HITS_BY_RARITY, RARITY_COLOR, RARITY_NAME,
   BAITS, TRASH_POOL, TREASURE_POOL,
   ROD_SKINS, GACHA_RODS, SPECIAL_RODS, ALL_RODS, getCurrentRodSkin, getNextRodSkin,
-  rollCatch,
+  rollCatch, getCurrentTimeSlot, TIME_SLOT_NAMES,
 };
