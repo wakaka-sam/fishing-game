@@ -6,6 +6,8 @@ if (!window.GAME_DATA) {
 }
 // HITS_BY_RARITY / RARITY_COLOR / RARITY_NAME / BAITS / rollCatch 由 data.js 顶层声明，已在脚本作用域可见
 
+function todayCN() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
+
 // ====== 状态 ======
 let user = null;
 const state = {
@@ -515,7 +517,7 @@ function applyCatch(c) {
   user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + saleDiamonds + bonusDiamonds;
   user.stats.totalWeight = +(((user.stats.totalWeight || 0) + (c.weight || 0)).toFixed(2));
   // 今日统计
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = todayCN();
   if (!user.dailyStats || user.dailyStats.date !== todayKey) {
     user.dailyStats = { date: todayKey, catches: 0, weight: 0 };
   }
@@ -933,7 +935,7 @@ function openShare() {
   const link = window.location.origin + '?ref=' + encodeURIComponent(user.username);
   $('share-link').value = link;
   const status = $('share-status');
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = todayCN();
   if (user.lastShareDate === todayKey) {
     status.textContent = '今日已领取分享奖励';
     status.className = 'share-status info';
@@ -947,7 +949,7 @@ $('copy-link-btn').onclick = () => {
   const input = $('share-link');
   const status = $('share-status');
   navigator.clipboard.writeText(input.value).then(() => {
-    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayKey = todayCN();
     if (user.lastShareDate !== todayKey) {
       user.money += 10;
       user.lastShareDate = todayKey;
@@ -962,7 +964,7 @@ $('copy-link-btn').onclick = () => {
   }).catch(() => {
     input.select();
     document.execCommand('copy');
-    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayKey = todayCN();
     if (user.lastShareDate !== todayKey) {
       user.money += 10;
       user.lastShareDate = todayKey;

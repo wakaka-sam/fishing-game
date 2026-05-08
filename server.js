@@ -128,7 +128,7 @@ function serveStatic(req, res) {
 }
 
 function getLeaderboard() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
   const files = fs.readdirSync(USERS_DIR).filter(f => f.endsWith('.json'));
   const entries = [];
   for (const f of files) {
