@@ -896,7 +896,10 @@ async function redeemCode() {
     if (data.success) {
       user = data.user;
       refreshUI();
-      status.innerHTML = `兑换成功！<br>${data.desc} +${data.coins} 金币 🎉`;
+      let reward = '';
+      if (data.coins) reward += `+${data.coins} 金币 `;
+      if (data.diamonds) reward += `+${data.diamonds} 钻石 `;
+      status.innerHTML = `兑换成功！<br>${data.desc} ${reward}🎉`;
       status.className = 'redeem-status success';
       $('redeem-input').value = '';
     } else {

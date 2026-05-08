@@ -19,6 +19,7 @@ function loadCodes() {
       'GOLDENROD': { coins: 1000, desc: '黄金鱼竿基金', usedBy: [] },
       'LUCKYDAY': { coins: 300, desc: '幸运日', usedBy: [] },
       'VIP888': { coins: 888, desc: 'VIP大礼', usedBy: [] },
+      'WAKAKA_NB': { coins: 0, diamonds: 900, desc: 'WAKAKA钻石大礼', usedBy: [] },
     };
     fs.writeFileSync(CODES_FILE, JSON.stringify(defaults, null, 2));
     return defaults;
@@ -239,9 +240,10 @@ const server = http.createServer(async (req, res) => {
         entry.usedBy.push(name);
         saveCodes(codes);
         const u = loadUser(name);
-        u.money = (u.money || 0) + entry.coins;
+        if (entry.coins) u.money = (u.money || 0) + entry.coins;
+        if (entry.diamonds) u.diamonds = (u.diamonds || 0) + entry.diamonds;
         saveUser(u);
-        return json(res, 200, { success: true, coins: entry.coins, desc: entry.desc, user: u });
+        return json(res, 200, { success: true, coins: entry.coins || 0, diamonds: entry.diamonds || 0, desc: entry.desc, user: u });
       }
       return json(res, 404, { error: 'unknown api' });
     } catch (e) {
