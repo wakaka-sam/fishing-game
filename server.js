@@ -181,6 +181,7 @@ const server = http.createServer(async (req, res) => {
       if (req.url === '/api/gacha') {
         const count = body.count === 10 ? 10 : 1;
         const currency = body.currency === 'diamonds' ? 'diamonds' : 'coins';
+        const season = body.season === 2 ? 2 : 1;
         const cost = currency === 'diamonds'
           ? (count === 1 ? 10 : 90)
           : (count === 1 ? 1000 : 9000);
@@ -197,7 +198,21 @@ const server = http.createServer(async (req, res) => {
         const results = [];
         for (let i = 0; i < count; i++) {
           const roll = Math.random() * 100;
-          if (currency === 'diamonds') {
+          if (currency === 'diamonds' && season === 2) {
+            if (roll < 0.01) {
+              results.push({ type: 'rod', id: 'headphone' });
+              if (!u.ownedRods.includes('headphone')) u.ownedRods.push('headphone');
+            } else if (roll < 1) {
+              results.push({ type: 'rod', id: 'candy' });
+              if (!u.ownedRods.includes('candy')) u.ownedRods.push('candy');
+            } else if (roll < 11) {
+              results.push({ type: 'diamonds', diamonds: 10 });
+              u.diamonds += 10;
+            } else {
+              results.push({ type: 'coins', coins: 1000 });
+              u.money += 1000;
+            }
+          } else if (currency === 'diamonds') {
             if (roll < 1) {
               results.push({ type: 'rod', id: 'firekirin' });
               if (!u.ownedRods.includes('firekirin')) u.ownedRods.push('firekirin');

@@ -148,15 +148,33 @@
           </div>
         </div>
         <div id="gacha-diamonds-panel" class="gacha-panel hidden">
-          <div class="gacha-prizes">
-            <div class="gacha-prize ultimate">🔥 极品火麒麟鱼竿 <span>1%</span></div>
-            <div class="gacha-prize ultimate">🐢 极品绿玄武鱼竿 <span>1%</span></div>
-            <div class="gacha-prize diamond-prize">💎 10钻石 <span>8%</span></div>
-            <div class="gacha-prize coin-prize">💰 1000金币 <span>90%</span></div>
+          <div class="dex-tabs gacha-season-tabs">
+            <button class="active" data-diamond-season="1">第一期</button>
+            <button data-diamond-season="2">第二期</button>
           </div>
-          <div class="gacha-buttons">
-            <button id="gacha-diamond-single" class="primary">单抽 💎10</button>
-            <button id="gacha-diamond-ten" class="primary">十连抽 💎90</button>
+          <div id="gacha-diamond-s1" class="gacha-season-panel">
+            <div class="gacha-prizes">
+              <div class="gacha-prize ultimate">🔥 极品火麒麟鱼竿 <span>1%</span></div>
+              <div class="gacha-prize ultimate">🐢 极品绿玄武鱼竿 <span>1%</span></div>
+              <div class="gacha-prize diamond-prize">💎 10钻石 <span>8%</span></div>
+              <div class="gacha-prize coin-prize">💰 1000金币 <span>90%</span></div>
+            </div>
+            <div class="gacha-buttons">
+              <button id="gacha-diamond-single" class="primary">单抽 💎10</button>
+              <button id="gacha-diamond-ten" class="primary">十连抽 💎90</button>
+            </div>
+          </div>
+          <div id="gacha-diamond-s2" class="gacha-season-panel hidden">
+            <div class="gacha-prizes">
+              <div class="gacha-prize ultimate">🎧 耳机竿 <span>0.01%</span></div>
+              <div class="gacha-prize legendary">🍬 Candy竿 <span>0.99%</span></div>
+              <div class="gacha-prize diamond-prize">💎 10钻石 <span>10%</span></div>
+              <div class="gacha-prize coin-prize">💰 1000金币 <span>90%</span></div>
+            </div>
+            <div class="gacha-buttons">
+              <button id="gacha-diamond-s2-single" class="primary">单抽 💎10</button>
+              <button id="gacha-diamond-s2-ten" class="primary">十连抽 💎90</button>
+            </div>
           </div>
         </div>
         <div id="gacha-result" class="gacha-result hidden"></div>

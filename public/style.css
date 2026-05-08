@@ -351,6 +351,8 @@ input, select {
 .gacha-content { text-align: center; }
 .gacha-tabs { margin-bottom: 14px; }
 .gacha-panel.hidden { display: none; }
+.gacha-season-tabs { margin-bottom: 10px; }
+.gacha-season-panel.hidden { display: none; }
 .gacha-prizes {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

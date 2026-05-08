@@ -416,6 +416,10 @@ function startHitbar() {
     limited: { speed: 1.3, zone: 0.16 },
   }[rarity];
   hb.cursorSpeed = difficulty.speed;
+  const rodSkin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
+  if (rodSkin.speedBonus && rodSkin.speedBonus[rarity]) {
+    hb.cursorSpeed *= (1 + rodSkin.speedBonus[rarity]);
+  }
   hb.zoneWidth = difficulty.zone;
   hb.timeLeft = 12;
 
@@ -1009,10 +1013,23 @@ $('gacha-btn').onclick = () => {
 document.querySelectorAll('[data-gacha]').forEach((btn) => {
   btn.onclick = () => setGachaTab(btn.dataset.gacha);
 });
+let activeGachaDiamondSeason = 1;
 $('gacha-coin-single').onclick = () => doGacha(1, 'coins');
 $('gacha-coin-ten').onclick = () => doGacha(10, 'coins');
-$('gacha-diamond-single').onclick = () => doGacha(1, 'diamonds');
-$('gacha-diamond-ten').onclick = () => doGacha(10, 'diamonds');
+$('gacha-diamond-single').onclick = () => doGacha(1, 'diamonds', 1);
+$('gacha-diamond-ten').onclick = () => doGacha(10, 'diamonds', 1);
+$('gacha-diamond-s2-single').onclick = () => doGacha(1, 'diamonds', 2);
+$('gacha-diamond-s2-ten').onclick = () => doGacha(10, 'diamonds', 2);
+
+document.querySelectorAll('[data-diamond-season]').forEach((btn) => {
+  btn.onclick = () => {
+    activeGachaDiamondSeason = parseInt(btn.dataset.diamondSeason);
+    document.querySelectorAll('[data-diamond-season]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.diamondSeason) === activeGachaDiamondSeason));
+    $('gacha-diamond-s1').classList.toggle('hidden', activeGachaDiamondSeason !== 1);
+    $('gacha-diamond-s2').classList.toggle('hidden', activeGachaDiamondSeason !== 2);
+    $('gacha-result').classList.add('hidden');
+  };
+});
 
 function setGachaTab(currency) {
   activeGachaCurrency = currency === 'diamonds' ? 'diamonds' : 'coins';
@@ -1035,7 +1052,7 @@ function getGachaCost(count, currency) {
   return count === 1 ? 1000 : 9000;
 }
 
-async function doGacha(count, currency = activeGachaCurrency) {
+async function doGacha(count, currency = activeGachaCurrency, season = 1) {
   const cost = getGachaCost(count, currency);
   if (currency === 'diamonds') {
     if ((user.diamonds || 0) < cost) { alert('钻石不足！需要 ' + cost + ' 钻石'); return; }
@@ -1047,7 +1064,7 @@ async function doGacha(count, currency = activeGachaCurrency) {
     const res = await fetch('/api/gacha', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user.username, count, currency }),
+      body: JSON.stringify({ username: user.username, count, currency, season }),
     });
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
