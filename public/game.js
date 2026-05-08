@@ -251,6 +251,8 @@ function ensureUserDefaults() {
   user.stats = user.stats || {};
   user.history = user.history || [];
   user.ownedRods = user.ownedRods || [];
+  user.ownedPets = user.ownedPets || [];
+  user.activePet = user.activePet || null;
   unlockBlackSilkRodIfComplete();
 }
 
@@ -418,6 +420,18 @@ function render() {
   px(W * 0.78, H - 30, 30, 30, '#fdbcb4');
   px(W * 0.78, H - 30, 30, 6, '#d99086');
   px(W * 0.85, H - 24, 18, 18, '#fdbcb4');
+
+  // 宠物渲染
+  if (user && user.activePet) {
+    const pet = GAME_DATA.PETS.find(p => p.id === user.activePet);
+    if (pet) {
+      const px2 = pet.canvasX * W;
+      const py2 = pet.canvasY * H + Math.sin(t * 2) * 3;
+      ctx.font = `${pet.size}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(pet.icon, px2, py2);
+    }
+  }
 
   // 状态消息
   if (state.phase === 'waiting') {
@@ -942,6 +956,50 @@ function renderDex() {
     <div>累计收入：${user.stats.totalEarned || 0} 金币</div>
     <div>累计钻石：${user.stats.totalDiamonds || 0} 钻石</div>
   `;
+}
+
+// ====== 宠物系统 ======
+const petOverlay = $('pet-overlay');
+$('pet-btn').onclick = () => { renderPets(); petOverlay.classList.remove('hidden'); };
+
+function renderPets() {
+  const list = $('pet-list');
+  list.innerHTML = '';
+  const owned = user.ownedPets || [];
+  for (const pet of GAME_DATA.PETS) {
+    const isOwned = owned.includes(pet.id);
+    const isActive = user.activePet === pet.id;
+    const div = document.createElement('div');
+    div.className = 'pet-item' + (isActive ? ' active' : '') + (!isOwned ? ' locked' : '');
+    const priceIcon = pet.currency === 'diamonds' ? '💎' : '💰';
+    div.innerHTML = `
+      <span class="pet-icon">${pet.icon}</span>
+      <div class="pet-name">${pet.name}</div>
+      <div class="pet-desc">${pet.desc}</div>
+      ${isOwned
+        ? `<span class="pet-badge">${isActive ? '✔ 已装备' : '点击装备'}</span>`
+        : `<div class="pet-price">${priceIcon} ${pet.price}</div><span class="pet-badge">🔒 未拥有</span>`}
+    `;
+    div.onclick = () => {
+      if (isOwned) {
+        user.activePet = isActive ? null : pet.id;
+        refreshUI(); saveUser(); renderPets();
+      } else {
+        if (pet.currency === 'diamonds') {
+          if ((user.diamonds || 0) < pet.price) { showAdToast('钻石不足'); return; }
+          user.diamonds -= pet.price;
+        } else {
+          if (user.money < pet.price) { showAdToast('金币不足'); return; }
+          user.money -= pet.price;
+        }
+        user.ownedPets.push(pet.id);
+        user.activePet = pet.id;
+        refreshUI(); saveUser(); renderPets();
+        showAdToast(`🎉 获得宠物：${pet.name}！`);
+      }
+    };
+    list.appendChild(div);
+  }
 }
 
 // ====== 排行榜 ======

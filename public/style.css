@@ -140,6 +140,13 @@ input, select {
 .modal.wide { min-width: 600px; }
 .modal h2 { color: #ffd700; margin-bottom: 16px; text-align: center; }
 .close-x { display: block; margin: 16px auto 0; }
+.top-close {
+  position: absolute; top: 8px; right: 8px; z-index: 10;
+  background: none; border: 1px solid #666; color: #ccc;
+  width: 32px; height: 32px; font-size: 18px; line-height: 1;
+  cursor: pointer; border-radius: 4px; padding: 0; margin: 0;
+}
+.top-close:hover { background: #333; color: #fff; border-color: #ffd700; }
 
 /* 命中条 */
 .hitbar-overlay {
@@ -572,3 +579,23 @@ input, select {
 }
 .ad-retry-btn:hover { filter: brightness(1.15); }
 .ad-retry-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 宠物系统 */
+.pet-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.pet-item {
+  background: #111827; border: 2px solid #333; border-radius: 8px;
+  padding: 12px; text-align: center; cursor: pointer; transition: border-color 0.2s;
+}
+.pet-item:hover { border-color: #ffd700; }
+.pet-item.active { border-color: #4caf50; box-shadow: 0 0 8px rgba(76,175,80,0.4); }
+.pet-item.locked { opacity: 0.5; cursor: default; }
+.pet-item .pet-icon { font-size: 2.5em; display: block; margin-bottom: 6px; }
+.pet-item .pet-name { font-weight: bold; color: #e8e8e8; }
+.pet-item .pet-desc { font-size: 0.8em; color: #888; margin-top: 4px; }
+.pet-item .pet-price { font-size: 0.85em; color: #ffd700; margin-top: 4px; }
+.pet-item .pet-badge {
+  display: inline-block; font-size: 0.7em; padding: 2px 6px;
+  border-radius: 4px; margin-top: 4px;
+}
+.pet-item.active .pet-badge { background: #4caf50; color: #fff; }
+.pet-item.locked .pet-badge { background: #555; color: #aaa; }

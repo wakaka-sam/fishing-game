@@ -32,6 +32,7 @@
       <button id="shop-btn">🎁 商店</button>
       <button id="dex-btn">📖 图鉴</button>
       <button id="rod-btn">🎣 鱼竿</button>
+      <button id="pet-btn">🐾 宠物</button>
       <button id="rank-btn">🏆 排行</button>
       <button id="gacha-btn">🎰 抽奖</button>
       <button id="redeem-btn">🎫 兑换</button>
@@ -77,17 +78,18 @@
   <!-- 结果弹窗 -->
   <div id="result-overlay" class="overlay hidden">
     <div class="modal">
+      <button class="close-x top-close" id="result-close">✕</button>
       <div id="result-content"></div>
       <div id="ad-retry-box" class="ad-retry-box hidden">
         <button id="ad-retry-btn" class="ad-retry-btn">📺 看广告再来一次</button>
       </div>
-      <button id="result-close" class="primary">继续</button>
     </div>
   </div>
 
   <!-- 商店 -->
   <div id="shop-overlay" class="overlay hidden">
     <div class="modal wide">
+      <button class="close-x top-close" data-close="shop-overlay">✕</button>
       <h2>鱼饵商店</h2>
       <div id="ad-reward-box" class="ad-reward-box">
         <div class="ad-reward-info">
@@ -100,33 +102,42 @@
         <button id="ad-reward-btn" class="primary ad-reward-btn">免费领取</button>
       </div>
       <div id="shop-list" class="shop-list"></div>
-      <button class="close-x" data-close="shop-overlay">关闭</button>
     </div>
   </div>
 
   <!-- 图鉴 -->
   <div id="dex-overlay" class="overlay hidden">
     <div class="modal wide">
+      <button class="close-x top-close" data-close="dex-overlay">✕</button>
       <h2>钓鱼图鉴</h2>
       <div id="dex-tabs" class="dex-tabs"></div>
       <div id="dex-list" class="dex-list"></div>
       <div class="dex-stats" id="dex-stats"></div>
-      <button class="close-x" data-close="dex-overlay">关闭</button>
     </div>
   </div>
 
   <!-- 鱼竿皮肤 -->
   <div id="rod-overlay" class="overlay hidden">
     <div class="modal wide">
+      <button class="close-x top-close" data-close="rod-overlay">✕</button>
       <h2>🎣 鱼竿收藏</h2>
       <div id="rod-list" class="rod-list"></div>
-      <button class="close-x" data-close="rod-overlay">关闭</button>
+    </div>
+  </div>
+
+  <!-- 宠物 -->
+  <div id="pet-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <button class="close-x top-close" data-close="pet-overlay">✕</button>
+      <h2>🐾 宠物</h2>
+      <div id="pet-list" class="pet-list"></div>
     </div>
   </div>
 
   <!-- 排行榜 -->
   <div id="rank-overlay" class="overlay hidden">
     <div class="modal wide">
+      <button class="close-x top-close" data-close="rank-overlay">✕</button>
       <h2>🏆 排行榜</h2>
       <div id="rank-tabs" class="dex-tabs">
         <button class="active" data-rank="today-catches">今日钓鱼数</button>
@@ -136,13 +147,13 @@
       </div>
       <div id="rank-list" class="rank-list"></div>
       <div id="rank-loading" class="rank-loading">加载中...</div>
-      <button class="close-x" data-close="rank-overlay">关闭</button>
     </div>
   </div>
 
   <!-- 抽奖 -->
   <div id="gacha-overlay" class="overlay hidden">
     <div class="modal wide">
+      <button class="close-x top-close" data-close="gacha-overlay">✕</button>
       <h2>🎰 幸运抽奖</h2>
       <div class="gacha-content">
         <div id="gacha-tabs" class="dex-tabs gacha-tabs">
@@ -193,13 +204,13 @@
         </div>
         <div id="gacha-result" class="gacha-result hidden"></div>
       </div>
-      <button class="close-x" data-close="gacha-overlay">关闭</button>
     </div>
   </div>
 
   <!-- 兑换码 -->
   <div id="redeem-overlay" class="overlay hidden">
     <div class="modal">
+      <button class="close-x top-close" data-close="redeem-overlay">✕</button>
       <h2>🎫 兑换码</h2>
       <div class="redeem-content">
         <p>输入兑换码获取金币奖励</p>
@@ -209,13 +220,13 @@
         </div>
         <div id="redeem-status" class="redeem-status"></div>
       </div>
-      <button class="close-x" data-close="redeem-overlay">关闭</button>
     </div>
   </div>
 
   <!-- 分享 -->
   <div id="share-overlay" class="overlay hidden">
     <div class="modal">
+      <button class="close-x top-close" data-close="share-overlay">✕</button>
       <h2>📤 分享到微信</h2>
       <div class="share-content" id="share-content">
         <p>分享游戏链接给好友，即可获得 <strong style="color:#ffd700">10 金币</strong> 奖励！</p>
@@ -231,16 +242,15 @@
           <p>复制链接后打开微信发送给好友</p>
         </div>
       </div>
-      <button class="close-x" data-close="share-overlay">关闭</button>
     </div>
   </div>
 
   <!-- 更新公告 -->
   <div id="announce-overlay" class="overlay hidden">
     <div class="modal wide">
+      <button class="close-x top-close" id="announce-close">✕</button>
       <h2>📢 更新公告</h2>
       <div id="announce-content" class="announce-content"></div>
-      <button id="announce-close" class="primary">知道了</button>
     </div>
   </div>
 </div>

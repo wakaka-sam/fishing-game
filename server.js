@@ -68,6 +68,8 @@ function defaultUser(name) {
     rodSkin: '',
     dailyStats: { date: '', catches: 0, weight: 0 },
     ownedRods: [],
+    ownedPets: [],
+    activePet: null,
   };
 }
 
@@ -181,6 +183,8 @@ const server = http.createServer(async (req, res) => {
           rodSkin: incoming.rodSkin || existing.rodSkin || '',
           dailyStats: incoming.dailyStats || existing.dailyStats || { date: '', catches: 0, weight: 0 },
           ownedRods: incoming.ownedRods || existing.ownedRods || [],
+          ownedPets: incoming.ownedPets || existing.ownedPets || [],
+          activePet: incoming.activePet ?? existing.activePet ?? null,
         };
         saveUser(merged);
         return json(res, 200, merged);
