@@ -548,3 +548,26 @@ input, select {
   .mobile-action-btn { display: flex; }
   #cast-btn { display: none; }
 }
+
+/* 广告奖励 */
+.ad-reward-box {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(135deg, #1a2a1a, #1a3a1a); border: 1px solid #4caf50;
+  border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
+}
+.ad-reward-info { display: flex; align-items: center; gap: 12px; }
+.ad-reward-icon { font-size: 2em; }
+.ad-reward-title { font-size: 1.1em; font-weight: bold; color: #4caf50; }
+.ad-reward-desc { font-size: 0.85em; color: #aaa; margin-top: 2px; }
+.ad-reward-btn { white-space: nowrap; background: #4caf50 !important; border-color: #4caf50 !important; }
+.ad-reward-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ad-reward-btn.cooldown { background: #555 !important; border-color: #555 !important; }
+
+.ad-retry-box { text-align: center; margin: 8px 0; }
+.ad-retry-btn {
+  background: linear-gradient(135deg, #ff6b00, #ff9800); color: #fff;
+  border: none; border-radius: 6px; padding: 10px 20px; font-size: 1em;
+  cursor: pointer; font-family: inherit;
+}
+.ad-retry-btn:hover { filter: brightness(1.15); }
+.ad-retry-btn:disabled { opacity: 0.5; cursor: not-allowed; }

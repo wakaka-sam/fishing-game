@@ -8,6 +8,135 @@ if (!window.GAME_DATA) {
 
 function todayCN() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
 
+// ====== 穿山甲广告 ======
+const CSJ_CONFIG = {
+  appId: 'YOUR_APP_ID',
+  rewardAdId: 'YOUR_REWARD_AD_ID',
+};
+const AD_REWARD_DIAMONDS = 50;
+const AD_COOLDOWN_MS = 120000;
+let adReady = false;
+let adLastWatchTime = 0;
+let adInstance = null;
+
+function initCSJAd() {
+  if (typeof window.H5Union === 'undefined') {
+    console.warn('穿山甲SDK未加载');
+    return;
+  }
+  try {
+    adInstance = new window.H5Union.RewardedVideoAd({
+      appId: CSJ_CONFIG.appId,
+      adUnitId: CSJ_CONFIG.rewardAdId,
+    });
+    adInstance.onLoad(() => { adReady = true; updateAdButtons(); });
+    adInstance.onError((err) => { console.warn('广告加载失败', err); adReady = false; updateAdButtons(); });
+    adInstance.onClose((res) => {
+      if (res && res.isEnded) {
+        onAdRewardGranted();
+      }
+      adInstance.load();
+    });
+    adInstance.load();
+  } catch (e) {
+    console.warn('广告初始化失败', e);
+  }
+}
+
+function isAdOnCooldown() {
+  return Date.now() - adLastWatchTime < AD_COOLDOWN_MS;
+}
+
+function getAdCooldownRemain() {
+  return Math.ceil((AD_COOLDOWN_MS - (Date.now() - adLastWatchTime)) / 1000);
+}
+
+function updateAdButtons() {
+  const rewardBtn = $('ad-reward-btn');
+  if (!rewardBtn) return;
+  const sdkMissing = typeof window.H5Union === 'undefined';
+  if (isAdOnCooldown()) {
+    rewardBtn.disabled = true;
+    rewardBtn.classList.add('cooldown');
+    rewardBtn.textContent = `冷却中 (${getAdCooldownRemain()}s)`;
+  } else if (!adReady && !sdkMissing) {
+    rewardBtn.disabled = true;
+    rewardBtn.textContent = '广告加载中...';
+  } else {
+    rewardBtn.disabled = false;
+    rewardBtn.classList.remove('cooldown');
+    rewardBtn.textContent = '免费领取';
+  }
+}
+
+function showRewardedAd(callback) {
+  if (!adInstance || !adReady) {
+    showAdToast('广告尚未加载完成，请稍后再试');
+    return;
+  }
+  if (isAdOnCooldown()) {
+    showAdToast(`广告冷却中，请${getAdCooldownRemain()}秒后再试`);
+    return;
+  }
+  adInstance.onClose = (res) => {
+    if (res && res.isEnded) {
+      adLastWatchTime = Date.now();
+      if (callback) callback();
+    }
+    adInstance.load();
+  };
+  adInstance.show();
+}
+
+function showAdToast(msg) {
+  let toast = document.getElementById('ad-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'ad-toast';
+    toast.style.cssText = 'position:fixed;top:20%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#ffd700;padding:14px 28px;border-radius:8px;font-size:1.1em;z-index:99999;pointer-events:none;transition:opacity 0.4s;border:1px solid #ffd700;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+}
+
+function onAdRewardGranted() {
+  if (!user) return;
+  user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
+  user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
+  refreshUI();
+  saveUser();
+  showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石！`);
+  updateAdButtons();
+}
+
+// 商店广告按钮
+document.addEventListener('DOMContentLoaded', () => {
+  const rewardBtn = $('ad-reward-btn');
+  if (rewardBtn) {
+    rewardBtn.onclick = () => {
+      if (isAdOnCooldown()) {
+        showAdToast(`广告冷却中，请${getAdCooldownRemain()}秒后再试`);
+        return;
+      }
+      if (!adInstance || !adReady) {
+        if (typeof window.H5Union === 'undefined') {
+          adLastWatchTime = Date.now();
+          onAdRewardGranted();
+          return;
+        }
+        showAdToast('广告尚未加载完成，请稍后再试');
+        return;
+      }
+      showRewardedAd(() => { onAdRewardGranted(); });
+    };
+  }
+  // 冷却倒计时刷新
+  setInterval(updateAdButtons, 1000);
+});
+
 // ====== 状态 ======
 let user = null;
 const state = {
@@ -602,6 +731,8 @@ const resultContent = $('result-content');
 $('result-close').onclick = () => resultOverlay.classList.add('hidden');
 
 function showResult(c) {
+  const retryBox = $('ad-retry-box');
+  if (retryBox) retryBox.classList.add('hidden');
   const rarity = c.kind === 'fish' ? c.item.rarity : c.kind;
   const color = RARITY_COLOR[rarity];
   let weightLine = '';
@@ -646,6 +777,36 @@ function showMiss(msg) {
       <div class="name">${msg}</div>
     </div>
   `;
+  const retryBox = $('ad-retry-box');
+  const retryBtn = $('ad-retry-btn');
+  if (retryBox && retryBtn && !isAdOnCooldown()) {
+    retryBox.classList.remove('hidden');
+    retryBtn.disabled = false;
+    retryBtn.onclick = () => {
+      retryBox.classList.add('hidden');
+      if (typeof window.H5Union === 'undefined') {
+        adLastWatchTime = Date.now();
+        user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
+        user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
+        refreshUI();
+        saveUser();
+        resultOverlay.classList.add('hidden');
+        showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石，再来一次！`);
+        startCast();
+        return;
+      }
+      showRewardedAd(() => {
+        user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
+        user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
+        refreshUI();
+        saveUser();
+        resultOverlay.classList.add('hidden');
+        startCast();
+      });
+    };
+  } else if (retryBox) {
+    retryBox.classList.add('hidden');
+  }
   resultOverlay.classList.remove('hidden');
   statusEl.textContent = msg;
 }
@@ -1205,11 +1366,13 @@ function showAnnouncement(sinceVersion) {
 $('announce-close').onclick = () => $('announce-overlay').classList.add('hidden');
 $('version-tag').onclick = () => { if (versionData) { showAnnouncement(''); } };
 
-// 在 enterGame 中触发公告检查
+// 在 enterGame 中触发公告检查和广告初始化
 const _origEnterGame = enterGame;
 enterGame = function() {
   _origEnterGame();
   checkAnnouncement();
+  initCSJAd();
+  updateAdButtons();
 };
 
 // 关闭按钮

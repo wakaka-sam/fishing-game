@@ -78,6 +78,9 @@
   <div id="result-overlay" class="overlay hidden">
     <div class="modal">
       <div id="result-content"></div>
+      <div id="ad-retry-box" class="ad-retry-box hidden">
+        <button id="ad-retry-btn" class="ad-retry-btn">📺 看广告再来一次</button>
+      </div>
       <button id="result-close" class="primary">继续</button>
     </div>
   </div>
@@ -86,6 +89,16 @@
   <div id="shop-overlay" class="overlay hidden">
     <div class="modal wide">
       <h2>鱼饵商店</h2>
+      <div id="ad-reward-box" class="ad-reward-box">
+        <div class="ad-reward-info">
+          <span class="ad-reward-icon">📺</span>
+          <div>
+            <div class="ad-reward-title">看广告领钻石</div>
+            <div class="ad-reward-desc">观看一段视频广告，免费获得 <strong style="color:#ffd700">50 钻石</strong></div>
+          </div>
+        </div>
+        <button id="ad-reward-btn" class="primary ad-reward-btn">免费领取</button>
+      </div>
       <div id="shop-list" class="shop-list"></div>
       <button class="close-x" data-close="shop-overlay">关闭</button>
     </div>
@@ -232,6 +245,8 @@
   </div>
 </div>
 
+<!-- 穿山甲广告SDK -->
+<script src="https://lf-cdn-tos.bytescm.com/obj/union-fe-nc/sdk/h5-union.js"></script>
 <script src="data.js"></script>
 <script src="game.js"></script>
 </body>
