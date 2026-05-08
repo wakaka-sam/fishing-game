@@ -273,6 +273,13 @@ input, select {
 .rank-list .rank-val { color: #4ec9b0; text-align: right; }
 .rank-loading { text-align: center; padding: 20px; color: #888; }
 .rank-loading.hidden { display: none; }
+.rank-reward-banner { background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.1)); border: 1px solid rgba(255,215,0,0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; text-align: center; color: #ffd700; font-size: 0.9em; }
+.rank-reward-banner strong { color: #fff; }
+.rank-history { margin-top: 16px; border-top: 1px solid #444; padding-top: 12px; }
+.rank-history-title { color: #ffd700; font-size: 0.95em; margin-bottom: 8px; font-weight: bold; }
+.rank-history-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.85em; color: #aaa; gap: 8px; }
+.rank-history-item span:first-child { color: #888; }
+.rank-history-user { color: #4ec9b0; flex: 1; text-align: center; }
 
 /* 鱼竿信息 */
 .rod-info {

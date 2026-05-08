@@ -185,9 +185,13 @@ async function login() {
       body: JSON.stringify({ username: name }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    user = await res.json();
+    const loginData = await res.json();
+    const pendingRewards = loginData.pendingRankRewards || [];
+    delete loginData.pendingRankRewards;
+    user = loginData;
     try { localStorage.setItem('fishing_username', name); } catch (_) {}
     enterGame();
+    showPendingRankRewards(pendingRewards);
   } catch (e) {
     errEl.textContent = '登录失败: ' + e.message + '（请确认服务器已启动）';
     console.error(e);
@@ -213,8 +217,12 @@ $('logout-btn').onclick = () => {
         body: JSON.stringify({ username: saved }),
       });
       if (res.ok) {
-        user = await res.json();
+        const loginData = await res.json();
+        const pendingRewards = loginData.pendingRankRewards || [];
+        delete loginData.pendingRankRewards;
+        user = loginData;
         enterGame();
+        showPendingRankRewards(pendingRewards);
       }
     }
   } catch (_) {}
@@ -1025,6 +1033,19 @@ const rankOverlay = $('rank-overlay');
 let activeRankTab = 'today-catches';
 let rankData = null;
 
+function showPendingRankRewards(rewards) {
+  if (!rewards || rewards.length === 0) return;
+  for (const r of rewards) {
+    setTimeout(() => {
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+      overlay.innerHTML = `<div class="modal"><button class="close-x top-close" onclick="this.parentElement.parentElement.remove()">✕</button><h2>🏆 排名奖励</h2><div style="text-align:center;padding:20px"><p style="font-size:1.2em;color:#ffd700">恭喜你在 <strong>${r.date}</strong> 获得</p><p style="font-size:1.5em;margin:16px 0">🎣 今日钓鱼数第一名</p><p style="font-size:1.1em;color:#aaa">钓鱼 <strong style="color:#fff">${r.catches}</strong> 次</p><p style="font-size:1.4em;margin-top:16px;color:#ffd700">💎 +${r.diamonds} 钻石</p></div></div>`;
+      document.getElementById('game-screen').appendChild(overlay);
+    }, 500);
+  }
+  refreshUI();
+}
+
 $('rank-btn').onclick = () => {
   rankOverlay.classList.remove('hidden');
   loadLeaderboard();
@@ -1039,14 +1060,16 @@ $('rank-tabs').onclick = (e) => {
   renderLeaderboard();
 };
 
+let rankHistory = null;
 async function loadLeaderboard() {
   const loading = $('rank-loading');
   const list = $('rank-list');
   loading.classList.remove('hidden');
   list.innerHTML = '';
   try {
-    const res = await fetch('/api/leaderboard');
-    rankData = await res.json();
+    const [lbRes, histRes] = await Promise.all([fetch('/api/leaderboard'), fetch('/api/rank-history')]);
+    rankData = await lbRes.json();
+    rankHistory = (await histRes.json()).history || [];
     renderLeaderboard();
   } catch (e) {
     list.innerHTML = '<div style="text-align:center;padding:20px;color:#ff5722">加载失败</div>';
@@ -1065,20 +1088,35 @@ function renderLeaderboard() {
   }[activeRankTab];
   const isWeight = activeRankTab.includes('weight');
   const sorted = [...rankData].sort((a, b) => b[sortKey] - a[sortKey]).filter(e => e[sortKey] > 0);
-  if (sorted.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:#888">暂无数据</div>';
-    return;
+
+  let html = '';
+  if (activeRankTab === 'today-catches') {
+    html += '<div class="rank-reward-banner">🏆 今日钓鱼数第一名可获得 <strong>💎 5000 钻石</strong>（每晚 23:59 结算）</div>';
   }
-  const medalMap = { 1: '🥇', 2: '🥈', 3: '🥉' };
-  let html = '<table><tr><th>#</th><th>玩家</th><th style="text-align:right">' + (isWeight ? '重量 (kg)' : '数量') + '</th></tr>';
-  sorted.forEach((e, i) => {
-    const rank = i + 1;
-    const isMe = user && e.username === user.username;
-    const medal = medalMap[rank] || rank;
-    const rankClass = rank <= 3 ? ` rank-${rank}` : '';
-    html += `<tr class="${isMe ? 'me' : ''}"><td class="rank-num${rankClass}">${medal}</td><td>${e.username}</td><td class="rank-val">${isWeight ? e[sortKey].toFixed(2) : e[sortKey]}</td></tr>`;
-  });
-  html += '</table>';
+
+  if (sorted.length === 0) {
+    html += '<div style="text-align:center;padding:20px;color:#888">暂无数据</div>';
+  } else {
+    const medalMap = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    html += '<table><tr><th>#</th><th>玩家</th><th style="text-align:right">' + (isWeight ? '重量 (kg)' : '数量') + '</th></tr>';
+    sorted.forEach((e, i) => {
+      const rank = i + 1;
+      const isMe = user && e.username === user.username;
+      const medal = medalMap[rank] || rank;
+      const rankClass = rank <= 3 ? ` rank-${rank}` : '';
+      html += `<tr class="${isMe ? 'me' : ''}"><td class="rank-num${rankClass}">${medal}</td><td>${e.username}</td><td class="rank-val">${isWeight ? e[sortKey].toFixed(2) : e[sortKey]}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  if (activeRankTab === 'today-catches' && rankHistory && rankHistory.length > 0) {
+    html += '<div class="rank-history"><div class="rank-history-title">近期获奖记录</div>';
+    for (const r of rankHistory.slice(0, 7)) {
+      html += `<div class="rank-history-item"><span>${r.date}</span><span class="rank-history-user">${r.username}</span><span>🎣${r.catches}次</span><span style="color:#ffd700">💎${r.diamonds}</span></div>`;
+    }
+    html += '</div>';
+  }
+
   list.innerHTML = html;
 }
 

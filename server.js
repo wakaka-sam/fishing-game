@@ -10,6 +10,62 @@ const USERS_DIR = path.join(ROOT, 'data', 'users');
 if (!fs.existsSync(USERS_DIR)) fs.mkdirSync(USERS_DIR, { recursive: true });
 
 const CODES_FILE = path.join(ROOT, 'data', 'codes.json');
+const REWARDS_FILE = path.join(ROOT, 'data', 'rewards.json');
+
+function bjNow() { return new Date(Date.now() + 8 * 3600000); }
+function bjDateStr(d) { return d.toISOString().slice(0, 10); }
+
+function loadRewards() {
+  if (fs.existsSync(REWARDS_FILE)) return JSON.parse(fs.readFileSync(REWARDS_FILE, 'utf8'));
+  return { lastSettleDate: '', history: [] };
+}
+function saveRewards(r) { fs.writeFileSync(REWARDS_FILE, JSON.stringify(r, null, 2)); }
+
+function settleRankReward() {
+  const rewards = loadRewards();
+  const yesterday = bjDateStr(new Date(bjNow().getTime() - 86400000));
+  if (rewards.lastSettleDate >= yesterday) return;
+
+  const files = fs.readdirSync(USERS_DIR).filter(f => f.endsWith('.json'));
+  let topUser = null;
+  let topCatches = 0;
+  for (const f of files) {
+    try {
+      const u = JSON.parse(fs.readFileSync(path.join(USERS_DIR, f), 'utf8'));
+      const daily = (u.dailyStats && u.dailyStats.date === yesterday) ? u.dailyStats : null;
+      if (daily && (daily.catches || 0) > topCatches) {
+        topCatches = daily.catches;
+        topUser = u.username;
+      }
+    } catch (_) {}
+  }
+
+  if (topUser && topCatches > 0) {
+    const u = loadUser(topUser);
+    u.diamonds = (u.diamonds || 0) + 5000;
+    if (!u.rankRewards) u.rankRewards = [];
+    u.rankRewards.push({ date: yesterday, catches: topCatches, diamonds: 5000, seen: false });
+    saveUser(u);
+    rewards.history.unshift({ date: yesterday, username: topUser, catches: topCatches, diamonds: 5000 });
+    if (rewards.history.length > 30) rewards.history = rewards.history.slice(0, 30);
+    console.log(`[排名奖励] ${yesterday} 钓鱼数第一名: ${topUser} (${topCatches}次) 获得5000钻石`);
+  }
+  rewards.lastSettleDate = yesterday;
+  saveRewards(rewards);
+}
+
+function scheduleSettlement() {
+  const now = bjNow();
+  const target = new Date(now);
+  target.setUTCHours(23 - 8, 59, 0, 0);
+  if (now >= target) target.setUTCDate(target.getUTCDate() + 1);
+  const ms = target.getTime() - Date.now();
+  console.log(`[排名奖励] 下次结算时间: ${bjDateStr(target)} 23:59 北京时间 (${Math.round(ms/60000)}分钟后)`);
+  setTimeout(() => {
+    settleRankReward();
+    scheduleSettlement();
+  }, ms);
+}
 
 const DEFAULT_CODES = {
   'WELCOME2024': { coins: 500, desc: '欢迎礼包', usedBy: [] },
@@ -70,6 +126,7 @@ function defaultUser(name) {
     ownedRods: [],
     ownedPets: [],
     activePet: null,
+    rankRewards: [],
   };
 }
 
@@ -156,6 +213,10 @@ const server = http.createServer(async (req, res) => {
       if (req.url === '/api/leaderboard') {
         return json(res, 200, getLeaderboard());
       }
+      if (req.url === '/api/rank-history') {
+        const rewards = loadRewards();
+        return json(res, 200, { history: rewards.history || [] });
+      }
 
       const body = req.method === 'POST' ? await readBody(req) : {};
       const name = sanitize(body.username || '');
@@ -163,7 +224,12 @@ const server = http.createServer(async (req, res) => {
 
       if (req.url === '/api/login') {
         const user = loadUser(name);
-        return json(res, 200, user);
+        const unseen = (user.rankRewards || []).filter(r => !r.seen);
+        if (unseen.length > 0) {
+          unseen.forEach(r => r.seen = true);
+          saveUser(user);
+        }
+        return json(res, 200, { ...user, pendingRankRewards: unseen });
       }
       if (req.url === '/api/save') {
         // 客户端发送整个 user state，做最小校验
@@ -304,4 +370,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Fishing game running at http://localhost:${PORT}`);
+  settleRankReward();
+  scheduleSettlement();
 });
