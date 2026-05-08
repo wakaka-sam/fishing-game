@@ -1303,8 +1303,11 @@ document.querySelectorAll('[data-gacha]').forEach((btn) => {
   btn.onclick = () => setGachaTab(btn.dataset.gacha);
 });
 let activeGachaDiamondSeason = 1;
-$('gacha-coin-single').onclick = () => doGacha(1, 'coins');
-$('gacha-coin-ten').onclick = () => doGacha(10, 'coins');
+let activeGachaCoinSeason = 1;
+$('gacha-coin-single').onclick = () => doGacha(1, 'coins', 1);
+$('gacha-coin-ten').onclick = () => doGacha(10, 'coins', 1);
+$('gacha-coin-s2-single').onclick = () => doGacha(1, 'coins', 2);
+$('gacha-coin-s2-ten').onclick = () => doGacha(10, 'coins', 2);
 $('gacha-diamond-single').onclick = () => doGacha(1, 'diamonds', 1);
 $('gacha-diamond-ten').onclick = () => doGacha(10, 'diamonds', 1);
 $('gacha-diamond-s2-single').onclick = () => doGacha(1, 'diamonds', 2);
@@ -1316,6 +1319,15 @@ document.querySelectorAll('[data-diamond-season]').forEach((btn) => {
     document.querySelectorAll('[data-diamond-season]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.diamondSeason) === activeGachaDiamondSeason));
     $('gacha-diamond-s1').classList.toggle('hidden', activeGachaDiamondSeason !== 1);
     $('gacha-diamond-s2').classList.toggle('hidden', activeGachaDiamondSeason !== 2);
+    $('gacha-result').classList.add('hidden');
+  };
+});
+document.querySelectorAll('[data-coin-season]').forEach((btn) => {
+  btn.onclick = () => {
+    activeGachaCoinSeason = parseInt(btn.dataset.coinSeason);
+    document.querySelectorAll('[data-coin-season]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.coinSeason) === activeGachaCoinSeason));
+    $('gacha-coin-s1').classList.toggle('hidden', activeGachaCoinSeason !== 1);
+    $('gacha-coin-s2').classList.toggle('hidden', activeGachaCoinSeason !== 2);
     $('gacha-result').classList.add('hidden');
   };
 });
@@ -1336,13 +1348,15 @@ function countUnlockedBaitDex(baitId) {
   return bait.fishes.filter((f) => user.dex[f.id] && user.dex[f.id].count > 0).length;
 }
 
-function getGachaCost(count, currency) {
+function getGachaCost(count, currency, season) {
   if (currency === 'diamonds') return count === 1 ? 10 : 90;
+  if (season === 2) return count === 1 ? 10000 : 100000;
   return count === 1 ? 1000 : 9000;
 }
 
-async function doGacha(count, currency = activeGachaCurrency, season = 1) {
-  const cost = getGachaCost(count, currency);
+async function doGacha(count, currency = activeGachaCurrency, season) {
+  if (season === undefined) season = currency === 'coins' ? activeGachaCoinSeason : 1;
+  const cost = getGachaCost(count, currency, season);
   if (currency === 'diamonds') {
     if ((user.diamonds || 0) < cost) { alert('钻石不足！需要 ' + cost + ' 钻石'); return; }
   } else if (user.money < cost) {
@@ -1374,7 +1388,12 @@ function showGachaResult(results) {
     const r = results[i];
     let cls = 'gacha-item';
     let icon, name;
-    if (r.type === 'rod') {
+    if (r.type === 'pet') {
+      const pet = GAME_DATA.PETS.find(p => p.id === r.id);
+      icon = pet ? pet.icon : '🐾';
+      name = pet ? pet.name : r.id;
+      cls += ' gi-ultimate';
+    } else if (r.type === 'rod') {
       const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
       icon = (rod && rod.emoji) || '🎣';
       name = rod ? rod.name : r.id;
@@ -1393,9 +1412,16 @@ function showGachaResult(results) {
   }
   html += '</div>';
   const rods = results.filter(r => r.type === 'rod');
+  const pets = results.filter(r => r.type === 'pet');
   const totalCoins = results.filter(r => r.type === 'coins').reduce((s, r) => s + r.coins, 0);
   const totalDiamonds = results.filter(r => r.type === 'diamonds').reduce((s, r) => s + r.diamonds, 0);
   const summaryParts = [];
+  if (pets.length > 0) {
+    summaryParts.push(pets.map((r) => {
+      const pet = GAME_DATA.PETS.find(p => p.id === r.id);
+      return `🎉 获得宠物 ${pet ? pet.icon + ' ' + pet.name : r.id}！`;
+    }).join('<br>'));
+  }
   if (rods.length > 0) {
     summaryParts.push(rods.map((r) => {
       const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);

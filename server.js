@@ -195,7 +195,7 @@ const server = http.createServer(async (req, res) => {
         const season = body.season === 2 ? 2 : 1;
         const cost = currency === 'diamonds'
           ? (count === 1 ? 10 : 90)
-          : (count === 1 ? 1000 : 9000);
+          : (season === 2 ? (count === 1 ? 10000 : 100000) : (count === 1 ? 1000 : 9000));
         const u = loadUser(name);
         u.diamonds = Math.max(0, Math.floor(u.diamonds || 0));
         if (currency === 'diamonds') {
@@ -206,10 +206,33 @@ const server = http.createServer(async (req, res) => {
           u.money -= cost;
         }
         if (!u.ownedRods) u.ownedRods = [];
+        if (!u.ownedPets) u.ownedPets = [];
         const results = [];
         for (let i = 0; i < count; i++) {
           const roll = Math.random() * 100;
-          if (currency === 'diamonds' && season === 2) {
+          if (currency === 'coins' && season === 2) {
+            // cat/dog 0.1%, parrot/penguin/rabbit/fox 0.05%, dragon/unicorn 0.01%, diamonds 10%, coins rest
+            const petRolls = [
+              { threshold: 0.1, id: 'cat' }, { threshold: 0.2, id: 'dog' },
+              { threshold: 0.25, id: 'parrot' }, { threshold: 0.30, id: 'penguin' },
+              { threshold: 0.35, id: 'rabbit' }, { threshold: 0.40, id: 'fox' },
+              { threshold: 0.41, id: 'dragon' }, { threshold: 0.42, id: 'unicorn' },
+            ];
+            let matched = null;
+            for (const p of petRolls) {
+              if (roll < p.threshold) { matched = p.id; break; }
+            }
+            if (matched) {
+              results.push({ type: 'pet', id: matched });
+              if (!u.ownedPets.includes(matched)) u.ownedPets.push(matched);
+            } else if (roll < 10.42) {
+              results.push({ type: 'diamonds', diamonds: 10 });
+              u.diamonds += 10;
+            } else {
+              results.push({ type: 'coins', coins: 1 });
+              u.money += 1;
+            }
+          } else if (currency === 'diamonds' && season === 2) {
             if (roll < 0.01) {
               results.push({ type: 'rod', id: 'headphone' });
               if (!u.ownedRods.includes('headphone')) u.ownedRods.push('headphone');
