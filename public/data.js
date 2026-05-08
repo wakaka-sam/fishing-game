@@ -108,6 +108,28 @@ const BAITS = {
       { id: 'leviathan',   name: '海蛇神',   rarity: 'hidden',    minW: 200,  maxW: 1000, price: 8000, icon: '🐉' },
     ],
   },
+  divine: {
+    name: '神仙鱼饵',
+    price: 10000,
+    currency: 'diamonds',
+    desc: '仙气缭绕的鱼饵，只会钓到传说级和隐藏级的鱼',
+    color: '#ffd700',
+    specialOnly: true,
+    fishes: [
+      { id: 'koi',         name: '锦鲤',     rarity: 'legendary', minW: 2,    maxW: 5,    price: 400,  icon: '🎏' },
+      { id: 'old_turtle',  name: '千年龟',   rarity: 'legendary', minW: 5,    maxW: 15,   price: 250,  icon: '🐢' },
+      { id: 'mud_dragon',  name: '泥龙',     rarity: 'hidden',    minW: 10,   maxW: 30,   price: 800,  icon: '🐉' },
+      { id: 'sword',       name: '剑鱼',     rarity: 'legendary', minW: 10,   maxW: 30,   price: 600,  icon: '🗡️' },
+      { id: 'manta',       name: '蝠鲼',     rarity: 'legendary', minW: 15,   maxW: 50,   price: 500,  icon: '🐠' },
+      { id: 'kraken_baby', name: '幼海妖',   rarity: 'hidden',    minW: 20,   maxW: 60,   price: 1500, icon: '🦑' },
+      { id: 'megalodon_b', name: '幼巨齿鲨', rarity: 'legendary', minW: 30,   maxW: 80,   price: 800,  icon: '🦈' },
+      { id: 'whale_s',     name: '小鲸',     rarity: 'legendary', minW: 50,   maxW: 200,  price: 600,  icon: '🐋' },
+      { id: 'leviathan_s', name: '幼海蛇神', rarity: 'hidden',    minW: 80,   maxW: 300,  price: 2000, icon: '🐉' },
+      { id: 'phoenix_f',   name: '凤凰鱼',   rarity: 'legendary', minW: 5,    maxW: 20,   price: 5000, icon: '🔥' },
+      { id: 'kraken',      name: '海妖王',   rarity: 'legendary', minW: 100,  maxW: 500,  price: 1500, icon: '🦑' },
+      { id: 'leviathan',   name: '海蛇神',   rarity: 'hidden',    minW: 200,  maxW: 1000, price: 8000, icon: '🐉' },
+    ],
+  },
   black_silk: {
     name: '黑丝饵',
     dexName: '黑丝图鉴',
@@ -165,7 +187,8 @@ function rollCatch(baitId) {
   if (bait.specialOnly) {
     const fish = pickFromArr(bait.fishes);
     const weight = +(fish.minW + Math.random() * (fish.maxW - fish.minW)).toFixed(2);
-    return { kind: 'fish', item: fish, weight, value: 0, diamondValue: fish.diamondValue || 0 };
+    const value = fish.diamondValue ? 0 : Math.round(weight * fish.price);
+    return { kind: 'fish', item: fish, weight, value, diamondValue: fish.diamondValue || 0 };
   }
 
   const r = Math.random();

@@ -655,13 +655,15 @@ function renderShop() {
   list.innerHTML = '';
   for (const [id, b] of Object.entries(BAITS).filter(([, bait]) => bait.purchasable !== false)) {
     const owned = user.baits[id] || 0;
+    const isDiamond = b.currency === 'diamonds';
+    const priceIcon = isDiamond ? '💎' : '💰';
     const div = document.createElement('div');
     div.className = 'shop-item';
     div.innerHTML = `
       <h3 style="color:${b.color}">${b.name}</h3>
       <div class="desc">${b.desc}</div>
       <div class="row">
-        <span class="price">💰 ${b.price}/个</span>
+        <span class="price">${priceIcon} ${b.price}/个</span>
         <span class="owned">已有 ${owned}</span>
       </div>
       <div class="row">
@@ -676,9 +678,16 @@ function renderShop() {
     if (!btn) return;
     const id = btn.dataset.buy;
     const n = parseInt(btn.dataset.n, 10);
-    const cost = BAITS[id].price * n;
-    if (user.money < cost) { alert('金币不足'); return; }
-    user.money -= cost;
+    const bait = BAITS[id];
+    const cost = bait.price * n;
+    const isDiamond = bait.currency === 'diamonds';
+    if (isDiamond) {
+      if ((user.diamonds || 0) < cost) { alert('钻石不足'); return; }
+      user.diamonds -= cost;
+    } else {
+      if (user.money < cost) { alert('金币不足'); return; }
+      user.money -= cost;
+    }
     user.baits[id] = (user.baits[id] || 0) + n;
     refreshUI();
     renderShop();
