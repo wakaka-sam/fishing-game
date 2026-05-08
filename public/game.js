@@ -1130,6 +1130,47 @@ function showGachaResult(results) {
   el.innerHTML = html + summary;
 }
 
+// ====== 版本与公告 ======
+let versionData = null;
+let versionReady = fetch('/version.json?t=' + Date.now()).then(r => r.json()).then(d => {
+  versionData = d;
+  $('version-tag').textContent = 'v' + d.version;
+}).catch(() => {});
+
+async function checkAnnouncement() {
+  await versionReady;
+  if (!versionData) return;
+  const lastSeen = localStorage.getItem('fishing_last_version') || '';
+  if (lastSeen === versionData.version) return;
+  showAnnouncement(lastSeen);
+  localStorage.setItem('fishing_last_version', versionData.version);
+}
+
+function showAnnouncement(sinceVersion) {
+  const el = $('announce-content');
+  let html = '';
+  for (const entry of versionData.changelog) {
+    if (sinceVersion && entry.version <= sinceVersion) continue;
+    html += `<div class="announce-version">v${entry.version}<span class="announce-date">${entry.date}</span></div>`;
+    html += '<ul class="announce-list">';
+    for (const c of entry.changes) html += `<li>${c}</li>`;
+    html += '</ul>';
+  }
+  if (!html) return;
+  el.innerHTML = html;
+  $('announce-overlay').classList.remove('hidden');
+}
+
+$('announce-close').onclick = () => $('announce-overlay').classList.add('hidden');
+$('version-tag').onclick = () => { if (versionData) { showAnnouncement(''); } };
+
+// 在 enterGame 中触发公告检查
+const _origEnterGame = enterGame;
+enterGame = function() {
+  _origEnterGame();
+  checkAnnouncement();
+};
+
 // 关闭按钮
 document.querySelectorAll('[data-close]').forEach((btn) => {
   btn.onclick = () => $(btn.dataset.close).classList.add('hidden');

@@ -26,6 +26,7 @@
       <span id="player-name">玩家</span>
       <span id="player-money">💰 0</span>
       <span id="player-diamonds">💎 0</span>
+      <span id="version-tag" class="version-tag"></span>
     </div>
     <div class="actions">
       <button id="shop-btn">🎁 商店</button>
@@ -218,6 +219,15 @@
         </div>
       </div>
       <button class="close-x" data-close="share-overlay">关闭</button>
+    </div>
+  </div>
+
+  <!-- 更新公告 -->
+  <div id="announce-overlay" class="overlay hidden">
+    <div class="modal wide">
+      <h2>📢 更新公告</h2>
+      <div id="announce-content" class="announce-content"></div>
+      <button id="announce-close" class="primary">知道了</button>
     </div>
   </div>
 </div>
