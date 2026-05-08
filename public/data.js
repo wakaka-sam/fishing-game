@@ -7,6 +7,7 @@ const HITS_BY_RARITY = {
   hidden: 7,
   treasure: 4,
   limited: 4,
+  rod_exclusive: 5,
 };
 
 // 稀有度颜色
@@ -18,6 +19,7 @@ const RARITY_COLOR = {
   hidden: '#ffd700',
   treasure: '#ff8c42',
   limited: '#ff7ac8',
+  rod_exclusive: '#ff4500',
 };
 
 const RARITY_NAME = {
@@ -28,6 +30,7 @@ const RARITY_NAME = {
   hidden: '隐藏',
   treasure: '宝藏',
   limited: '限定',
+  rod_exclusive: '鱼竿专属',
 };
 
 // 鱼饵：每种 5普通 + 3稀有 + 2传说 + 1隐藏
@@ -203,8 +206,15 @@ function getCurrentTimeSlot() {
   return 'night';
 }
 
-function rollCatch(baitId) {
+function rollCatch(baitId, rodId) {
   const bait = BAITS[baitId] || BAITS.worm;
+  // 鱼竿专属鱼：装备对应鱼竿时 5% 概率触发
+  if (rodId && ROD_FISH[rodId] && Math.random() < 0.05) {
+    const fish = pickFromArr(ROD_FISH[rodId]);
+    const weight = +(ROD_FISH_BASE.minW + Math.random() * (ROD_FISH_BASE.maxW - ROD_FISH_BASE.minW)).toFixed(2);
+    const diamondValue = Math.round(weight * ROD_FISH_BASE.diamondPerKg);
+    return { kind: 'fish', item: { ...fish, rarity: ROD_FISH_BASE.rarity, minW: ROD_FISH_BASE.minW, maxW: ROD_FISH_BASE.maxW }, weight, value: 0, diamondValue };
+  }
   if (bait.specialOnly) {
     const fish = pickFromArr(bait.fishes);
     const weight = +(fish.minW + Math.random() * (fish.maxW - fish.minW)).toFixed(2);
@@ -266,6 +276,25 @@ const SPECIAL_RODS = [
   { id: 'black_silk_rod', name: '黑丝鱼竿', rodColor: '#181018', rodHighlight: '#ff7ac8', lineColor: 'rgba(255,122,200,1.0)', desc: '集齐黑丝图鉴后获得的限定鱼竿', rarity: 'limited', unlock: 'black_silk_dex', emoji: '🖤' },
 ];
 
+// 鱼竿专属鱼 —— 只有装备对应鱼竿时才有机会钓到，每kg卖1钻石
+const ROD_FISH = {
+  candy:       [
+    { id: 'candy_horse', name: '糖果海马', icon: '🐴', rodId: 'candy' },
+    { id: 'candy_dog',   name: '糖果犬鱼', icon: '🐶', rodId: 'candy' },
+  ],
+  headphone:   [
+    { id: 'maple_fish',  name: '枫叶鱼',   icon: '🍁', rodId: 'headphone' },
+  ],
+  firekirin:   [
+    { id: 'fire_beast',  name: '火焰兽',   icon: '🔥', rodId: 'firekirin' },
+  ],
+  greenxuanwu: [
+    { id: 'jade_turtle', name: '翡翠龟',   icon: '🐢', rodId: 'greenxuanwu' },
+  ],
+};
+const ROD_FISH_BASE = { rarity: 'rod_exclusive', minW: 10, maxW: 200, diamondPerKg: 1 };
+const ALL_ROD_FISH = Object.values(ROD_FISH).flat();
+
 const ALL_RODS = [...ROD_SKINS, ...GACHA_RODS, ...SPECIAL_RODS];
 const OWNED_RODS = [...GACHA_RODS, ...SPECIAL_RODS];
 
@@ -298,4 +327,5 @@ window.GAME_DATA = {
   BAITS, TRASH_POOL, TREASURE_POOL,
   ROD_SKINS, GACHA_RODS, SPECIAL_RODS, ALL_RODS, getCurrentRodSkin, getNextRodSkin,
   rollCatch, getCurrentTimeSlot, TIME_SLOT_NAMES,
+  ROD_FISH, ROD_FISH_BASE, ALL_ROD_FISH,
 };

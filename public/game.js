@@ -399,7 +399,8 @@ function startHitbar() {
   state.phase = 'reeling';
 
   // 提前 roll 出钓获结果
-  const result = rollCatch(state.castBait || user.currentBait);
+  const currentRodId = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods).id;
+  const result = rollCatch(state.castBait || user.currentBait, currentRodId);
   hb.catch = result;
   const rarity = result.kind === 'fish' ? result.item.rarity : result.kind;
   hb.hitsNeeded = HITS_BY_RARITY[rarity] || 2;
@@ -416,6 +417,7 @@ function startHitbar() {
     hidden: { speed: 1.9, zone: 0.10 },
     treasure: { speed: 1.2, zone: 0.16 },
     limited: { speed: 1.3, zone: 0.16 },
+    rod_exclusive: { speed: 1.4, zone: 0.14 },
   }[rarity];
   hb.cursorSpeed = difficulty.speed;
   const rodSkin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
@@ -713,9 +715,46 @@ function renderDex() {
     btn.onclick = () => { activeDexBait = id; renderDex(); };
     tabs.appendChild(btn);
   }
+  // 鱼竿专属图鉴 tab
+  const rodDexBtn = document.createElement('button');
+  rodDexBtn.textContent = '🎣 鱼竿专属';
+  if (activeDexBait === '_rod_exclusive') rodDexBtn.classList.add('active');
+  rodDexBtn.onclick = () => { activeDexBait = '_rod_exclusive'; renderDex(); };
+  tabs.appendChild(rodDexBtn);
 
   const list = $('dex-list');
   list.innerHTML = '';
+
+  if (activeDexBait === '_rod_exclusive') {
+    const allRodFish = GAME_DATA.ALL_ROD_FISH;
+    let unlocked = 0;
+    for (const f of allRodFish) {
+      const dex = user.dex[f.id];
+      const isU = !!dex;
+      if (isU) unlocked++;
+      const rod = GAME_DATA.ALL_RODS.find(r => r.id === f.rodId);
+      const rodName = rod ? rod.name : f.rodId;
+      const div = document.createElement('div');
+      div.className = 'dex-item ' + (isU ? 'unlocked' : 'locked');
+      div.style.borderColor = RARITY_COLOR['rod_exclusive'];
+      div.innerHTML = `
+        <span class="icon">${isU ? f.icon : '❓'}</span>
+        <div class="name" style="color:${RARITY_COLOR['rod_exclusive']}">${isU ? f.name : '???'}</div>
+        <div class="info">${RARITY_NAME['rod_exclusive']}</div>
+        <div class="info time-info">🎣 ${rodName}</div>
+        <div class="info">${isU ? `×${dex.count} | 最大 ${dex.maxWeight}kg` : '未解锁'}</div>
+      `;
+      list.appendChild(div);
+    }
+    $('dex-stats').innerHTML = `
+      <div>鱼竿专属图鉴：${unlocked} / ${allRodFish.length}</div>
+      <div>累计钓获：${user.stats.totalCatches || 0} 次</div>
+      <div>累计收入：${user.stats.totalEarned || 0} 金币</div>
+      <div>累计钻石：${user.stats.totalDiamonds || 0} 钻石</div>
+    `;
+    return;
+  }
+
   const fishes = BAITS[activeDexBait].fishes;
   let unlocked = 0;
   for (const f of fishes) {
