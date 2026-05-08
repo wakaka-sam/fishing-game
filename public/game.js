@@ -421,15 +421,46 @@ function render() {
   px(W * 0.78, H - 30, 30, 6, '#d99086');
   px(W * 0.85, H - 24, 18, 18, '#fdbcb4');
 
-  // 宠物渲染
+  // 宠物渲染（像素风格带手脚）
   if (user && user.activePet) {
     const pet = GAME_DATA.PETS.find(p => p.id === user.activePet);
     if (pet) {
-      const px2 = pet.canvasX * W;
-      const py2 = pet.canvasY * H + Math.sin(t * 2) * 3;
-      ctx.font = `${pet.size}px serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(pet.icon, px2, py2);
+      const bx = pet.canvasX * W;
+      const by = pet.canvasY * H + Math.sin(t * 2) * 2;
+      const s = 4;
+      const c = pet.colors;
+      const legSwing = Math.sin(t * 4) * 2;
+      // 耳朵
+      if (c.ear) {
+        px(bx - s*2, by - s*7, s, s*2, c.ear);
+        px(bx + s*2, by - s*7, s, s*2, c.ear);
+      }
+      // 头
+      px(bx - s*2, by - s*5, s*5, s*4, c.body);
+      // 眼睛
+      px(bx - s, by - s*4, s, s, c.eye || '#111');
+      px(bx + s, by - s*4, s, s, c.eye || '#111');
+      // 鼻子/嘴
+      px(bx, by - s*2.5, s, Math.ceil(s*0.5), c.nose || '#333');
+      // 身体
+      px(bx - s*1.5, by - s, s*4, s*4, c.body);
+      // 肚子
+      if (c.belly) px(bx - s*0.5, by, s*2, s*2, c.belly);
+      // 手臂（左右摆动）
+      const armSwing = Math.sin(t * 3) * 1.5;
+      px(bx - s*3, by - s*0.5 + armSwing, s, s*3, c.limb || c.body);
+      px(bx + s*2.5, by - s*0.5 - armSwing, s, s*3, c.limb || c.body);
+      // 腿（走路摆动）
+      px(bx - s, by + s*3 + legSwing, s, s*2, c.limb || c.body);
+      px(bx + s, by + s*3 - legSwing, s, s*2, c.limb || c.body);
+      // 尾巴
+      if (c.tail) {
+        const tailY = Math.sin(t * 5) * 2;
+        px(bx + s*2.5, by + s, s*2, s, c.tail);
+        px(bx + s*3.5, by + s*0.5 + tailY, s, s, c.tail);
+      }
+      // 特殊装饰
+      if (c.extra) c.extra(ctx, bx, by, s, t);
     }
   }
 
@@ -971,33 +1002,20 @@ function renderPets() {
     const isActive = user.activePet === pet.id;
     const div = document.createElement('div');
     div.className = 'pet-item' + (isActive ? ' active' : '') + (!isOwned ? ' locked' : '');
-    const priceIcon = pet.currency === 'diamonds' ? '💎' : '💰';
     div.innerHTML = `
       <span class="pet-icon">${pet.icon}</span>
       <div class="pet-name">${pet.name}</div>
       <div class="pet-desc">${pet.desc}</div>
       ${isOwned
         ? `<span class="pet-badge">${isActive ? '✔ 已装备' : '点击装备'}</span>`
-        : `<div class="pet-price">${priceIcon} ${pet.price}</div><span class="pet-badge">🔒 未拥有</span>`}
+        : `<span class="pet-badge">🔒 ${pet.obtain || '活动获取'}</span>`}
     `;
-    div.onclick = () => {
-      if (isOwned) {
+    if (isOwned) {
+      div.onclick = () => {
         user.activePet = isActive ? null : pet.id;
         refreshUI(); saveUser(); renderPets();
-      } else {
-        if (pet.currency === 'diamonds') {
-          if ((user.diamonds || 0) < pet.price) { showAdToast('钻石不足'); return; }
-          user.diamonds -= pet.price;
-        } else {
-          if (user.money < pet.price) { showAdToast('金币不足'); return; }
-          user.money -= pet.price;
-        }
-        user.ownedPets.push(pet.id);
-        user.activePet = pet.id;
-        refreshUI(); saveUser(); renderPets();
-        showAdToast(`🎉 获得宠物：${pet.name}！`);
-      }
-    };
+      };
+    }
     list.appendChild(div);
   }
 }

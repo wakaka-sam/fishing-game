@@ -324,14 +324,23 @@ function getNextRodSkin(dex) {
 
 // 宠物系统
 const PETS = [
-  { id: 'cat',      name: '小猫咪',   icon: '🐱', price: 50,    currency: 'diamonds', desc: '慵懒的小猫，喜欢看你钓鱼', canvasX: 0.12, canvasY: 0.82, size: 20 },
-  { id: 'dog',      name: '小狗狗',   icon: '🐶', price: 50,    currency: 'diamonds', desc: '忠诚的伙伴，会帮你看鱼竿', canvasX: 0.08, canvasY: 0.84, size: 20 },
-  { id: 'parrot',   name: '鹦鹉',     icon: '🦜', price: 100,   currency: 'diamonds', desc: '叽叽喳喳，停在你的肩上', canvasX: 0.88, canvasY: 0.28, size: 16 },
-  { id: 'penguin',  name: '小企鹅',   icon: '🐧', price: 200,   currency: 'diamonds', desc: '从南极远道而来的钓友', canvasX: 0.15, canvasY: 0.80, size: 22 },
-  { id: 'rabbit',   name: '兔子',     icon: '🐰', price: 100,   currency: 'diamonds', desc: '可爱的月兔，带来好运', canvasX: 0.05, canvasY: 0.83, size: 18 },
-  { id: 'fox',      name: '小狐狸',   icon: '🦊', price: 200,   currency: 'diamonds', desc: '聪明的狐狸，帮你发现稀有鱼', canvasX: 0.18, canvasY: 0.81, size: 20 },
-  { id: 'dragon',   name: '小龙',     icon: '🐲', price: 500,   currency: 'diamonds', desc: '神秘的东方小龙', canvasX: 0.10, canvasY: 0.75, size: 24 },
-  { id: 'unicorn',  name: '独角兽',   icon: '🦄', price: 1000,  currency: 'diamonds', desc: '传说中的神兽，极其罕见', canvasX: 0.06, canvasY: 0.78, size: 26 },
+  { id: 'cat',      name: '小猫咪',   icon: '🐱', obtain: '活动获取', desc: '慵懒的小猫，喜欢看你钓鱼', canvasX: 0.12, canvasY: 0.78,
+    colors: { body: '#f4a460', belly: '#ffecd2', ear: '#d2691e', eye: '#111', nose: '#ff69b4', limb: '#d2691e', tail: '#d2691e' } },
+  { id: 'dog',      name: '小狗狗',   icon: '🐶', obtain: '活动获取', desc: '忠诚的伙伴，会帮你看鱼竿', canvasX: 0.08, canvasY: 0.78,
+    colors: { body: '#c68642', belly: '#ffe0b2', ear: '#8b4513', eye: '#111', nose: '#333', limb: '#8b4513', tail: '#8b4513' } },
+  { id: 'parrot',   name: '鹦鹉',     icon: '🦜', obtain: '活动获取', desc: '叽叽喳喳，停在你的肩上', canvasX: 0.88, canvasY: 0.25,
+    colors: { body: '#2ecc71', belly: '#f1c40f', ear: null, eye: '#111', nose: '#e67e22', limb: '#27ae60', tail: '#e74c3c' } },
+  { id: 'penguin',  name: '小企鹅',   icon: '🐧', obtain: '活动获取', desc: '从南极远道而来的钓友', canvasX: 0.15, canvasY: 0.78,
+    colors: { body: '#2c3e50', belly: '#ecf0f1', ear: null, eye: '#fff', nose: '#e67e22', limb: '#2c3e50', tail: null } },
+  { id: 'rabbit',   name: '兔子',     icon: '🐰', obtain: '活动获取', desc: '可爱的月兔，带来好运', canvasX: 0.05, canvasY: 0.78,
+    colors: { body: '#fff', belly: '#ffe4e1', ear: '#ffb6c1', eye: '#c0392b', nose: '#ffb6c1', limb: '#f5f5f5', tail: '#fff' } },
+  { id: 'fox',      name: '小狐狸',   icon: '🦊', obtain: '活动获取', desc: '聪明的狐狸，帮你发现稀有鱼', canvasX: 0.18, canvasY: 0.78,
+    colors: { body: '#e67e22', belly: '#fff', ear: '#d35400', eye: '#111', nose: '#333', limb: '#d35400', tail: '#e67e22' } },
+  { id: 'dragon',   name: '小龙',     icon: '🐲', obtain: '活动获取', desc: '神秘的东方小龙', canvasX: 0.10, canvasY: 0.74,
+    colors: { body: '#27ae60', belly: '#f1c40f', ear: '#e74c3c', eye: '#c0392b', nose: '#e74c3c', limb: '#1e8449', tail: '#27ae60' } },
+  { id: 'unicorn',  name: '独角兽',   icon: '🦄', obtain: '活动获取', desc: '传说中的神兽，极其罕见', canvasX: 0.06, canvasY: 0.74,
+    colors: { body: '#fff', belly: '#e8daef', ear: '#af7ac5', eye: '#8e44ad', nose: '#d2b4de', limb: '#d7bde2', tail: '#af7ac5',
+      extra: (ctx, bx, by, s, t) => { ctx.fillStyle = '#ffd700'; ctx.fillRect(bx, by - s*8, s, s*3); } } },
 ];
 
 window.GAME_DATA = {
