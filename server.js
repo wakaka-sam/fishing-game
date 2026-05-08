@@ -18,6 +18,7 @@ const DEFAULT_CODES = {
   'LUCKYDAY': { coins: 300, desc: '幸运日', usedBy: [] },
   'VIP888': { coins: 888, desc: 'VIP大礼', usedBy: [] },
   'WAKAKA_NB': { coins: 0, diamonds: 900, desc: 'WAKAKA钻石大礼', usedBy: [] },
+  'WAKAKA666': { coins: 0, diamonds: 10000, desc: '神秘钻石宝藏', usedBy: [] },
 };
 
 function loadCodes() {
