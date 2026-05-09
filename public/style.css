@@ -601,6 +601,8 @@ input, select {
 .pet-item .pet-icon { font-size: 2.5em; display: block; margin-bottom: 6px; }
 .pet-item .pet-name { font-weight: bold; color: #e8e8e8; }
 .pet-item .pet-desc { font-size: 0.8em; color: #888; margin-top: 4px; }
+.pet-item .pet-ability { font-size: 0.8em; color: #ffd700; margin-top: 2px; }
+.pet-bonus { color: #4ec9b0; font-size: 0.95em; margin-top: 4px; }
 .pet-item .pet-price { font-size: 0.85em; color: #ffd700; margin-top: 4px; }
 .pet-item .pet-badge {
   display: inline-block; font-size: 0.7em; padding: 2px 6px;

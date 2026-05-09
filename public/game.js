@@ -686,19 +686,36 @@ function endHitbar(success, failMsg) {
   hb.catch = null;
 }
 
+// ====== 宠物加成 ======
+const PET_BONUS = {
+  cat: { coins: 10 }, dog: { coins: 10 },
+  parrot: { diamonds: 1 }, penguin: { diamonds: 1 }, rabbit: { diamonds: 1 }, fox: { diamonds: 1 },
+  dragon: { diamonds: 5 }, unicorn: { diamonds: 5 },
+};
+
+function getPetBonus() {
+  if (!user || !user.activePet) return { coins: 0, diamonds: 0 };
+  const b = PET_BONUS[user.activePet];
+  return b ? { coins: b.coins || 0, diamonds: b.diamonds || 0 } : { coins: 0, diamonds: 0 };
+}
+
 // ====== 应用钓获 ======
 function applyCatch(c) {
   const bonusDiamonds = rollDiamondReward();
   const saleDiamonds = c.diamondValue || 0;
   const blackSilkBaitDrop = rollBlackSilkBaitDrop();
+  const petBonus = getPetBonus();
+  c.petBonusCoins = petBonus.coins;
+  c.petBonusDiamonds = petBonus.diamonds;
+  c.value += petBonus.coins;
   user.money += c.value;
-  user.diamonds = (user.diamonds || 0) + saleDiamonds + bonusDiamonds;
+  user.diamonds = (user.diamonds || 0) + saleDiamonds + bonusDiamonds + petBonus.diamonds;
   if (blackSilkBaitDrop > 0) {
     user.baits[BLACK_SILK_BAIT_ID] = (user.baits[BLACK_SILK_BAIT_ID] || 0) + blackSilkBaitDrop;
   }
   user.stats.totalCatches = (user.stats.totalCatches || 0) + 1;
   user.stats.totalEarned = (user.stats.totalEarned || 0) + c.value;
-  user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + saleDiamonds + bonusDiamonds;
+  user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + saleDiamonds + bonusDiamonds + petBonus.diamonds;
   user.stats.totalWeight = +(((user.stats.totalWeight || 0) + (c.weight || 0)).toFixed(2));
   // 今日统计
   const todayKey = todayCN();
@@ -801,6 +818,8 @@ function showResult(c) {
   const diamondLine = c.diamonds ? `<div class="diamond-value">额外 +${c.diamonds} 钻石</div>` : '';
   const baitDropLine = c.baitDrop ? `<div class="bait-drop">获得 ${BAITS[c.baitDrop.id].name} ×${c.baitDrop.count}</div>` : '';
   const rodLine = c.unlockedRod ? '<div class="rod-unlock">解锁 黑丝鱼竿</div>' : '';
+  const petCoinLine = c.petBonusCoins ? `<div class="pet-bonus">🐾 宠物加成 +${c.petBonusCoins} 金币</div>` : '';
+  const petDiamondLine = c.petBonusDiamonds ? `<div class="pet-bonus">🐾 宠物加成 +${c.petBonusDiamonds} 钻石</div>` : '';
   resultContent.innerHTML = `
     <div class="result-fish">
       <span class="icon">${c.item.icon}</span>
@@ -812,6 +831,8 @@ function showResult(c) {
       ${diamondLine}
       ${baitDropLine}
       ${rodLine}
+      ${petCoinLine}
+      ${petDiamondLine}
     </div>
   `;
   resultOverlay.classList.remove('hidden');
@@ -1011,10 +1032,15 @@ function renderPets() {
     const isActive = user.activePet === pet.id;
     const div = document.createElement('div');
     div.className = 'pet-item' + (isActive ? ' active' : '') + (!isOwned ? ' locked' : '');
+    const bonus = PET_BONUS[pet.id];
+    const abilityText = bonus
+      ? (bonus.coins ? `钓鱼金币+${bonus.coins}` : `钓鱼钻石+${bonus.diamonds}`)
+      : '';
     div.innerHTML = `
       <span class="pet-icon">${pet.icon}</span>
       <div class="pet-name">${pet.name}</div>
       <div class="pet-desc">${pet.desc}</div>
+      ${abilityText ? `<div class="pet-ability">${abilityText}</div>` : ''}
       ${isOwned
         ? `<span class="pet-badge">${isActive ? '✔ 已装备' : '点击装备'}</span>`
         : `<span class="pet-badge">🔒 ${pet.obtain || '活动获取'}</span>`}
