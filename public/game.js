@@ -8,6 +8,58 @@ if (!window.GAME_DATA) {
 
 function todayCN() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderItemIcon(item, unlocked = true) {
+  if (!unlocked) return '❓';
+  const pixelIcon = item && (GAME_DATA.FISH_PIXEL_ICONS?.[item.id] || item.pixelIcon);
+  if (!item || !pixelIcon) return item ? escapeHtml(item.icon) : '';
+  const iconType = String(pixelIcon).replace(/[^a-z0-9_-]/gi, '');
+  const label = escapeHtml(item.name || '像素鱼');
+  return `
+    <span class="pixel-icon pixel-icon--${iconType}" role="img" aria-label="${label}" title="${label}">
+      <span class="pixel-aura"></span>
+      <span class="pixel-tail"></span>
+      <span class="pixel-body"></span>
+      <span class="pixel-belly"></span>
+      <span class="pixel-fin pixel-fin--top"></span>
+      <span class="pixel-fin pixel-fin--bottom"></span>
+      <span class="pixel-stripe pixel-stripe--one"></span>
+      <span class="pixel-stripe pixel-stripe--two"></span>
+      <span class="pixel-whisker pixel-whisker--top"></span>
+      <span class="pixel-whisker pixel-whisker--bottom"></span>
+      <span class="pixel-eye"></span>
+      <span class="pixel-eye pixel-eye--back"></span>
+      <span class="pixel-horn"></span>
+      <span class="pixel-lure"></span>
+      <span class="pixel-shell"></span>
+      <span class="pixel-claw pixel-claw--left"></span>
+      <span class="pixel-claw pixel-claw--right"></span>
+      <span class="pixel-leg pixel-leg--one"></span>
+      <span class="pixel-leg pixel-leg--two"></span>
+      <span class="pixel-leg pixel-leg--three"></span>
+      <span class="pixel-leg pixel-leg--four"></span>
+      <span class="pixel-tentacle pixel-tentacle--one"></span>
+      <span class="pixel-tentacle pixel-tentacle--two"></span>
+      <span class="pixel-tentacle pixel-tentacle--three"></span>
+      <span class="pixel-tentacle pixel-tentacle--four"></span>
+      <span class="pixel-wing pixel-wing--left"></span>
+      <span class="pixel-wing pixel-wing--right"></span>
+      <span class="pixel-drop"></span>
+      <span class="pixel-sparkle pixel-sparkle--one"></span>
+      <span class="pixel-sparkle pixel-sparkle--two"></span>
+      <span class="pixel-crown"></span>
+    </span>
+  `;
+}
+
 // ====== 穿山甲广告 ======
 const CSJ_CONFIG = {
   appId: 'YOUR_APP_ID',
@@ -822,7 +874,7 @@ function showResult(c) {
   const petDiamondLine = c.petBonusDiamonds ? `<div class="pet-bonus">🐾 宠物加成 +${c.petBonusDiamonds} 钻石</div>` : '';
   resultContent.innerHTML = `
     <div class="result-fish">
-      <span class="icon">${c.item.icon}</span>
+      <span class="icon">${renderItemIcon(c.item)}</span>
       <div class="name" style="color:${color}">${c.item.name}</div>
       <div class="rarity" style="color:${color}">★ ${RARITY_NAME[rarity]} ★</div>
       <div class="stats">${weightLine}</div>
@@ -974,7 +1026,7 @@ function renderDex() {
       div.className = 'dex-item ' + (isU ? 'unlocked' : 'locked');
       div.style.borderColor = RARITY_COLOR['rod_exclusive'];
       div.innerHTML = `
-        <span class="icon">${isU ? f.icon : '❓'}</span>
+        <span class="icon">${renderItemIcon(f, isU)}</span>
         <div class="name" style="color:${RARITY_COLOR['rod_exclusive']}">${isU ? f.name : '???'}</div>
         <div class="info">${RARITY_NAME['rod_exclusive']}</div>
         <div class="info time-info">🎣 ${rodName}</div>
@@ -1002,7 +1054,7 @@ function renderDex() {
     div.style.borderColor = RARITY_COLOR[f.rarity];
     const timeInfo = f.timeSlot ? `<div class="info time-info">⏰ ${GAME_DATA.TIME_SLOT_NAMES[f.timeSlot]}</div>` : '';
     div.innerHTML = `
-      <span class="icon">${isU ? f.icon : '❓'}</span>
+      <span class="icon">${renderItemIcon(f, isU)}</span>
       <div class="name" style="color:${RARITY_COLOR[f.rarity]}">${isU ? f.name : '???'}</div>
       <div class="info">${RARITY_NAME[f.rarity]}</div>
       ${timeInfo}

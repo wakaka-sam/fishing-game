@@ -222,10 +222,990 @@ input, select {
 .dex-item.locked { opacity: 0.5; }
 .dex-item .icon { font-size: 28px; display: block; margin-bottom: 4px; filter: grayscale(1); }
 .dex-item.unlocked .icon { filter: none; }
+.dex-item .pixel-icon {
+  width: 52px;
+  height: 38px;
+}
+.dex-item .pixel-icon--minnow {
+  width: 48px;
+  height: 34px;
+}
+.dex-item .pixel-icon--catfish {
+  width: 54px;
+  height: 38px;
+}
+.dex-item .pixel-icon--eel {
+  width: 58px;
+  height: 32px;
+}
 .dex-item .name { font-weight: bold; }
 .dex-item .info { font-size: 10px; opacity: 0.8; margin-top: 4px; }
 .dex-item .time-info { color: #ffae42; opacity: 1; }
 .dex-stats { margin-top: 12px; padding: 8px; background: #0d1421; border: 1px solid #555; font-size: 13px; }
+
+.pixel-icon {
+  --outline: #08101c;
+  --body: #58b8ff;
+  --body-dark: #2a75b7;
+  --belly: #d9f7ff;
+  --fin: #ffd45c;
+  --eye: #f8fbff;
+  display: inline-block;
+  position: relative;
+  width: 42px;
+  height: 30px;
+  image-rendering: pixelated;
+  vertical-align: middle;
+}
+.pixel-icon span {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+}
+.pixel-body {
+  left: 23%;
+  top: 22%;
+  width: 56%;
+  height: 52%;
+  background: var(--body);
+  border: 3px solid var(--outline);
+  clip-path: polygon(0 32%, 12% 32%, 12% 14%, 86% 14%, 86% 32%, 100% 32%, 100% 68%, 86% 68%, 86% 86%, 12% 86%, 12% 68%, 0 68%);
+  z-index: 2;
+}
+.pixel-tail {
+  left: 5%;
+  top: 24%;
+  width: 24%;
+  height: 50%;
+  background: var(--fin);
+  border: 3px solid var(--outline);
+  clip-path: polygon(0 0, 100% 30%, 82% 50%, 100% 70%, 0 100%, 18% 50%);
+  z-index: 1;
+}
+.pixel-belly {
+  left: 35%;
+  top: 54%;
+  width: 31%;
+  height: 14%;
+  background: var(--belly);
+  z-index: 3;
+}
+.pixel-fin {
+  width: 17%;
+  height: 17%;
+  background: var(--fin);
+  border: 2px solid var(--outline);
+  z-index: 4;
+}
+.pixel-fin--top {
+  left: 43%;
+  top: 12%;
+  clip-path: polygon(0 100%, 55% 0, 100% 100%);
+}
+.pixel-fin--bottom {
+  left: 48%;
+  top: 68%;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.pixel-stripe {
+  top: 34%;
+  width: 6%;
+  height: 31%;
+  background: var(--body-dark);
+  z-index: 4;
+}
+.pixel-stripe--one { left: 46%; }
+.pixel-stripe--two { left: 58%; }
+.pixel-eye {
+  right: 14%;
+  top: 35%;
+  width: 7px;
+  height: 7px;
+  background: var(--eye);
+  border: 2px solid var(--outline);
+  z-index: 5;
+}
+.pixel-whisker { display: none; }
+
+.pixel-icon--crucian {
+  --body: #e8b54b;
+  --body-dark: #9f6530;
+  --belly: #fff0ad;
+  --fin: #f27f45;
+}
+.pixel-icon--minnow {
+  --body: #61eadf;
+  --body-dark: #248f9b;
+  --belly: #d7fff8;
+  --fin: #6ee7ff;
+  width: 38px;
+  height: 26px;
+}
+.pixel-icon--minnow .pixel-body { left: 25%; width: 58%; height: 46%; }
+.pixel-icon--minnow .pixel-tail { width: 21%; height: 44%; }
+.pixel-icon--minnow .pixel-fin--top,
+.pixel-icon--minnow .pixel-fin--bottom,
+.pixel-icon--minnow .pixel-stripe--two { display: none; }
+
+.pixel-icon--catfish {
+  --body: #6d7f88;
+  --body-dark: #394a52;
+  --belly: #c8d4d8;
+  --fin: #4d656e;
+  width: 44px;
+  height: 30px;
+}
+.pixel-icon--catfish .pixel-body {
+  left: 20%;
+  width: 60%;
+  clip-path: polygon(0 24%, 14% 24%, 14% 12%, 80% 12%, 80% 24%, 100% 24%, 100% 76%, 80% 76%, 80% 88%, 14% 88%, 14% 76%, 0 76%);
+}
+.pixel-icon--catfish .pixel-stripe { display: none; }
+.pixel-icon--catfish .pixel-whisker {
+  display: block;
+  right: 0;
+  width: 16px;
+  height: 3px;
+  background: var(--outline);
+  z-index: 5;
+}
+.pixel-icon--catfish .pixel-whisker--top {
+  top: 40%;
+  transform: rotate(-14deg);
+}
+.pixel-icon--catfish .pixel-whisker--bottom {
+  top: 57%;
+  transform: rotate(14deg);
+}
+
+.pixel-icon--eel {
+  --body: #8a5a3e;
+  --body-dark: #4b2e24;
+  --belly: #e3b989;
+  --fin: #6d412e;
+  width: 48px;
+  height: 24px;
+}
+.pixel-icon--eel .pixel-tail {
+  left: 2%;
+  top: 28%;
+  width: 16%;
+  height: 44%;
+}
+.pixel-icon--eel .pixel-body {
+  left: 14%;
+  top: 24%;
+  width: 72%;
+  height: 50%;
+  clip-path: polygon(0 36%, 10% 36%, 10% 18%, 90% 18%, 90% 36%, 100% 36%, 100% 64%, 90% 64%, 90% 82%, 10% 82%, 10% 64%, 0 64%);
+}
+.pixel-icon--eel .pixel-belly { left: 30%; width: 41%; }
+.pixel-icon--eel .pixel-fin,
+.pixel-icon--eel .pixel-stripe { display: none; }
+
+.pixel-aura,
+.pixel-eye--back,
+.pixel-horn,
+.pixel-lure,
+.pixel-shell,
+.pixel-claw,
+.pixel-leg,
+.pixel-tentacle,
+.pixel-wing,
+.pixel-drop,
+.pixel-sparkle,
+.pixel-crown {
+  display: none;
+}
+
+.pixel-icon--crucian-small,
+.pixel-icon--crucian-king,
+.pixel-icon--dawn-carp,
+.pixel-icon--koi,
+.pixel-icon--mackerel,
+.pixel-icon--snapper,
+.pixel-icon--tuna-small,
+.pixel-icon--bass,
+.pixel-icon--salmon,
+.pixel-icon--trout,
+.pixel-icon--walleye,
+.pixel-icon--coelacanth,
+.pixel-icon--candy-fish,
+.pixel-icon--black-silk-fish,
+.pixel-icon--water-fish,
+.pixel-icon--big-goldfish,
+.pixel-icon--maple-fish {
+  width: 44px;
+  height: 31px;
+}
+.pixel-icon--crucian-small { --body: #dfb35d; --body-dark: #8a6732; --belly: #fff1b8; --fin: #ec7b45; }
+.pixel-icon--crucian-king { --body: #f6c84d; --body-dark: #9a6820; --belly: #fff4b8; --fin: #e04f35; width: 48px; height: 34px; }
+.pixel-icon--crucian-king .pixel-crown,
+.pixel-icon--koi .pixel-crown,
+.pixel-icon--big-goldfish .pixel-crown {
+  display: block;
+  left: 48%;
+  top: 0;
+  width: 20%;
+  height: 18%;
+  background: #ffd84d;
+  border: 2px solid var(--outline);
+  clip-path: polygon(0 100%, 0 35%, 25% 35%, 25% 0, 50% 35%, 75% 0, 75% 35%, 100% 35%, 100% 100%);
+  z-index: 7;
+}
+.pixel-icon--dawn-carp { --body: #ff9b64; --body-dark: #c44b3d; --belly: #fff0c9; --fin: #ffe169; }
+.pixel-icon--dawn-carp .pixel-aura,
+.pixel-icon--dawn-sword .pixel-aura {
+  display: block;
+  left: 8%;
+  top: 0;
+  width: 78%;
+  height: 100%;
+  background: rgba(255, 184, 91, 0.32);
+  clip-path: polygon(48% 0, 62% 30%, 100% 22%, 72% 50%, 100% 78%, 62% 70%, 48% 100%, 35% 70%, 0 78%, 26% 50%, 0 22%, 35% 30%);
+  z-index: 0;
+}
+.pixel-icon--koi { --body: #fff4d7; --body-dark: #d74436; --belly: #fffaf0; --fin: #ff8a4b; }
+.pixel-icon--koi .pixel-stripe--one { left: 39%; width: 10%; background: #d74436; }
+.pixel-icon--koi .pixel-stripe--two { left: 62%; width: 9%; background: #111827; }
+.pixel-icon--mackerel { --body: #4a9ac8; --body-dark: #153d67; --belly: #d6f3ff; --fin: #9dd7e8; }
+.pixel-icon--mackerel .pixel-stripe { width: 5%; transform: skewX(-14deg); }
+.pixel-icon--snapper { --body: #f05b54; --body-dark: #9f2d2c; --belly: #ffd1b8; --fin: #ffb347; }
+.pixel-icon--tuna-small { --body: #5e9fc2; --body-dark: #1a5272; --belly: #d8f2ff; --fin: #f6d365; width: 50px; height: 30px; }
+.pixel-icon--tuna-small .pixel-body { width: 62%; }
+.pixel-icon--bass { --body: #5f9252; --body-dark: #2d5728; --belly: #d9e9b8; --fin: #86b85e; }
+.pixel-icon--pike,
+.pixel-icon--barracuda {
+  --body: #6fa986;
+  --body-dark: #2d5d55;
+  --belly: #cbe9c6;
+  --fin: #9bcf7a;
+  width: 54px;
+  height: 28px;
+}
+.pixel-icon--pike .pixel-body,
+.pixel-icon--barracuda .pixel-body {
+  left: 18%;
+  width: 66%;
+  height: 46%;
+  clip-path: polygon(0 36%, 10% 18%, 88% 18%, 100% 36%, 100% 64%, 88% 82%, 10% 82%, 0 64%);
+}
+.pixel-icon--barracuda { --body: #8fb7af; --body-dark: #355f5e; --belly: #e1fff3; --fin: #d2d66f; width: 58px; }
+.pixel-icon--salmon { --body: #ff7d68; --body-dark: #c64752; --belly: #ffd9cb; --fin: #f3a35c; }
+.pixel-icon--trout { --body: #9dbb7c; --body-dark: #ff6f61; --belly: #eef0cb; --fin: #6f995f; }
+.pixel-icon--trout .pixel-stripe { width: 5px; height: 5px; border-radius: 0; top: 39%; }
+.pixel-icon--walleye { --body: #b4a65d; --body-dark: #5f652d; --belly: #efe9b0; --fin: #e8cf5a; }
+.pixel-icon--coelacanth { --body: #536b8d; --body-dark: #23324a; --belly: #b4c6d6; --fin: #7d92a8; width: 48px; height: 34px; }
+.pixel-icon--coelacanth .pixel-body { clip-path: polygon(0 26%, 16% 26%, 16% 8%, 78% 8%, 78% 26%, 100% 26%, 100% 72%, 78% 72%, 78% 92%, 16% 92%, 16% 72%, 0 72%); }
+
+.pixel-icon--tadpole {
+  --body: #30363d;
+  --body-dark: #151a1f;
+  --belly: #74808a;
+  --fin: #3c4651;
+  width: 42px;
+  height: 26px;
+}
+.pixel-icon--tadpole .pixel-body {
+  left: 44%;
+  top: 21%;
+  width: 36%;
+  height: 58%;
+  border-radius: 0;
+  clip-path: polygon(0 24%, 24% 0, 76% 0, 100% 24%, 100% 76%, 76% 100%, 24% 100%, 0 76%);
+}
+.pixel-icon--tadpole .pixel-tail {
+  left: 6%;
+  top: 42%;
+  width: 42%;
+  height: 18%;
+  clip-path: polygon(0 50%, 55% 0, 100% 50%, 55% 100%);
+}
+.pixel-icon--tadpole .pixel-fin,
+.pixel-icon--tadpole .pixel-stripe,
+.pixel-icon--tadpole .pixel-belly { display: none; }
+
+.pixel-icon--frog {
+  --body: #58b947;
+  --body-dark: #236b2a;
+  --belly: #d9ff9d;
+  --fin: #78df64;
+  width: 40px;
+  height: 34px;
+}
+.pixel-icon--frog .pixel-tail,
+.pixel-icon--frog .pixel-stripe,
+.pixel-icon--frog .pixel-fin { display: none; }
+.pixel-icon--frog .pixel-body {
+  left: 23%;
+  top: 20%;
+  width: 54%;
+  height: 52%;
+  clip-path: polygon(0 22%, 22% 0, 78% 0, 100% 22%, 100% 78%, 78% 100%, 22% 100%, 0 78%);
+}
+.pixel-icon--frog .pixel-eye { right: 23%; top: 14%; }
+.pixel-icon--frog .pixel-eye--back {
+  display: block;
+  left: 23%;
+  top: 14%;
+  width: 7px;
+  height: 7px;
+  background: var(--eye);
+  border: 2px solid var(--outline);
+  z-index: 5;
+}
+.pixel-icon--frog .pixel-leg {
+  display: block;
+  width: 18%;
+  height: 14%;
+  background: var(--body-dark);
+  border: 2px solid var(--outline);
+  z-index: 1;
+}
+.pixel-icon--frog .pixel-leg--one { left: 12%; bottom: 5%; }
+.pixel-icon--frog .pixel-leg--two { right: 12%; bottom: 5%; }
+
+.pixel-icon--catfish-small,
+.pixel-icon--dusk-catfish {
+  --body: #6d7f88;
+  --body-dark: #394a52;
+  --belly: #c8d4d8;
+  --fin: #4d656e;
+  width: 46px;
+  height: 31px;
+}
+.pixel-icon--dusk-catfish { --body: #765a87; --body-dark: #32233d; --belly: #d8c4e6; --fin: #ff9f6e; }
+.pixel-icon--catfish-small .pixel-body,
+.pixel-icon--dusk-catfish .pixel-body {
+  left: 20%;
+  width: 60%;
+  clip-path: polygon(0 24%, 14% 24%, 14% 12%, 80% 12%, 80% 24%, 100% 24%, 100% 76%, 80% 76%, 80% 88%, 14% 88%, 14% 76%, 0 76%);
+}
+.pixel-icon--catfish-small .pixel-stripe,
+.pixel-icon--dusk-catfish .pixel-stripe { display: none; }
+.pixel-icon--catfish-small .pixel-whisker,
+.pixel-icon--dusk-catfish .pixel-whisker {
+  display: block;
+  right: 0;
+  width: 16px;
+  height: 3px;
+  background: var(--outline);
+  z-index: 5;
+}
+.pixel-icon--catfish-small .pixel-whisker--top,
+.pixel-icon--dusk-catfish .pixel-whisker--top { top: 40%; transform: rotate(-14deg); }
+.pixel-icon--catfish-small .pixel-whisker--bottom,
+.pixel-icon--dusk-catfish .pixel-whisker--bottom { top: 57%; transform: rotate(14deg); }
+.pixel-icon--dusk-catfish .pixel-aura {
+  display: block;
+  inset: 2px 0 0 4px;
+  background: rgba(154, 103, 255, 0.28);
+  clip-path: polygon(0 70%, 24% 36%, 44% 62%, 68% 26%, 100% 64%, 100% 100%, 0 100%);
+  z-index: 0;
+}
+
+.pixel-icon--eel-small,
+.pixel-icon--glow-eel,
+.pixel-icon--gulper,
+.pixel-icon--oarfish,
+.pixel-icon--leviathan-small,
+.pixel-icon--leviathan {
+  --body: #8a5a3e;
+  --body-dark: #4b2e24;
+  --belly: #e3b989;
+  --fin: #6d412e;
+  width: 52px;
+  height: 25px;
+}
+.pixel-icon--eel-small .pixel-tail,
+.pixel-icon--glow-eel .pixel-tail,
+.pixel-icon--gulper .pixel-tail,
+.pixel-icon--oarfish .pixel-tail,
+.pixel-icon--leviathan-small .pixel-tail,
+.pixel-icon--leviathan .pixel-tail {
+  left: 2%;
+  top: 28%;
+  width: 16%;
+  height: 44%;
+}
+.pixel-icon--eel-small .pixel-body,
+.pixel-icon--glow-eel .pixel-body,
+.pixel-icon--gulper .pixel-body,
+.pixel-icon--oarfish .pixel-body,
+.pixel-icon--leviathan-small .pixel-body,
+.pixel-icon--leviathan .pixel-body {
+  left: 14%;
+  top: 24%;
+  width: 72%;
+  height: 50%;
+  clip-path: polygon(0 36%, 10% 18%, 90% 18%, 100% 36%, 100% 64%, 90% 82%, 10% 82%, 0 64%);
+}
+.pixel-icon--eel-small .pixel-fin,
+.pixel-icon--eel-small .pixel-stripe,
+.pixel-icon--glow-eel .pixel-fin,
+.pixel-icon--glow-eel .pixel-stripe,
+.pixel-icon--gulper .pixel-fin,
+.pixel-icon--gulper .pixel-stripe,
+.pixel-icon--oarfish .pixel-fin,
+.pixel-icon--oarfish .pixel-stripe,
+.pixel-icon--leviathan-small .pixel-fin,
+.pixel-icon--leviathan-small .pixel-stripe,
+.pixel-icon--leviathan .pixel-fin,
+.pixel-icon--leviathan .pixel-stripe { display: none; }
+.pixel-icon--glow-eel { --body: #42f5c8; --body-dark: #157b70; --belly: #e9fff9; --fin: #8dfff0; }
+.pixel-icon--glow-eel .pixel-aura,
+.pixel-icon--crystal .pixel-aura,
+.pixel-icon--dew-fairy .pixel-aura {
+  display: block;
+  inset: 0;
+  background: rgba(102, 230, 255, 0.28);
+  clip-path: polygon(50% 0, 68% 28%, 100% 28%, 76% 50%, 100% 72%, 68% 72%, 50% 100%, 32% 72%, 0 72%, 24% 50%, 0 28%, 32% 28%);
+  z-index: 0;
+}
+.pixel-icon--gulper { --body: #3f3652; --body-dark: #120d1c; --belly: #bba4d6; --fin: #695080; width: 56px; }
+.pixel-icon--gulper .pixel-body { height: 62%; top: 16%; }
+.pixel-icon--gulper .pixel-eye { right: 10%; top: 30%; }
+.pixel-icon--oarfish { --body: #f6efe2; --body-dark: #c53a3a; --belly: #ffffff; --fin: #ef4444; width: 62px; height: 24px; }
+.pixel-icon--oarfish .pixel-horn,
+.pixel-icon--leviathan-small .pixel-horn,
+.pixel-icon--leviathan .pixel-horn {
+  display: block;
+  left: 50%;
+  top: 3%;
+  width: 28%;
+  height: 12%;
+  background: var(--fin);
+  border: 2px solid var(--outline);
+  z-index: 6;
+}
+.pixel-icon--leviathan-small { --body: #2fb6a5; --body-dark: #0f5d6b; --belly: #bdf7e8; --fin: #7dd3fc; width: 60px; height: 28px; }
+.pixel-icon--leviathan { --body: #7c3aed; --body-dark: #32115f; --belly: #d8b4fe; --fin: #22d3ee; width: 64px; height: 30px; }
+
+.pixel-icon--flounder-small,
+.pixel-icon--sunset-ray,
+.pixel-icon--manta,
+.pixel-icon--solar-ray {
+  --body: #7ab6c8;
+  --body-dark: #315b70;
+  --belly: #d7f4f2;
+  --fin: #79d7d0;
+  width: 50px;
+  height: 34px;
+}
+.pixel-icon--flounder-small .pixel-body,
+.pixel-icon--sunset-ray .pixel-body,
+.pixel-icon--manta .pixel-body,
+.pixel-icon--solar-ray .pixel-body {
+  left: 22%;
+  top: 20%;
+  width: 62%;
+  height: 58%;
+  clip-path: polygon(0 50%, 20% 8%, 76% 12%, 100% 50%, 76% 88%, 20% 92%);
+}
+.pixel-icon--flounder-small .pixel-tail,
+.pixel-icon--sunset-ray .pixel-tail,
+.pixel-icon--manta .pixel-tail,
+.pixel-icon--solar-ray .pixel-tail {
+  left: 4%;
+  top: 39%;
+  width: 23%;
+  height: 22%;
+}
+.pixel-icon--flounder-small .pixel-fin,
+.pixel-icon--sunset-ray .pixel-fin,
+.pixel-icon--manta .pixel-fin,
+.pixel-icon--solar-ray .pixel-fin,
+.pixel-icon--flounder-small .pixel-stripe--two { display: none; }
+.pixel-icon--sunset-ray { --body: #ff8f5a; --body-dark: #b65059; --belly: #ffe9ba; --fin: #ffd166; }
+.pixel-icon--sunset-ray .pixel-aura,
+.pixel-icon--solar-ray .pixel-aura,
+.pixel-icon--phoenix-fish .pixel-aura,
+.pixel-icon--fire-beast .pixel-aura {
+  display: block;
+  inset: 0;
+  background: rgba(255, 122, 48, 0.3);
+  clip-path: polygon(50% 0, 62% 30%, 92% 12%, 75% 42%, 100% 50%, 75% 58%, 92% 88%, 62% 70%, 50% 100%, 38% 70%, 8% 88%, 25% 58%, 0 50%, 25% 42%, 8% 12%, 38% 30%);
+  z-index: 0;
+}
+.pixel-icon--manta { --body: #3f5367; --body-dark: #111827; --belly: #cbd5e1; --fin: #64748b; width: 56px; }
+.pixel-icon--solar-ray { --body: #ffcf4d; --body-dark: #e85d04; --belly: #fff3b0; --fin: #fb7185; width: 54px; }
+.pixel-icon--solar-ray .pixel-wing {
+  display: block;
+  top: 26%;
+  width: 25%;
+  height: 42%;
+  background: #fb7185;
+  border: 2px solid var(--outline);
+  z-index: 1;
+}
+.pixel-icon--solar-ray .pixel-wing--left { left: 8%; clip-path: polygon(100% 50%, 0 0, 12% 100%); }
+.pixel-icon--solar-ray .pixel-wing--right { right: 8%; clip-path: polygon(0 50%, 100% 0, 88% 100%); }
+
+.pixel-icon--squid-small,
+.pixel-icon--octopus,
+.pixel-icon--kraken-baby,
+.pixel-icon--kraken {
+  --body: #b56be8;
+  --body-dark: #643199;
+  --belly: #ead7ff;
+  --fin: #d58cff;
+  width: 42px;
+  height: 36px;
+}
+.pixel-icon--squid-small .pixel-tail,
+.pixel-icon--octopus .pixel-tail,
+.pixel-icon--kraken-baby .pixel-tail,
+.pixel-icon--kraken .pixel-tail,
+.pixel-icon--squid-small .pixel-fin,
+.pixel-icon--octopus .pixel-fin,
+.pixel-icon--kraken-baby .pixel-fin,
+.pixel-icon--kraken .pixel-fin,
+.pixel-icon--squid-small .pixel-stripe,
+.pixel-icon--octopus .pixel-stripe,
+.pixel-icon--kraken-baby .pixel-stripe,
+.pixel-icon--kraken .pixel-stripe { display: none; }
+.pixel-icon--squid-small .pixel-body,
+.pixel-icon--octopus .pixel-body,
+.pixel-icon--kraken-baby .pixel-body,
+.pixel-icon--kraken .pixel-body {
+  left: 28%;
+  top: 8%;
+  width: 46%;
+  height: 48%;
+  clip-path: polygon(50% 0, 100% 24%, 92% 88%, 50% 100%, 8% 88%, 0 24%);
+}
+.pixel-icon--octopus .pixel-body,
+.pixel-icon--kraken .pixel-body { clip-path: polygon(22% 0, 78% 0, 100% 30%, 92% 82%, 50% 100%, 8% 82%, 0 30%); }
+.pixel-icon--squid-small .pixel-tentacle,
+.pixel-icon--octopus .pixel-tentacle,
+.pixel-icon--kraken-baby .pixel-tentacle,
+.pixel-icon--kraken .pixel-tentacle {
+  display: block;
+  bottom: 6%;
+  width: 10%;
+  height: 36%;
+  background: var(--body);
+  border: 2px solid var(--outline);
+  z-index: 1;
+}
+.pixel-icon--squid-small .pixel-tentacle--one,
+.pixel-icon--octopus .pixel-tentacle--one,
+.pixel-icon--kraken-baby .pixel-tentacle--one,
+.pixel-icon--kraken .pixel-tentacle--one { left: 24%; }
+.pixel-icon--squid-small .pixel-tentacle--two,
+.pixel-icon--octopus .pixel-tentacle--two,
+.pixel-icon--kraken-baby .pixel-tentacle--two,
+.pixel-icon--kraken .pixel-tentacle--two { left: 39%; }
+.pixel-icon--squid-small .pixel-tentacle--three,
+.pixel-icon--octopus .pixel-tentacle--three,
+.pixel-icon--kraken-baby .pixel-tentacle--three,
+.pixel-icon--kraken .pixel-tentacle--three { right: 39%; }
+.pixel-icon--squid-small .pixel-tentacle--four,
+.pixel-icon--octopus .pixel-tentacle--four,
+.pixel-icon--kraken-baby .pixel-tentacle--four,
+.pixel-icon--kraken .pixel-tentacle--four { right: 24%; }
+.pixel-icon--kraken-baby { --body: #7c3aed; --body-dark: #2e1065; --fin: #c084fc; }
+.pixel-icon--kraken { --body: #4c1d95; --body-dark: #160524; --belly: #c4b5fd; --fin: #f472b6; width: 48px; height: 40px; }
+.pixel-icon--kraken .pixel-crown {
+  display: block;
+  left: 32%;
+  top: 0;
+  width: 36%;
+  height: 16%;
+  background: #f472b6;
+  border: 2px solid var(--outline);
+  z-index: 7;
+}
+
+.pixel-icon--crab,
+.pixel-icon--dawn-crab,
+.pixel-icon--lobster {
+  --body: #df4f45;
+  --body-dark: #8f241f;
+  --belly: #ffd0b8;
+  --fin: #ff8a5c;
+  width: 48px;
+  height: 34px;
+}
+.pixel-icon--crab .pixel-tail,
+.pixel-icon--dawn-crab .pixel-tail,
+.pixel-icon--lobster .pixel-tail,
+.pixel-icon--crab .pixel-fin,
+.pixel-icon--dawn-crab .pixel-fin,
+.pixel-icon--lobster .pixel-fin,
+.pixel-icon--crab .pixel-stripe,
+.pixel-icon--dawn-crab .pixel-stripe,
+.pixel-icon--lobster .pixel-stripe { display: none; }
+.pixel-icon--crab .pixel-body,
+.pixel-icon--dawn-crab .pixel-body,
+.pixel-icon--lobster .pixel-body {
+  left: 28%;
+  top: 28%;
+  width: 44%;
+  height: 36%;
+  clip-path: polygon(12% 0, 88% 0, 100% 24%, 100% 76%, 88% 100%, 12% 100%, 0 76%, 0 24%);
+}
+.pixel-icon--crab .pixel-claw,
+.pixel-icon--dawn-crab .pixel-claw,
+.pixel-icon--lobster .pixel-claw {
+  display: block;
+  top: 18%;
+  width: 20%;
+  height: 28%;
+  background: var(--fin);
+  border: 2px solid var(--outline);
+  z-index: 2;
+}
+.pixel-icon--crab .pixel-claw--left,
+.pixel-icon--dawn-crab .pixel-claw--left,
+.pixel-icon--lobster .pixel-claw--left { left: 5%; clip-path: polygon(0 0, 100% 28%, 70% 55%, 100% 100%, 0 78%); }
+.pixel-icon--crab .pixel-claw--right,
+.pixel-icon--dawn-crab .pixel-claw--right,
+.pixel-icon--lobster .pixel-claw--right { right: 5%; clip-path: polygon(100% 0, 0 28%, 30% 55%, 0 100%, 100% 78%); }
+.pixel-icon--crab .pixel-leg,
+.pixel-icon--dawn-crab .pixel-leg,
+.pixel-icon--lobster .pixel-leg {
+  display: block;
+  bottom: 13%;
+  width: 12%;
+  height: 10%;
+  background: var(--body-dark);
+  border: 2px solid var(--outline);
+}
+.pixel-icon--crab .pixel-leg--one,
+.pixel-icon--dawn-crab .pixel-leg--one,
+.pixel-icon--lobster .pixel-leg--one { left: 22%; }
+.pixel-icon--crab .pixel-leg--two,
+.pixel-icon--dawn-crab .pixel-leg--two,
+.pixel-icon--lobster .pixel-leg--two { right: 22%; }
+.pixel-icon--dawn-crab { --body: #ff8c63; --body-dark: #b24535; --belly: #ffe7bb; --fin: #ffd166; }
+.pixel-icon--lobster { --body: #c92d2d; --body-dark: #6d1717; --belly: #ffc4a8; --fin: #f97316; width: 54px; }
+.pixel-icon--lobster .pixel-body { width: 50%; left: 25%; }
+
+.pixel-icon--old-turtle,
+.pixel-icon--jade-turtle {
+  --body: #4e7c4d;
+  --body-dark: #1f3b28;
+  --belly: #d5c56e;
+  --fin: #67a95c;
+  width: 48px;
+  height: 34px;
+}
+.pixel-icon--old-turtle .pixel-tail,
+.pixel-icon--jade-turtle .pixel-tail { left: 5%; top: 42%; width: 12%; height: 18%; }
+.pixel-icon--old-turtle .pixel-body,
+.pixel-icon--jade-turtle .pixel-body {
+  left: 27%;
+  top: 18%;
+  width: 48%;
+  height: 58%;
+  clip-path: polygon(20% 0, 80% 0, 100% 24%, 100% 76%, 80% 100%, 20% 100%, 0 76%, 0 24%);
+}
+.pixel-icon--old-turtle .pixel-shell,
+.pixel-icon--jade-turtle .pixel-shell {
+  display: block;
+  left: 34%;
+  top: 28%;
+  width: 30%;
+  height: 32%;
+  background: var(--body-dark);
+  border: 2px solid var(--outline);
+  z-index: 4;
+}
+.pixel-icon--old-turtle .pixel-fin,
+.pixel-icon--jade-turtle .pixel-fin,
+.pixel-icon--old-turtle .pixel-stripe,
+.pixel-icon--jade-turtle .pixel-stripe { display: none; }
+.pixel-icon--jade-turtle { --body: #34d399; --body-dark: #047857; --belly: #d1fae5; --fin: #6ee7b7; }
+.pixel-icon--jade-turtle .pixel-aura { display: block; inset: 0; background: rgba(52, 211, 153, 0.22); z-index: 0; }
+
+.pixel-icon--mud-dragon,
+.pixel-icon--star-horse,
+.pixel-icon--candy-horse,
+.pixel-icon--candy-dog,
+.pixel-icon--fire-beast {
+  --body: #8b5e34;
+  --body-dark: #4a2a17;
+  --belly: #d6b483;
+  --fin: #e47b38;
+  width: 54px;
+  height: 34px;
+}
+.pixel-icon--mud-dragon .pixel-body,
+.pixel-icon--star-horse .pixel-body,
+.pixel-icon--candy-horse .pixel-body,
+.pixel-icon--candy-dog .pixel-body,
+.pixel-icon--fire-beast .pixel-body {
+  left: 24%;
+  top: 24%;
+  width: 54%;
+  height: 44%;
+}
+.pixel-icon--mud-dragon .pixel-horn,
+.pixel-icon--star-horse .pixel-horn,
+.pixel-icon--candy-horse .pixel-horn,
+.pixel-icon--fire-beast .pixel-horn {
+  display: block;
+  right: 10%;
+  top: 6%;
+  width: 14%;
+  height: 24%;
+  background: var(--fin);
+  border: 2px solid var(--outline);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  z-index: 6;
+}
+.pixel-icon--mud-dragon { --body: #7a5a35; --body-dark: #3a2a18; --belly: #caa66e; --fin: #94a044; }
+.pixel-icon--mud-dragon .pixel-stripe { transform: skewX(-15deg); background: #4b3b21; }
+.pixel-icon--star-horse { --body: #3446a5; --body-dark: #11194d; --belly: #cad6ff; --fin: #facc15; }
+.pixel-icon--star-horse .pixel-sparkle,
+.pixel-icon--candy-horse .pixel-sparkle,
+.pixel-icon--sea-ghost .pixel-sparkle {
+  display: block;
+  width: 10%;
+  height: 10%;
+  background: #fff;
+  border: 1px solid var(--outline);
+  z-index: 8;
+}
+.pixel-icon--star-horse .pixel-sparkle--one,
+.pixel-icon--candy-horse .pixel-sparkle--one,
+.pixel-icon--sea-ghost .pixel-sparkle--one { left: 16%; top: 10%; }
+.pixel-icon--star-horse .pixel-sparkle--two,
+.pixel-icon--candy-horse .pixel-sparkle--two,
+.pixel-icon--sea-ghost .pixel-sparkle--two { right: 18%; bottom: 10%; }
+.pixel-icon--candy-horse { --body: #ff8bd1; --body-dark: #b83280; --belly: #fff0f8; --fin: #8ee8ff; }
+.pixel-icon--candy-dog { --body: #f59e0b; --body-dark: #92400e; --belly: #fff7d6; --fin: #ff8bd1; }
+.pixel-icon--candy-dog .pixel-horn {
+  display: block;
+  right: 12%;
+  top: 9%;
+  width: 16%;
+  height: 16%;
+  background: var(--body-dark);
+  border: 2px solid var(--outline);
+  z-index: 6;
+}
+.pixel-icon--fire-beast { --body: #c2410c; --body-dark: #5f1607; --belly: #fed7aa; --fin: #facc15; }
+.pixel-icon--fire-beast .pixel-crown,
+.pixel-icon--phoenix-fish .pixel-crown {
+  display: block;
+  left: 34%;
+  top: -1%;
+  width: 34%;
+  height: 22%;
+  background: #f97316;
+  border: 2px solid var(--outline);
+  clip-path: polygon(0 100%, 12% 30%, 35% 78%, 50% 0, 65% 78%, 88% 30%, 100% 100%);
+  z-index: 8;
+}
+
+.pixel-icon--swordfish,
+.pixel-icon--marlin-small,
+.pixel-icon--dawn-sword {
+  --body: #6ba7d6;
+  --body-dark: #1c4e80;
+  --belly: #dcefff;
+  --fin: #9dd7ff;
+  width: 60px;
+  height: 28px;
+}
+.pixel-icon--swordfish .pixel-body,
+.pixel-icon--marlin-small .pixel-body,
+.pixel-icon--dawn-sword .pixel-body { left: 22%; width: 56%; height: 46%; }
+.pixel-icon--swordfish .pixel-horn,
+.pixel-icon--marlin-small .pixel-horn,
+.pixel-icon--dawn-sword .pixel-horn {
+  display: block;
+  right: 0;
+  top: 44%;
+  width: 28%;
+  height: 10%;
+  background: #dbeafe;
+  border: 2px solid var(--outline);
+  z-index: 5;
+}
+.pixel-icon--swordfish .pixel-stripe,
+.pixel-icon--marlin-small .pixel-stripe,
+.pixel-icon--dawn-sword .pixel-stripe { display: none; }
+.pixel-icon--marlin-small { --body: #2563eb; --body-dark: #1e3a8a; --fin: #60a5fa; }
+.pixel-icon--marlin-small .pixel-fin--top {
+  display: block;
+  left: 42%;
+  top: 2%;
+  width: 24%;
+  height: 28%;
+  background: var(--fin);
+}
+.pixel-icon--dawn-sword { --body: #ffb35c; --body-dark: #b45309; --belly: #fff0cb; --fin: #fef08a; }
+
+.pixel-icon--shark-small,
+.pixel-icon--dusk-shark,
+.pixel-icon--megalodon-baby,
+.pixel-icon--whale-small {
+  --body: #66788f;
+  --body-dark: #243142;
+  --belly: #dce5ef;
+  --fin: #7d93ad;
+  width: 58px;
+  height: 32px;
+}
+.pixel-icon--shark-small .pixel-body,
+.pixel-icon--dusk-shark .pixel-body,
+.pixel-icon--megalodon-baby .pixel-body,
+.pixel-icon--whale-small .pixel-body {
+  left: 18%;
+  width: 66%;
+  height: 52%;
+  clip-path: polygon(0 50%, 14% 18%, 84% 18%, 100% 50%, 84% 82%, 14% 82%);
+}
+.pixel-icon--shark-small .pixel-fin--top,
+.pixel-icon--dusk-shark .pixel-fin--top,
+.pixel-icon--megalodon-baby .pixel-fin--top {
+  left: 48%;
+  top: 3%;
+  width: 16%;
+  height: 25%;
+}
+.pixel-icon--shark-small .pixel-stripe,
+.pixel-icon--dusk-shark .pixel-stripe,
+.pixel-icon--megalodon-baby .pixel-stripe,
+.pixel-icon--whale-small .pixel-stripe { display: none; }
+.pixel-icon--dusk-shark { --body: #4b3d65; --body-dark: #1e1530; --belly: #cdbfe8; --fin: #ff8f5a; }
+.pixel-icon--megalodon-baby { --body: #273142; --body-dark: #070b12; --belly: #cbd5e1; --fin: #64748b; width: 64px; height: 36px; }
+.pixel-icon--megalodon-baby .pixel-eye { width: 8px; height: 8px; background: #ff4d4d; }
+.pixel-icon--whale-small { --body: #5c7fa8; --body-dark: #243b64; --belly: #e0f2fe; --fin: #93c5fd; width: 64px; height: 38px; }
+.pixel-icon--whale-small .pixel-body { height: 58%; top: 20%; }
+.pixel-icon--whale-small .pixel-fin--top,
+.pixel-icon--whale-small .pixel-fin--bottom { display: none; }
+.pixel-icon--whale-small .pixel-drop {
+  display: block;
+  left: 52%;
+  top: 0;
+  width: 9%;
+  height: 16%;
+  background: #bae6fd;
+  border: 1px solid var(--outline);
+  z-index: 8;
+}
+
+.pixel-icon--abyss-lantern,
+.pixel-icon--angler,
+.pixel-icon--hatchet,
+.pixel-icon--siren,
+.pixel-icon--sea-ghost,
+.pixel-icon--crystal,
+.pixel-icon--dew-fairy,
+.pixel-icon--phoenix-fish,
+.pixel-icon--black-silk-fish,
+.pixel-icon--water-fish,
+.pixel-icon--maple-fish {
+  width: 46px;
+  height: 34px;
+}
+.pixel-icon--angler { --body: #263547; --body-dark: #0b1220; --belly: #8aa1b7; --fin: #475569; }
+.pixel-icon--angler .pixel-lure,
+.pixel-icon--abyss-lantern .pixel-lure {
+  display: block;
+  right: 3%;
+  top: 4%;
+  width: 12%;
+  height: 18%;
+  background: #fef08a;
+  border: 2px solid var(--outline);
+  z-index: 8;
+}
+.pixel-icon--angler .pixel-horn,
+.pixel-icon--abyss-lantern .pixel-horn {
+  display: block;
+  right: 10%;
+  top: 14%;
+  width: 28%;
+  height: 8%;
+  background: var(--outline);
+  z-index: 7;
+}
+.pixel-icon--hatchet { --body: #c7d2fe; --body-dark: #64748b; --belly: #f8fafc; --fin: #94a3b8; width: 42px; height: 38px; }
+.pixel-icon--hatchet .pixel-body {
+  left: 30%;
+  top: 12%;
+  width: 42%;
+  height: 70%;
+  clip-path: polygon(14% 0, 86% 0, 100% 24%, 74% 100%, 20% 100%, 0 24%);
+}
+.pixel-icon--hatchet .pixel-tail { left: 8%; top: 38%; width: 22%; height: 22%; }
+.pixel-icon--abyss-lantern { --body: #1f2937; --body-dark: #020617; --belly: #475569; --fin: #f59e0b; }
+.pixel-icon--abyss-lantern .pixel-lure { background: #facc15; box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.25); }
+.pixel-icon--siren { --body: #37c6b6; --body-dark: #0f766e; --belly: #d7fff8; --fin: #c084fc; width: 48px; height: 36px; }
+.pixel-icon--siren .pixel-crown {
+  display: block;
+  right: 9%;
+  top: 0;
+  width: 18%;
+  height: 18%;
+  background: #f9a8d4;
+  border: 2px solid var(--outline);
+  z-index: 8;
+}
+.pixel-icon--sea-ghost { --body: #e0f2fe; --body-dark: #94a3b8; --belly: #ffffff; --fin: #cbd5e1; opacity: 0.92; }
+.pixel-icon--sea-ghost .pixel-body {
+  clip-path: polygon(18% 0, 82% 0, 100% 28%, 100% 76%, 82% 60%, 64% 82%, 48% 60%, 30% 82%, 14% 60%, 0 76%, 0 28%);
+}
+.pixel-icon--sea-ghost .pixel-tail,
+.pixel-icon--sea-ghost .pixel-fin,
+.pixel-icon--sea-ghost .pixel-stripe,
+.pixel-icon--sea-ghost .pixel-belly { display: none; }
+.pixel-icon--crystal { --body: #8be9ff; --body-dark: #3b82f6; --belly: #eff6ff; --fin: #c4b5fd; }
+.pixel-icon--crystal .pixel-body {
+  clip-path: polygon(50% 0, 100% 30%, 78% 100%, 22% 100%, 0 30%);
+}
+.pixel-icon--crystal .pixel-tail,
+.pixel-icon--crystal .pixel-fin,
+.pixel-icon--crystal .pixel-stripe { display: none; }
+.pixel-icon--dew-fairy { --body: #a7f3d0; --body-dark: #34d399; --belly: #ecfdf5; --fin: #f0abfc; }
+.pixel-icon--dew-fairy .pixel-wing {
+  display: block;
+  top: 18%;
+  width: 24%;
+  height: 34%;
+  background: rgba(240, 171, 252, 0.9);
+  border: 2px solid var(--outline);
+  z-index: 1;
+}
+.pixel-icon--dew-fairy .pixel-wing--left { left: 8%; clip-path: polygon(100% 50%, 0 0, 0 100%); }
+.pixel-icon--dew-fairy .pixel-wing--right { right: 8%; clip-path: polygon(0 50%, 100% 0, 100% 100%); }
+.pixel-icon--phoenix-fish { --body: #f97316; --body-dark: #b91c1c; --belly: #fed7aa; --fin: #facc15; width: 52px; height: 36px; }
+.pixel-icon--candy-fish { --body: #ff8bd1; --body-dark: #9d2d71; --belly: #fff0f8; --fin: #8ee8ff; }
+.pixel-icon--candy-fish .pixel-stripe--one { background: #ffffff; width: 8%; transform: skewX(-12deg); }
+.pixel-icon--candy-fish .pixel-stripe--two { background: #7dd3fc; width: 8%; transform: skewX(-12deg); }
+.pixel-icon--black-silk-fish { --body: #17121d; --body-dark: #ff7ac8; --belly: #2d2336; --fin: #ff7ac8; }
+.pixel-icon--black-silk-fish .pixel-stripe { background: #ff7ac8; height: 18%; top: 57%; }
+.pixel-icon--water-fish { --body: #38bdf8; --body-dark: #0284c7; --belly: #e0f7ff; --fin: #7dd3fc; }
+.pixel-icon--water-fish .pixel-drop {
+  display: block;
+  right: 4%;
+  top: 4%;
+  width: 14%;
+  height: 24%;
+  background: #bae6fd;
+  border: 2px solid var(--outline);
+  clip-path: polygon(50% 0, 100% 50%, 70% 100%, 30% 100%, 0 50%);
+  z-index: 8;
+}
+.pixel-icon--big-goldfish { --body: #f59e0b; --body-dark: #b45309; --belly: #fff1b8; --fin: #fb7185; width: 50px; height: 36px; }
+.pixel-icon--big-goldfish .pixel-tail { width: 30%; height: 62%; top: 18%; }
+.pixel-icon--maple-fish { --body: #d97706; --body-dark: #7c2d12; --belly: #fde68a; --fin: #ef4444; }
+.pixel-icon--maple-fish .pixel-crown {
+  display: block;
+  left: 36%;
+  top: -2%;
+  width: 30%;
+  height: 24%;
+  background: #ef4444;
+  border: 2px solid var(--outline);
+  clip-path: polygon(50% 0, 62% 34%, 100% 20%, 72% 52%, 88% 100%, 50% 74%, 12% 100%, 28% 52%, 0 20%, 38% 34%);
+  z-index: 8;
+}
 
 /* 结果 */
 .result-fish {
@@ -233,6 +1213,22 @@ input, select {
   padding: 20px;
 }
 .result-fish .icon { font-size: 64px; display: block; margin-bottom: 12px; }
+.result-fish .pixel-icon {
+  width: 92px;
+  height: 66px;
+}
+.result-fish .pixel-icon--minnow {
+  width: 84px;
+  height: 58px;
+}
+.result-fish .pixel-icon--catfish {
+  width: 96px;
+  height: 66px;
+}
+.result-fish .pixel-icon--eel {
+  width: 104px;
+  height: 54px;
+}
 .result-fish .name { font-size: 22px; margin-bottom: 4px; }
 .result-fish .rarity { font-size: 14px; margin-bottom: 12px; letter-spacing: 2px; }
 .result-fish .stats { font-size: 14px; line-height: 1.8; }
