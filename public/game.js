@@ -782,6 +782,7 @@ function playCatchRodEffect() {
 const resultOverlay = $('result-overlay');
 const resultContent = $('result-content');
 $('result-close').onclick = () => resultOverlay.classList.add('hidden');
+$('result-close-bottom').onclick = () => resultOverlay.classList.add('hidden');
 
 function showResult(c) {
   const retryBox = $('ad-retry-box');

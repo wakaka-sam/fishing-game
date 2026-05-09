@@ -586,6 +586,8 @@ input, select {
 }
 .ad-retry-btn:hover { filter: brightness(1.15); }
 .ad-retry-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.result-bottom-close { display: block; width: 100%; margin-top: 12px; padding: 10px; background: #444; color: #ddd; border: 1px solid #666; border-radius: 6px; font-size: 1em; cursor: pointer; }
+.result-bottom-close:hover { background: #555; }
 
 /* 宠物系统 */
 .pet-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
