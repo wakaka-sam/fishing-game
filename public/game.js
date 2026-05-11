@@ -1793,23 +1793,36 @@ async function checkAnnouncement() {
   if (!versionData) return;
   const lastSeen = localStorage.getItem('fishing_last_version') || '';
   if (lastSeen === versionData.version) return;
-  showAnnouncement(lastSeen);
-  localStorage.setItem('fishing_last_version', versionData.version);
+  if (showAnnouncement(lastSeen)) {
+    localStorage.setItem('fishing_last_version', versionData.version);
+  }
+}
+
+function compareVersions(a, b) {
+  const pa = String(a || '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b || '').split('.').map((n) => parseInt(n, 10) || 0);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
 }
 
 function showAnnouncement(sinceVersion) {
   const el = $('announce-content');
   let html = '';
   for (const entry of versionData.changelog) {
-    if (sinceVersion && entry.version <= sinceVersion) continue;
+    if (sinceVersion && compareVersions(entry.version, sinceVersion) <= 0) continue;
     html += `<div class="announce-version">v${entry.version}<span class="announce-date">${entry.date}</span></div>`;
     html += '<ul class="announce-list">';
     for (const c of entry.changes) html += `<li>${c}</li>`;
     html += '</ul>';
   }
-  if (!html) return;
+  if (!html) return false;
   el.innerHTML = html;
   $('announce-overlay').classList.remove('hidden');
+  return true;
 }
 
 $('announce-close').onclick = () => $('announce-overlay').classList.add('hidden');
