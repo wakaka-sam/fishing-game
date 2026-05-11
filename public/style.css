@@ -1545,6 +1545,21 @@ input, select {
   .mobile-action-btn { display: flex; }
 
   .modal.wide { min-width: 90vw; }
+  .dex-tabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .dex-tabs button {
+    min-width: 0;
+    width: 100%;
+    padding: 6px 2px;
+    font-size: 10px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .shop-list { grid-template-columns: 1fr; }
   .dex-list { grid-template-columns: repeat(3, 1fr); }
   .rod-list { grid-template-columns: 1fr; }
@@ -1557,6 +1572,14 @@ input, select {
   #hit-btn { padding: 16px 40px; font-size: 20px; }
 
   .share-link-box { flex-direction: column; }
+}
+
+@media (max-width: 380px) {
+  .dex-tabs { gap: 3px; }
+  .dex-tabs button {
+    padding: 5px 1px;
+    font-size: 9px;
+  }
 }
 
 @media (hover: none) and (pointer: coarse) {
