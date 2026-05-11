@@ -1529,8 +1529,22 @@ input, select {
     padding: 6px 8px;
   }
   .user-info { gap: 10px; font-size: 14px; }
-  .actions { flex-wrap: wrap; gap: 4px; }
-  .actions button { font-size: 12px; padding: 6px 8px; }
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    width: 100%;
+  }
+  .actions button {
+    min-width: 0;
+    width: 100%;
+    font-size: 11px;
+    padding: 6px 2px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   #game {
     width: 100%;
@@ -1575,6 +1589,11 @@ input, select {
 }
 
 @media (max-width: 380px) {
+  .actions { gap: 3px; }
+  .actions button {
+    padding: 5px 1px;
+    font-size: 10px;
+  }
   .dex-tabs { gap: 3px; }
   .dex-tabs button {
     padding: 5px 1px;
