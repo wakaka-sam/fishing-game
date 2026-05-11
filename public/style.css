@@ -90,7 +90,7 @@ input, select {
 #player-name { color: #4ec9b0; }
 #player-money { color: #ffd700; }
 #player-diamonds { color: #66e6ff; }
-.actions { display: flex; gap: 8px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
 #game {
   width: 640px;
@@ -1287,6 +1287,7 @@ input, select {
 }
 .rod-info .rod-icon { font-size: 16px; }
 .rod-info .rod-next { font-size: 11px; opacity: 0.6; }
+.rod-info .rod-accessory { color: #66e6ff; font-size: 11px; }
 
 /* 鱼竿收藏 */
 .rod-list {
@@ -1430,6 +1431,8 @@ input, select {
 .gacha-item.gi-coin .gi-name { color: #ffd700; }
 .gacha-item.gi-diamond { border-color: #66e6ff; box-shadow: 0 0 8px rgba(102,230,255,0.4); }
 .gacha-item.gi-diamond .gi-name { color: #66e6ff; }
+.gacha-item.gi-accessory { border-color: #4ec9b0; box-shadow: 0 0 10px rgba(78,201,176,0.35); }
+.gacha-item.gi-accessory .gi-name { color: #e8d28a; }
 .gacha-item.gi-common { border-color: #555; }
 .gacha-item.gi-common .gi-name { color: #888; }
 .gacha-summary { margin-top: 12px; font-size: 14px; color: #4ec9b0; }
@@ -1545,6 +1548,8 @@ input, select {
   .shop-list { grid-template-columns: 1fr; }
   .dex-list { grid-template-columns: repeat(3, 1fr); }
   .rod-list { grid-template-columns: 1fr; }
+  .accessory-list { grid-template-columns: 1fr; }
+  .accessory-catalog { grid-template-columns: 1fr; }
 
   .hitbar { width: 90vw; max-width: 500px; }
   .hitbar-overlay { padding: 20px; }
@@ -1606,3 +1611,123 @@ input, select {
 }
 .pet-item.active .pet-badge { background: #4caf50; color: #fff; }
 .pet-item.locked .pet-badge { background: #555; color: #aaa; }
+
+/* 首饰系统 */
+.accessory-summary {
+  border: 2px solid #334155;
+  background: #0d1421;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.accessory-equipped {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.accessory-empty { color: #888; text-align: center; }
+.accessory-status {
+  min-height: 20px;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+}
+.accessory-status.success { color: #4ec9b0; }
+.accessory-status.fail { color: #ffae42; }
+.accessory-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.accessory-item {
+  border: 2px solid #555;
+  background: #0d1421;
+  padding: 12px;
+  position: relative;
+}
+.accessory-item.active {
+  box-shadow: 0 0 12px rgba(102,230,255,0.35);
+}
+.accessory-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.accessory-icon { font-size: 30px; line-height: 1; }
+.accessory-name { font-size: 16px; font-weight: bold; }
+.accessory-stars {
+  color: #ffd700;
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+.accessory-desc {
+  color: #aaa;
+  font-size: 12px;
+  line-height: 1.45;
+  min-height: 34px;
+}
+.accessory-effect {
+  color: #4ec9b0;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.accessory-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.accessory-actions button {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+.accessory-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.accessory-mat {
+  color: #ffd700;
+  font-size: 11px;
+  margin-top: 8px;
+}
+.accessory-mat.muted { color: #777; }
+.accessory-empty-panel,
+.accessory-catalog {
+  grid-column: 1 / -1;
+  border: 2px dashed #334155;
+  background: #101827;
+  padding: 12px;
+}
+.accessory-empty-title {
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.accessory-empty-desc {
+  color: #888;
+  text-align: center;
+  font-size: 12px;
+}
+.accessory-catalog {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.accessory-catalog-item {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+  font-size: 12px;
+}
+.accessory-catalog-item span { font-size: 24px; }
+.accessory-catalog-item em {
+  color: #888;
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.4;
+}

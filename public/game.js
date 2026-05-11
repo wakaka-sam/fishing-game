@@ -216,6 +216,7 @@ const DIAMOND_JACKPOT_CHANCE = 0.01;
 const BLACK_SILK_BAIT_ID = 'black_silk';
 const BLACK_SILK_BAIT_DROP_CHANCE = 0.10;
 const BLACK_SILK_ROD_ID = 'black_silk_rod';
+let accessoryUidCounter = 0;
 
 // ====== 登录 ======
 $('login-btn').onclick = login;
@@ -313,7 +314,48 @@ function ensureUserDefaults() {
   user.ownedRods = user.ownedRods || [];
   user.ownedPets = user.ownedPets || [];
   user.activePet = user.activePet || null;
+  normalizeAccessories();
   unlockBlackSilkRodIfComplete();
+}
+
+function makeAccessoryUid() {
+  accessoryUidCounter += 1;
+  return 'acc_' + Date.now().toString(36) + '_' + accessoryUidCounter.toString(36);
+}
+
+function normalizeAccessories() {
+  const defs = GAME_DATA.ACCESSORIES || [];
+  const validTypes = new Set(defs.map(a => a.id));
+  const items = Array.isArray(user.accessories) ? user.accessories : [];
+  user.accessories = items.map((item) => {
+    const type = typeof item === 'string' ? item : (item.type || item.id);
+    if (!validTypes.has(type)) return null;
+    return {
+      uid: item.uid || makeAccessoryUid(),
+      type,
+      star: GAME_DATA.clampAccessoryStar(item.star || 1),
+    };
+  }).filter(Boolean);
+  if (!user.accessories.some(item => item.uid === user.equippedAccessory)) {
+    user.equippedAccessory = null;
+  }
+}
+
+function getEquippedAccessory() {
+  if (!user || !user.equippedAccessory) return null;
+  return (user.accessories || []).find(item => item.uid === user.equippedAccessory) || null;
+}
+
+function getEquippedAccessoryEffects() {
+  return GAME_DATA.getAccessoryEffects(getEquippedAccessory());
+}
+
+function formatAccessoryEffect(accessory) {
+  const effects = GAME_DATA.getAccessoryEffects(accessory);
+  const parts = [];
+  if (effects.rarityBoost) parts.push(`稀有鱼概率 +${Math.round(effects.rarityBoost * 1000) / 10}%`);
+  if (effects.speedSlow) parts.push(`钓鱼条速度 -${Math.round(effects.speedSlow * 1000) / 10}%`);
+  return parts.join(' / ') || '无加成';
 }
 
 function refreshUI() {
@@ -455,6 +497,7 @@ function render() {
   ctx.moveTo(rodBaseX, rodBaseY);
   ctx.lineTo(rodTipX, rodTipY);
   ctx.stroke();
+  drawAccessoryRodParticles(getEquippedAccessory(), rodBaseX, rodBaseY, rodTipX, rodTipY, t);
 
   // 钓鱼线
   if (state.phase !== 'idle' || hookY > rodTipY + 10) {
@@ -529,6 +572,30 @@ function render() {
     drawText('等待鱼上钩...', W / 2, H - 24, '#fff', 12);
   } else if (state.phase === 'hooked') {
     drawText('!!! 鱼上钩了 !!!', W / 2, H - 24, '#ff5722', 16);
+  }
+}
+
+function drawAccessoryRodParticles(accessory, rodBaseX, rodBaseY, rodTipX, rodTipY, t) {
+  const def = accessory && GAME_DATA.getAccessoryDef(accessory.type);
+  if (!def) return;
+  const star = GAME_DATA.clampAccessoryStar(accessory.star);
+  const count = Math.min(18, 5 + Math.floor(star / 2));
+  for (let i = 0; i < count; i++) {
+    const frac = (i / count + t * (0.22 + star * 0.004)) % 1;
+    const wave = Math.sin(t * 4 + i * 1.7) * (3 + star * 0.12);
+    const x = rodBaseX + (rodTipX - rodBaseX) * frac + wave;
+    const y = rodBaseY + (rodTipY - rodBaseY) * frac + Math.cos(t * 3 + i) * 3;
+    const alpha = 0.35 + Math.sin(t * 5 + i) * 0.25;
+    if (def.particle === 'tide') {
+      px(x - 3, y - 1, 6, 2, `rgba(78,201,176,${alpha})`);
+      px(x - 1, y - 3, 2, 6, `rgba(102,230,255,${alpha * 0.7})`);
+    } else if (def.particle === 'star') {
+      px(x - 1, y - 5, 2, 10, `rgba(255,215,0,${alpha})`);
+      px(x - 5, y - 1, 10, 2, `rgba(255,215,0,${alpha})`);
+    } else {
+      px(x - 2, y - 2, 4, 4, `rgba(102,230,255,${alpha})`);
+      px(x + 2, y, 2, 2, `rgba(255,255,255,${alpha * 0.8})`);
+    }
   }
 }
 
@@ -634,7 +701,8 @@ function startHitbar() {
 
   // 提前 roll 出钓获结果
   const currentRodId = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods).id;
-  const result = rollCatch(state.castBait || user.currentBait, currentRodId);
+  const accessoryEffects = getEquippedAccessoryEffects();
+  const result = rollCatch(state.castBait || user.currentBait, currentRodId, accessoryEffects);
   hb.catch = result;
   const rarity = result.kind === 'fish' ? result.item.rarity : result.kind;
   hb.hitsNeeded = HITS_BY_RARITY[rarity] || 2;
@@ -657,6 +725,9 @@ function startHitbar() {
   const rodSkin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
   if (rodSkin.speedBonus && rodSkin.speedBonus[rarity]) {
     hb.cursorSpeed *= (1 + rodSkin.speedBonus[rarity]);
+  }
+  if (accessoryEffects.speedSlow) {
+    hb.cursorSpeed *= Math.max(0.35, 1 - accessoryEffects.speedSlow);
   }
   hb.zoneWidth = difficulty.zone;
   hb.timeLeft = 12;
@@ -1107,6 +1178,144 @@ function renderPets() {
   }
 }
 
+// ====== 首饰系统 ======
+const accessoryOverlay = $('accessory-overlay');
+$('accessory-btn').onclick = () => { renderAccessories(); accessoryOverlay.classList.remove('hidden'); };
+
+function findAccessoryUpgradeMaterial(target) {
+  return (user.accessories || []).find(item =>
+    item.uid !== target.uid &&
+    item.type === target.type &&
+    GAME_DATA.clampAccessoryStar(item.star) === GAME_DATA.clampAccessoryStar(target.star)
+  );
+}
+
+function renderAccessories(message = '') {
+  normalizeAccessories();
+  const summary = $('accessory-summary');
+  const status = $('accessory-status');
+  const list = $('accessory-list');
+  const equipped = getEquippedAccessory();
+  if (equipped) {
+    const def = GAME_DATA.getAccessoryDef(equipped.type);
+    summary.innerHTML = `
+      <div class="accessory-equipped">
+        <span class="accessory-icon">${def.icon}</span>
+        <div>
+          <div>装备中：${def.name} <span class="accessory-stars">${'★'.repeat(equipped.star)}</span></div>
+          <div class="accessory-effect">${formatAccessoryEffect(equipped)}</div>
+        </div>
+      </div>
+    `;
+  } else {
+    summary.innerHTML = '<div class="accessory-empty">未装备首饰</div>';
+  }
+  status.textContent = message;
+  status.className = 'accessory-status' + (message.includes('失败') ? ' fail' : (message ? ' success' : ''));
+  list.innerHTML = '';
+
+  if (user.accessories.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'accessory-empty-panel';
+    empty.innerHTML = '<div class="accessory-empty-title">暂无首饰</div><div class="accessory-empty-desc">可在钻石抽奖第三期获得首饰。</div>';
+    list.appendChild(empty);
+  }
+
+  const sorted = [...user.accessories].sort((a, b) => {
+    if (a.uid === user.equippedAccessory) return -1;
+    if (b.uid === user.equippedAccessory) return 1;
+    return b.star - a.star || a.type.localeCompare(b.type);
+  });
+
+  for (const item of sorted) {
+    const def = GAME_DATA.getAccessoryDef(item.type);
+    if (!def) continue;
+    const isEquipped = item.uid === user.equippedAccessory;
+    const material = findAccessoryUpgradeMaterial(item);
+    const chance = GAME_DATA.getAccessoryUpgradeChance(item.star);
+    const cost = GAME_DATA.getAccessoryUpgradeCost(item.star);
+    const lacksMoney = user.money < cost;
+    const div = document.createElement('div');
+    div.className = 'accessory-item' + (isEquipped ? ' active' : '');
+    div.style.borderColor = isEquipped ? def.color : '';
+    div.innerHTML = `
+      <div class="accessory-head">
+        <span class="accessory-icon">${def.icon}</span>
+        <div>
+          <div class="accessory-name" style="color:${def.color}">${def.name}</div>
+          <div class="accessory-stars">${'★'.repeat(item.star)}</div>
+        </div>
+      </div>
+      <div class="accessory-desc">${def.desc}</div>
+      <div class="accessory-effect">${formatAccessoryEffect(item)}</div>
+      <div class="accessory-actions">
+        <button data-equip="${item.uid}">${isEquipped ? '卸下' : '装备'}</button>
+        <button data-upgrade="${item.uid}" ${(!material || item.star >= 20 || lacksMoney) ? 'disabled' : ''}>
+          ${item.star >= 20 ? '已满星' : `强化 ${Math.round(chance * 100)}%`}
+        </button>
+      </div>
+      <div class="accessory-mat ${(!material || lacksMoney) ? 'muted' : ''}">
+        ${item.star >= 20
+          ? '已达到最高星级'
+          : `消耗：${cost} 金币 + 同款同星首饰 ×1${!material ? '（缺材料）' : (lacksMoney ? '（金币不足）' : '')}`}
+      </div>
+    `;
+    list.appendChild(div);
+  }
+
+  if (user.accessories.length > 0) {
+    list.querySelectorAll('[data-equip]').forEach((btn) => {
+      btn.onclick = () => {
+        user.equippedAccessory = user.equippedAccessory === btn.dataset.equip ? null : btn.dataset.equip;
+        saveUser();
+        refreshUI();
+        renderAccessories(user.equippedAccessory ? '已装备首饰' : '已卸下首饰');
+      };
+    });
+    list.querySelectorAll('[data-upgrade]').forEach((btn) => {
+      btn.onclick = () => upgradeAccessory(btn.dataset.upgrade);
+    });
+  }
+
+  const catalog = document.createElement('div');
+  catalog.className = 'accessory-catalog';
+  catalog.innerHTML = GAME_DATA.ACCESSORIES.map(def => `
+    <div class="accessory-catalog-item">
+      <span>${def.icon}</span>
+      <strong style="color:${def.color}">${def.name}</strong>
+      <em>${def.desc}</em>
+    </div>
+  `).join('');
+  list.appendChild(catalog);
+}
+
+function upgradeAccessory(uid) {
+  normalizeAccessories();
+  const target = user.accessories.find(item => item.uid === uid);
+  if (!target || target.star >= 20) return;
+  const material = findAccessoryUpgradeMaterial(target);
+  if (!material) {
+    renderAccessories('缺少同款同星首饰');
+    return;
+  }
+  const def = GAME_DATA.getAccessoryDef(target.type);
+  const cost = GAME_DATA.getAccessoryUpgradeCost(target.star);
+  if (user.money < cost) {
+    renderAccessories(`金币不足，需要 ${cost} 金币`);
+    return;
+  }
+  const chance = GAME_DATA.getAccessoryUpgradeChance(target.star);
+  const success = Math.random() < chance;
+  user.money -= cost;
+  if (success) target.star = GAME_DATA.clampAccessoryStar(target.star + 1);
+  user.accessories = user.accessories.filter(item => item.uid !== material.uid);
+  saveUser();
+  refreshUI();
+  renderAccessories(success
+    ? `${def.name} 强化成功，消耗 ${cost} 金币，升至 ${target.star} 星`
+    : `${def.name} 强化失败，消耗 ${cost} 金币和材料`);
+}
+
 // ====== 排行榜 ======
 const rankOverlay = $('rank-overlay');
 let activeRankTab = 'today-catches';
@@ -1275,9 +1484,15 @@ function updateRodInfo() {
   const skin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
   const next = GAME_DATA.getNextRodSkin(user.dex);
   const dexCount = Object.keys(user.dex).length;
+  const accessory = getEquippedAccessory();
   let nextText = '';
   if (next) nextText = `<span class="rod-next">下一把: ${next.name} (${dexCount}/${next.threshold})</span>`;
-  el.innerHTML = `<span class="rod-icon">🎣</span> ${skin.name} ${nextText}`;
+  let accessoryText = '';
+  if (accessory) {
+    const def = GAME_DATA.getAccessoryDef(accessory.type);
+    accessoryText = `<span class="rod-accessory">${def.icon} ${def.name} ${accessory.star}★</span>`;
+  }
+  el.innerHTML = `<span class="rod-icon">🎣</span> ${skin.name} ${accessoryText} ${nextText}`;
 }
 
 // ====== 兑换码 ======
@@ -1429,6 +1644,8 @@ $('gacha-diamond-single').onclick = () => doGacha(1, 'diamonds', 1);
 $('gacha-diamond-ten').onclick = () => doGacha(10, 'diamonds', 1);
 $('gacha-diamond-s2-single').onclick = () => doGacha(1, 'diamonds', 2);
 $('gacha-diamond-s2-ten').onclick = () => doGacha(10, 'diamonds', 2);
+$('gacha-diamond-s3-single').onclick = () => doGacha(1, 'diamonds', 3);
+$('gacha-diamond-s3-ten').onclick = () => doGacha(10, 'diamonds', 3);
 
 document.querySelectorAll('[data-diamond-season]').forEach((btn) => {
   btn.onclick = () => {
@@ -1436,6 +1653,7 @@ document.querySelectorAll('[data-diamond-season]').forEach((btn) => {
     document.querySelectorAll('[data-diamond-season]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.diamondSeason) === activeGachaDiamondSeason));
     $('gacha-diamond-s1').classList.toggle('hidden', activeGachaDiamondSeason !== 1);
     $('gacha-diamond-s2').classList.toggle('hidden', activeGachaDiamondSeason !== 2);
+    $('gacha-diamond-s3').classList.toggle('hidden', activeGachaDiamondSeason !== 3);
     $('gacha-result').classList.add('hidden');
   };
 });
@@ -1472,7 +1690,7 @@ function getGachaCost(count, currency, season) {
 }
 
 async function doGacha(count, currency = activeGachaCurrency, season) {
-  if (season === undefined) season = currency === 'coins' ? activeGachaCoinSeason : 1;
+  if (season === undefined) season = currency === 'coins' ? activeGachaCoinSeason : activeGachaDiamondSeason;
   const cost = getGachaCost(count, currency, season);
   if (currency === 'diamonds') {
     if ((user.diamonds || 0) < cost) { alert('钻石不足！需要 ' + cost + ' 钻石'); return; }
@@ -1515,6 +1733,11 @@ function showGachaResult(results) {
       icon = (rod && rod.emoji) || '🎣';
       name = rod ? rod.name : r.id;
       cls += ' gi-' + ((rod && rod.rarity) || 'rare');
+    } else if (r.type === 'accessory') {
+      const accessory = GAME_DATA.ACCESSORIES.find(a => a.id === r.id);
+      icon = accessory ? accessory.icon : '💍';
+      name = `${accessory ? accessory.name : r.id} ${r.star || 1}★`;
+      cls += ' gi-accessory';
     } else if (r.type === 'diamonds') {
       icon = '💎';
       name = r.diamonds + ' 钻石';
@@ -1530,6 +1753,7 @@ function showGachaResult(results) {
   html += '</div>';
   const rods = results.filter(r => r.type === 'rod');
   const pets = results.filter(r => r.type === 'pet');
+  const accessories = results.filter(r => r.type === 'accessory');
   const totalCoins = results.filter(r => r.type === 'coins').reduce((s, r) => s + r.coins, 0);
   const totalDiamonds = results.filter(r => r.type === 'diamonds').reduce((s, r) => s + r.diamonds, 0);
   const summaryParts = [];
@@ -1543,6 +1767,12 @@ function showGachaResult(results) {
     summaryParts.push(rods.map((r) => {
       const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
       return `🎉 获得 ${rod ? rod.name : r.id}！`;
+    }).join('<br>'));
+  }
+  if (accessories.length > 0) {
+    summaryParts.push(accessories.map((r) => {
+      const accessory = GAME_DATA.ACCESSORIES.find(a => a.id === r.id);
+      return `🎉 获得首饰 ${accessory ? accessory.icon + ' ' + accessory.name : r.id} ${r.star || 1}★！`;
     }).join('<br>'));
   }
   if (totalDiamonds > 0) summaryParts.push(`💎 共获得 ${totalDiamonds} 钻石`);

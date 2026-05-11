@@ -14,6 +14,7 @@ const REWARDS_FILE = path.join(ROOT, 'data', 'rewards.json');
 
 function bjNow() { return new Date(Date.now() + 8 * 3600000); }
 function bjDateStr(d) { return d.toISOString().slice(0, 10); }
+function bjMinutes(d) { return d.getUTCHours() * 60 + d.getUTCMinutes(); }
 
 function loadRewards() {
   if (fs.existsSync(REWARDS_FILE)) return JSON.parse(fs.readFileSync(REWARDS_FILE, 'utf8'));
@@ -21,10 +22,9 @@ function loadRewards() {
 }
 function saveRewards(r) { fs.writeFileSync(REWARDS_FILE, JSON.stringify(r, null, 2)); }
 
-function settleRankReward() {
+function settleRankReward(settleDate = bjDateStr(bjNow())) {
   const rewards = loadRewards();
-  const yesterday = bjDateStr(new Date(bjNow().getTime() - 86400000));
-  if (rewards.lastSettleDate >= yesterday) return;
+  if (rewards.lastSettleDate >= settleDate) return;
 
   const files = fs.readdirSync(USERS_DIR).filter(f => f.endsWith('.json'));
   let topUser = null;
@@ -32,7 +32,7 @@ function settleRankReward() {
   for (const f of files) {
     try {
       const u = JSON.parse(fs.readFileSync(path.join(USERS_DIR, f), 'utf8'));
-      const daily = (u.dailyStats && u.dailyStats.date === yesterday) ? u.dailyStats : null;
+      const daily = (u.dailyStats && u.dailyStats.date === settleDate) ? u.dailyStats : null;
       if (daily && (daily.catches || 0) > topCatches) {
         topCatches = daily.catches;
         topUser = u.username;
@@ -44,27 +44,31 @@ function settleRankReward() {
     const u = loadUser(topUser);
     u.diamonds = (u.diamonds || 0) + 5000;
     if (!u.rankRewards) u.rankRewards = [];
-    u.rankRewards.push({ date: yesterday, catches: topCatches, diamonds: 5000, seen: false });
+    u.rankRewards.push({ date: settleDate, catches: topCatches, diamonds: 5000, seen: false });
     saveUser(u);
-    rewards.history.unshift({ date: yesterday, username: topUser, catches: topCatches, diamonds: 5000 });
+    rewards.history.unshift({ date: settleDate, username: topUser, catches: topCatches, diamonds: 5000 });
     if (rewards.history.length > 30) rewards.history = rewards.history.slice(0, 30);
-    console.log(`[排名奖励] ${yesterday} 钓鱼数第一名: ${topUser} (${topCatches}次) 获得5000钻石`);
+    console.log(`[排名奖励] ${settleDate} 钓鱼数第一名: ${topUser} (${topCatches}次) 获得5000钻石`);
   }
-  rewards.lastSettleDate = yesterday;
+  rewards.lastSettleDate = settleDate;
   saveRewards(rewards);
 }
 
 function scheduleSettlement() {
-  const now = bjNow();
-  const target = new Date(now);
-  target.setUTCHours(23 - 8, 59, 0, 0);
-  if (now >= target) target.setUTCDate(target.getUTCDate() + 1);
+  const today = bjDateStr(bjNow());
+  const target = new Date(`${today}T15:59:00.000Z`);
+  if (Date.now() >= target.getTime()) target.setUTCDate(target.getUTCDate() + 1);
   const ms = target.getTime() - Date.now();
   console.log(`[排名奖励] 下次结算时间: ${bjDateStr(target)} 23:59 北京时间 (${Math.round(ms/60000)}分钟后)`);
   setTimeout(() => {
-    settleRankReward();
+    settleRankReward(bjDateStr(bjNow()));
     scheduleSettlement();
   }, ms);
+}
+
+function settleRankRewardIfDue() {
+  const now = bjNow();
+  if (bjMinutes(now) >= 23 * 60 + 59) settleRankReward(bjDateStr(now));
 }
 
 const DEFAULT_CODES = {
@@ -76,6 +80,16 @@ const DEFAULT_CODES = {
   'WAKAKA_NB': { coins: 0, diamonds: 900, desc: 'WAKAKA钻石大礼', usedBy: [] },
   'WAKAKA666': { coins: 0, diamonds: 10000, desc: '神秘钻石宝藏', usedBy: [] },
 };
+
+const GACHA_ACCESSORIES = ['scale_charm', 'tide_bracelet', 'star_brooch'];
+
+function createAccessory(type) {
+  return {
+    uid: 'acc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+    type,
+    star: 1,
+  };
+}
 
 function loadCodes() {
   let codes = {};
@@ -126,6 +140,8 @@ function defaultUser(name) {
     ownedRods: [],
     ownedPets: [],
     activePet: null,
+    accessories: [],
+    equippedAccessory: null,
     rankRewards: [],
   };
 }
@@ -150,6 +166,10 @@ function loadUser(name) {
     history: existing.history || defaults.history,
     dailyStats: existing.dailyStats || defaults.dailyStats,
     ownedRods: existing.ownedRods || defaults.ownedRods,
+    ownedPets: existing.ownedPets || defaults.ownedPets,
+    activePet: existing.activePet ?? defaults.activePet,
+    accessories: Array.isArray(existing.accessories) ? existing.accessories : defaults.accessories,
+    equippedAccessory: existing.equippedAccessory ?? defaults.equippedAccessory,
   };
 }
 
@@ -251,6 +271,8 @@ const server = http.createServer(async (req, res) => {
           ownedRods: incoming.ownedRods || existing.ownedRods || [],
           ownedPets: incoming.ownedPets || existing.ownedPets || [],
           activePet: incoming.activePet ?? existing.activePet ?? null,
+          accessories: Array.isArray(incoming.accessories) ? incoming.accessories : (existing.accessories || []),
+          equippedAccessory: incoming.equippedAccessory ?? existing.equippedAccessory ?? null,
         };
         saveUser(merged);
         return json(res, 200, merged);
@@ -258,7 +280,7 @@ const server = http.createServer(async (req, res) => {
       if (req.url === '/api/gacha') {
         const count = body.count === 10 ? 10 : 1;
         const currency = body.currency === 'diamonds' ? 'diamonds' : 'coins';
-        const season = body.season === 2 ? 2 : 1;
+        const season = [1, 2, 3].includes(body.season) ? body.season : 1;
         const cost = currency === 'diamonds'
           ? (count === 1 ? 10 : 90)
           : (season === 2 ? (count === 1 ? 10000 : 100000) : (count === 1 ? 1000 : 9000));
@@ -273,6 +295,7 @@ const server = http.createServer(async (req, res) => {
         }
         if (!u.ownedRods) u.ownedRods = [];
         if (!u.ownedPets) u.ownedPets = [];
+        if (!Array.isArray(u.accessories)) u.accessories = [];
         const results = [];
         for (let i = 0; i < count; i++) {
           const roll = Math.random() * 100;
@@ -297,6 +320,23 @@ const server = http.createServer(async (req, res) => {
             } else {
               results.push({ type: 'coins', coins: 1 });
               u.money += 1;
+            }
+          } else if (currency === 'diamonds' && season === 3) {
+            if (roll < 10) {
+              const item = createAccessory(GACHA_ACCESSORIES[0]);
+              u.accessories.push(item);
+              results.push({ type: 'accessory', id: item.type, star: item.star });
+            } else if (roll < 20) {
+              const item = createAccessory(GACHA_ACCESSORIES[1]);
+              u.accessories.push(item);
+              results.push({ type: 'accessory', id: item.type, star: item.star });
+            } else if (roll < 30) {
+              const item = createAccessory(GACHA_ACCESSORIES[2]);
+              u.accessories.push(item);
+              results.push({ type: 'accessory', id: item.type, star: item.star });
+            } else {
+              results.push({ type: 'coins', coins: 100 });
+              u.money += 100;
             }
           } else if (currency === 'diamonds' && season === 2) {
             if (roll < 0.01) {
@@ -370,6 +410,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Fishing game running at http://localhost:${PORT}`);
-  settleRankReward();
+  settleRankRewardIfDue();
   scheduleSettlement();
 });

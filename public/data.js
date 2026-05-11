@@ -274,7 +274,7 @@ function getCurrentTimeSlot() {
   return 'night';
 }
 
-function rollCatch(baitId, rodId) {
+function rollCatch(baitId, rodId, accessoryEffects = {}) {
   const bait = BAITS[baitId] || BAITS.worm;
   // 鱼竿专属鱼：装备对应鱼竿时 5% 概率触发
   if (rodId && ROD_FISH[rodId] && Math.random() < 0.05) {
@@ -300,11 +300,20 @@ function rollCatch(baitId, rodId) {
     return { kind: 'treasure', item, weight: 0, value: item.value };
   }
   // 鱼
+  const rarityRoll = { ...FISH_RARITY_ROLL };
+  const rarityBoost = Math.max(0, Math.min(0.16, accessoryEffects.rarityBoost || 0));
+  if (rarityBoost > 0) {
+    const boost = Math.min(rarityBoost, Math.max(0, rarityRoll.common - 0.05));
+    rarityRoll.common -= boost;
+    rarityRoll.rare += boost * 0.70;
+    rarityRoll.legendary += boost * 0.23;
+    rarityRoll.hidden += boost * 0.07;
+  }
   let rr = Math.random();
   let rarity;
   let acc = 0;
   for (const k of ['common', 'rare', 'legendary', 'hidden']) {
-    acc += FISH_RARITY_ROLL[k];
+    acc += rarityRoll[k];
     if (rr < acc) { rarity = k; break; }
   }
   if (!rarity) rarity = 'common';
@@ -366,6 +375,64 @@ const ALL_ROD_FISH = Object.values(ROD_FISH).flat();
 const ALL_RODS = [...ROD_SKINS, ...GACHA_RODS, ...SPECIAL_RODS];
 const OWNED_RODS = [...GACHA_RODS, ...SPECIAL_RODS];
 
+// 首饰系统：支持重复持有、装备与强化。
+const ACCESSORIES = [
+  {
+    id: 'scale_charm',
+    name: '鳞光坠',
+    icon: '💠',
+    desc: '提高稀有鱼出现概率，星级越高越明显',
+    effect: 'rarity',
+    particle: 'scale',
+    color: '#66e6ff',
+  },
+  {
+    id: 'tide_bracelet',
+    name: '潮汐环',
+    icon: '🌀',
+    desc: '减慢钓鱼条光标速度，适合挑战高稀有度鱼',
+    effect: 'slow',
+    particle: 'tide',
+    color: '#4ec9b0',
+  },
+  {
+    id: 'star_brooch',
+    name: '星砂针',
+    icon: '✨',
+    desc: '同时少量提高稀有鱼概率并减慢钓鱼条',
+    effect: 'balanced',
+    particle: 'star',
+    color: '#ffd700',
+  },
+];
+
+function clampAccessoryStar(star) {
+  return Math.max(1, Math.min(20, Math.floor(star || 1)));
+}
+
+function getAccessoryDef(typeId) {
+  return ACCESSORIES.find(a => a.id === typeId) || null;
+}
+
+function getAccessoryEffects(accessory) {
+  const def = accessory && getAccessoryDef(accessory.type);
+  if (!def) return { rarityBoost: 0, speedSlow: 0 };
+  const star = clampAccessoryStar(accessory.star);
+  if (def.effect === 'rarity') return { rarityBoost: Math.min(0.16, 0.006 * star), speedSlow: 0 };
+  if (def.effect === 'slow') return { rarityBoost: 0, speedSlow: Math.min(0.35, 0.012 * star) };
+  return { rarityBoost: Math.min(0.10, 0.003 * star), speedSlow: Math.min(0.24, 0.006 * star) };
+}
+
+function getAccessoryUpgradeChance(star) {
+  if (clampAccessoryStar(star) >= 20) return 0;
+  return Math.max(0.25, 0.95 - (clampAccessoryStar(star) - 1) * 0.035);
+}
+
+function getAccessoryUpgradeCost(star) {
+  if (clampAccessoryStar(star) >= 20) return 0;
+  return clampAccessoryStar(star) * 100;
+}
+
 function getCurrentRodSkin(dex, selectedId, ownedRods) {
   if (selectedId) {
     const ownedRod = OWNED_RODS.find(s => s.id === selectedId);
@@ -417,5 +484,6 @@ window.GAME_DATA = {
   ROD_SKINS, GACHA_RODS, SPECIAL_RODS, ALL_RODS, getCurrentRodSkin, getNextRodSkin,
   rollCatch, getCurrentTimeSlot, TIME_SLOT_NAMES,
   ROD_FISH, ROD_FISH_BASE, ALL_ROD_FISH,
+  ACCESSORIES, getAccessoryDef, getAccessoryEffects, getAccessoryUpgradeChance, getAccessoryUpgradeCost, clampAccessoryStar,
   PETS,
 };
