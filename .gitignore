@@ -1,3 +1,7 @@
 data/users/
 node_modules/
 .DS_Store
+# Added by CADK
+.cadk/
+# Added by CADK
+.codex/skills/

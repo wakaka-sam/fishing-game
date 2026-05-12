@@ -235,7 +235,7 @@ const vipAuto = {
 };
 
 function canUseVipAuto() {
-  return !!user && VIP_AUTO_USERNAMES.includes(user.username);
+  return !!user && (user.vip === true || VIP_AUTO_USERNAMES.includes(user.username));
 }
 
 function getBestVipAutoBait() {

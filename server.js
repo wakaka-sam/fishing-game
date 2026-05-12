@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
@@ -113,8 +114,16 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
 };
+
+const CACHEABLE_EXTS = new Set(['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico']);
 
 function sanitize(name) {
   return String(name || '').toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 24);
@@ -127,6 +136,7 @@ function userPath(name) {
 function defaultUser(name) {
   return {
     username: name,
+    vip: false,
     money: 100,
     diamonds: 0,
     baits: { worm: 5, black_silk: 0, divine: 0 },
@@ -160,6 +170,7 @@ function loadUser(name) {
   return {
     ...defaults,
     ...existing,
+    vip: existing.vip === true,
     money: Math.max(0, Math.floor(existing.money ?? defaults.money)),
     diamonds: Math.max(0, Math.floor(existing.diamonds ?? defaults.diamonds)),
     baits: { ...defaults.baits, ...(existing.baits || {}) },
@@ -194,20 +205,91 @@ function readBody(req) {
 }
 
 function json(res, code, obj) {
-  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(obj));
 }
 
+function getAssetVersion() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(PUBLIC, 'version.json'), 'utf8')).version || 'dev';
+  } catch (_) {
+    return 'dev';
+  }
+}
+
+function getVersionMtimeMs() {
+  try {
+    return fs.statSync(path.join(PUBLIC, 'version.json')).mtimeMs;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function withAssetVersion(pathname, data) {
+  if (pathname !== '/index.html') return data;
+  const version = encodeURIComponent(getAssetVersion());
+  return Buffer.from(data.toString('utf8').replace(/__ASSET_VERSION__/g, version));
+}
+
+function staticHeaders(pathname, ext, versioned, mtime, data) {
+  const headers = {
+    'Content-Type': MIME[ext] || 'application/octet-stream',
+    'Last-Modified': mtime.toUTCString(),
+    ETag: '"' + crypto.createHash('sha1').update(data).digest('hex') + '"',
+  };
+
+  if (pathname === '/index.html' || pathname === '/version.json') {
+    headers['Cache-Control'] = 'no-cache';
+  } else if (CACHEABLE_EXTS.has(ext)) {
+    headers['Cache-Control'] = versioned
+      ? 'public, max-age=31536000, immutable'
+      : 'public, max-age=3600';
+  } else {
+    headers['Cache-Control'] = 'no-cache';
+  }
+
+  return headers;
+}
+
+function clientHasFreshCopy(req, headers) {
+  const ifNoneMatch = req.headers['if-none-match'];
+  if (ifNoneMatch && ifNoneMatch.split(/\s*,\s*/).includes(headers.ETag)) return true;
+
+  const ifModifiedSince = req.headers['if-modified-since'];
+  if (!ifModifiedSince) return false;
+  const since = Date.parse(ifModifiedSince);
+  const modified = Date.parse(headers['Last-Modified']);
+  return Number.isFinite(since) && Number.isFinite(modified) && modified <= since;
+}
+
 function serveStatic(req, res) {
-  let p = req.url.split('?')[0];
+  const parsed = new URL(req.url, 'http://localhost');
+  let p;
+  try {
+    p = decodeURIComponent(parsed.pathname);
+  } catch (_) {
+    res.writeHead(400);
+    return res.end('Bad request');
+  }
   if (p === '/') p = '/index.html';
-  const file = path.join(PUBLIC, p);
-  if (!file.startsWith(PUBLIC)) { res.writeHead(403); return res.end(); }
-  fs.readFile(file, (err, data) => {
-    if (err) { res.writeHead(404); return res.end('Not found'); }
+  const file = path.resolve(PUBLIC, '.' + p);
+  const rel = path.relative(PUBLIC, file);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) { res.writeHead(403); return res.end(); }
+  fs.stat(file, (statErr, stat) => {
+    if (statErr || !stat.isFile()) { res.writeHead(404); return res.end('Not found'); }
     const ext = path.extname(file);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-    res.end(data);
+    fs.readFile(file, (err, raw) => {
+      if (err) { res.writeHead(404); return res.end('Not found'); }
+      const data = withAssetVersion(p, raw);
+      const mtimeMs = p === '/index.html' ? Math.max(stat.mtimeMs, getVersionMtimeMs()) : stat.mtimeMs;
+      const headers = staticHeaders(p, ext, parsed.searchParams.has('v'), new Date(mtimeMs), data);
+      if (clientHasFreshCopy(req, headers)) {
+        res.writeHead(304, headers);
+        return res.end();
+      }
+      res.writeHead(200, headers);
+      res.end(data);
+    });
   });
 }
 
@@ -262,6 +344,7 @@ const server = http.createServer(async (req, res) => {
         // 服务器是权威——但简化：信任客户端，仅做基本字段保护
         const merged = {
           ...existing,
+          vip: existing.vip === true,
           money: Math.max(0, Math.floor(incoming.money ?? existing.money)),
           diamonds: Math.max(0, Math.floor(incoming.diamonds ?? existing.diamonds ?? 0)),
           baits: incoming.baits || existing.baits,
