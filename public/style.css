@@ -91,6 +91,24 @@ input, select {
 #player-money { color: #ffd700; }
 #player-diamonds { color: #66e6ff; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.vip-auto-btn {
+  border-color: #66e6ff;
+  color: #66e6ff;
+}
+.vip-auto-btn.is-enabled {
+  background: #0f4c5c;
+  border-color: #4ec9b0;
+  color: #fff;
+}
+.vip-auto-btn.is-running {
+  background: #0b6b5f;
+  border-color: #ffd700;
+}
+.vip-auto-btn.is-paused {
+  background: #2c3e50;
+  border-color: #ffae42;
+  color: #ffae42;
+}
 
 #game {
   width: 640px;

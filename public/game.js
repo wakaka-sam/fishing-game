@@ -191,6 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ====== 状态 ======
 let user = null;
+let saveQueue = Promise.resolve();
+let saveRevision = 0;
 const state = {
   phase: 'idle', // idle | casting | waiting | hooked | reeling
   castStart: 0,
@@ -211,12 +213,177 @@ const baitSelect = $('bait-select');
 const baitCountEl = $('bait-count');
 const castBtn = $('cast-btn');
 const statusEl = $('status');
+const vipAutoBtn = $('vip-auto-btn');
 
 const DIAMOND_JACKPOT_CHANCE = 0.01;
 const BLACK_SILK_BAIT_ID = 'black_silk';
 const BLACK_SILK_BAIT_DROP_CHANCE = 0.10;
 const BLACK_SILK_ROD_ID = 'black_silk_rod';
+const VIP_AUTO_USERNAMES = ['wakaka'];
+const VIP_AUTO_BASE_BAIT_IDS = ['worm', 'shrimp', 'lure', 'magic'];
+const VIP_AUTO_FIRST_IDLE_MS = 1000;
+const VIP_AUTO_RESUME_IDLE_MS = 3000;
+const VIP_AUTO_TICK_MS = 500;
 let accessoryUidCounter = 0;
+const vipAuto = {
+  enabled: false,
+  running: false,
+  idleTimer: null,
+  tickTimer: null,
+  nextDelay: VIP_AUTO_FIRST_IDLE_MS,
+  noBaitNotified: false,
+};
+
+function canUseVipAuto() {
+  return !!user && VIP_AUTO_USERNAMES.includes(user.username);
+}
+
+function getBestVipAutoBait() {
+  if (!user || !user.baits) return null;
+  return VIP_AUTO_BASE_BAIT_IDS
+    .filter((id) => BAITS[id] && (user.baits[id] || 0) > 0)
+    .sort((a, b) => (BAITS[b].price || 0) - (BAITS[a].price || 0))[0] || null;
+}
+
+function clearVipAutoIdleTimer() {
+  if (vipAuto.idleTimer) clearTimeout(vipAuto.idleTimer);
+  vipAuto.idleTimer = null;
+}
+
+function clearVipAutoTickTimer() {
+  if (vipAuto.tickTimer) clearInterval(vipAuto.tickTimer);
+  vipAuto.tickTimer = null;
+}
+
+function stopVipAutoRunning() {
+  vipAuto.running = false;
+  clearVipAutoTickTimer();
+  updateVipAutoUI();
+}
+
+function resetVipAutoForUser() {
+  vipAuto.enabled = false;
+  vipAuto.running = false;
+  vipAuto.nextDelay = VIP_AUTO_FIRST_IDLE_MS;
+  vipAuto.noBaitNotified = false;
+  clearVipAutoIdleTimer();
+  clearVipAutoTickTimer();
+  updateVipAutoUI();
+}
+
+function scheduleVipAutoStart(delayMs = VIP_AUTO_RESUME_IDLE_MS) {
+  clearVipAutoIdleTimer();
+  if (!vipAuto.enabled || !user || !canUseVipAuto()) {
+    updateVipAutoUI();
+    return;
+  }
+  vipAuto.nextDelay = delayMs;
+  vipAuto.idleTimer = setTimeout(() => {
+    vipAuto.idleTimer = null;
+    startVipAutoRunning();
+  }, delayMs);
+  updateVipAutoUI();
+}
+
+function startVipAutoRunning() {
+  if (!vipAuto.enabled || !user || !canUseVipAuto()) {
+    stopVipAutoRunning();
+    return;
+  }
+  if (state.phase === 'idle' && !getBestVipAutoBait()) {
+    stopVipAutoRunning();
+    if (!vipAuto.noBaitNotified) {
+      statusEl.textContent = 'VIP自动钓鱼：四款基础鱼饵已用完';
+      vipAuto.noBaitNotified = true;
+    }
+    updateVipAutoUI();
+    return;
+  }
+  vipAuto.noBaitNotified = false;
+  vipAuto.running = true;
+  clearVipAutoTickTimer();
+  vipAuto.tickTimer = setInterval(runVipAutoTick, VIP_AUTO_TICK_MS);
+  runVipAutoTick();
+  updateVipAutoUI();
+}
+
+function noteVipAutoManualActivity() {
+  if (!vipAuto.enabled || !user || !canUseVipAuto()) return;
+  stopVipAutoRunning();
+  scheduleVipAutoStart(VIP_AUTO_RESUME_IDLE_MS);
+}
+
+function maybeResumeVipAutoAfterInventoryChange() {
+  if (!vipAuto.enabled || vipAuto.running || !getBestVipAutoBait()) return;
+  scheduleVipAutoStart(VIP_AUTO_RESUME_IDLE_MS);
+}
+
+function runVipAutoTick() {
+  if (!vipAuto.enabled || !vipAuto.running || !user || !canUseVipAuto()) {
+    stopVipAutoRunning();
+    return;
+  }
+  if (state.phase === 'idle') {
+    const baitId = getBestVipAutoBait();
+    if (!baitId) {
+      stopVipAutoRunning();
+      statusEl.textContent = 'VIP自动钓鱼：四款基础鱼饵已用完';
+      vipAuto.noBaitNotified = true;
+      updateVipAutoUI();
+      return;
+    }
+    const resultEl = $('result-overlay');
+    if (resultEl) resultEl.classList.add('hidden');
+    startCast(baitId, { silent: true });
+  } else if (state.phase === 'hooked') {
+    startHitbar();
+  } else if (state.phase === 'reeling') {
+    vipAutoHitbarClick();
+  }
+}
+
+function updateVipAutoUI() {
+  if (!vipAutoBtn) return;
+  vipAutoBtn.hidden = !user;
+  vipAutoBtn.classList.toggle('is-enabled', vipAuto.enabled);
+  vipAutoBtn.classList.toggle('is-running', vipAuto.running);
+  vipAutoBtn.classList.toggle('is-paused', vipAuto.enabled && !vipAuto.running);
+  if (!vipAuto.enabled) {
+    vipAutoBtn.textContent = 'VIP自动: 关';
+  } else if (vipAuto.running) {
+    vipAutoBtn.textContent = 'VIP自动: 中';
+  } else {
+    vipAutoBtn.textContent = getBestVipAutoBait() ? 'VIP自动: 待' : 'VIP自动: 缺饵';
+  }
+}
+
+if (vipAutoBtn) {
+  vipAutoBtn.onclick = () => {
+    if (!user) return;
+    if (!canUseVipAuto()) {
+      alert('需要充值VIP 才能使用');
+      return;
+    }
+    vipAuto.enabled = !vipAuto.enabled;
+    vipAuto.noBaitNotified = false;
+    stopVipAutoRunning();
+    if (vipAuto.enabled) {
+      scheduleVipAutoStart(VIP_AUTO_FIRST_IDLE_MS);
+      statusEl.textContent = 'VIP自动钓鱼已开启，1秒无操作后启动';
+    } else {
+      clearVipAutoIdleTimer();
+      statusEl.textContent = 'VIP自动钓鱼已关闭';
+      updateVipAutoUI();
+    }
+  };
+}
+
+['pointerdown', 'keydown', 'touchstart'].forEach((type) => {
+  document.addEventListener(type, (e) => {
+    if (vipAutoBtn && e.target === vipAutoBtn && !vipAuto.enabled) return;
+    noteVipAutoManualActivity();
+  }, { capture: true, passive: true });
+});
 
 // ====== 登录 ======
 $('login-btn').onclick = login;
@@ -252,6 +419,8 @@ async function login() {
 }
 
 $('logout-btn').onclick = () => {
+  saveRevision++;
+  resetVipAutoForUser();
   user = null;
   try { localStorage.removeItem('fishing_username'); } catch (_) {}
   loginScreen.classList.add('active');
@@ -283,19 +452,34 @@ $('logout-btn').onclick = () => {
 
 async function saveUser() {
   if (!user) return;
-  try {
-    const res = await fetch('/api/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user.username, state: user }),
-    });
-    user = await res.json();
-    ensureUserDefaults();
-  } catch (e) { console.warn('save failed', e); }
+  const username = user.username;
+  const body = JSON.stringify({ username, state: user });
+  const revision = ++saveRevision;
+  saveQueue = saveQueue.catch(() => {}).then(async () => {
+    try {
+      const res = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      const saved = await res.json();
+      if (revision === saveRevision && user && user.username === username) {
+        user = saved;
+        ensureUserDefaults();
+      }
+      return saved;
+    } catch (e) {
+      console.warn('save failed', e);
+      return null;
+    }
+  });
+  return saveQueue;
 }
 
 function enterGame() {
+  saveRevision++;
   ensureUserDefaults();
+  resetVipAutoForUser();
   loginScreen.classList.remove('active');
   gameScreen.classList.add('active');
   refreshUI();
@@ -404,6 +588,7 @@ function refreshUI() {
   playerDiamondsEl.textContent = '💎 ' + user.diamonds;
   if (typeof updateRodInfo === 'function') updateRodInfo();
   if (typeof updateMobileBtn === 'function') updateMobileBtn();
+  if (typeof updateVipAutoUI === 'function') updateVipAutoUI();
   // 鱼饵下拉
   baitSelect.innerHTML = '';
   for (const id of Object.keys(BAITS)) {
@@ -430,6 +615,7 @@ function updateBaitCount() {
   baitCountEl.textContent = n > 0 ? `剩余 ${n} 个` : '没有鱼饵';
   castBtn.disabled = !(n > 0 && state.phase === 'idle');
   baitSelect.disabled = state.phase !== 'idle';
+  updateVipAutoUI();
 }
 
 baitSelect.onchange = () => {
@@ -657,14 +843,14 @@ loop();
 // ====== 钓鱼流程 ======
 let waitTimer = null;
 
-castBtn.onclick = startCast;
+castBtn.onclick = () => startCast();
 
-function startCast() {
-  if (state.phase !== 'idle') return;
-  const baitId = baitSelect.value || user.currentBait;
+function startCast(preferredBaitId = null, options = {}) {
+  if (!user || state.phase !== 'idle') return false;
+  const baitId = BAITS[preferredBaitId] ? preferredBaitId : (baitSelect.value || user.currentBait);
   if (!user.baits[baitId] || user.baits[baitId] <= 0) {
-    alert('没有鱼饵了，去商店买点吧！');
-    return;
+    if (!options.silent) alert('没有鱼饵了，去商店买点吧！');
+    return false;
   }
   user.currentBait = baitId;
   state.castBait = baitId;
@@ -691,6 +877,7 @@ function startCast() {
       refreshUI();
     }, 3000);
   }, wait);
+  return true;
 }
 
 window.addEventListener('keydown', (e) => {
@@ -829,6 +1016,12 @@ function hitbarClick() {
     hitbarMsg.textContent = '没中！计数清零，再试';
     randomizeZone();
   }
+}
+
+function vipAutoHitbarClick() {
+  if (!hb.active) return;
+  hb.cursorPos = Math.random();
+  hitbarClick();
 }
 
 function endHitbar(success, failMsg) {
@@ -1095,6 +1288,7 @@ function renderShop() {
     refreshUI();
     renderShop();
     saveUser();
+    maybeResumeVipAutoAfterInventoryChange();
   };
 }
 
