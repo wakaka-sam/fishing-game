@@ -1287,6 +1287,7 @@ input, select {
 }
 .rod-info .rod-icon { font-size: 16px; }
 .rod-info .rod-next { font-size: 11px; opacity: 0.6; }
+.rod-info .rod-character { color: #e8d28a; font-size: 11px; }
 .rod-info .rod-accessory { color: #66e6ff; font-size: 11px; }
 
 /* 鱼竿收藏 */
@@ -1577,6 +1578,7 @@ input, select {
   .shop-list { grid-template-columns: 1fr; }
   .dex-list { grid-template-columns: repeat(3, 1fr); }
   .rod-list { grid-template-columns: 1fr; }
+  .character-list { grid-template-columns: 1fr; }
   .accessory-list { grid-template-columns: 1fr; }
   .accessory-catalog { grid-template-columns: 1fr; }
 
@@ -1653,6 +1655,225 @@ input, select {
 }
 .pet-item.active .pet-badge { background: #4caf50; color: #fff; }
 .pet-item.locked .pet-badge { background: #555; color: #aaa; }
+
+/* 角色系统 */
+.character-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+.character-item {
+  background: #111827;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.character-item:hover { border-color: #ffd700; }
+.character-item.active { border-color: #4ec9b0; box-shadow: 0 0 10px rgba(78,201,176,0.35); }
+.character-item.locked { opacity: 0.58; cursor: default; }
+.character-stage {
+  height: 98px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0d1421;
+  border: 1px solid #334155;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.character-name { color: #ffd700; font-weight: bold; text-align: center; }
+.character-title { color: #4ec9b0; font-size: 12px; text-align: center; margin-top: 4px; }
+.character-bio { color: #aaa; font-size: 12px; line-height: 1.45; margin-top: 8px; min-height: 86px; }
+.character-badge {
+  display: block;
+  width: fit-content;
+  margin: 10px auto 0;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #555;
+  color: #ccc;
+}
+.character-item.active .character-badge { background: #4ec9b0; color: #0d1421; }
+.character-item.locked .character-badge { background: #333; color: #aaa; }
+
+.character-sprite {
+  --skin: #f2b48b;
+  --hair: #4b2a1a;
+  --char-coat: #2563eb;
+  --char-trim: #facc15;
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 76px;
+  image-rendering: pixelated;
+  animation: characterBob 0.9s steps(1) infinite;
+}
+.character-sprite span { position: absolute; display: block; }
+.char-shadow {
+  left: 14px; bottom: 0;
+  width: 36px; height: 6px;
+  background: rgba(0,0,0,0.35);
+}
+.char-leg {
+  top: 54px;
+  width: 10px;
+  height: 16px;
+  background: #1f2937;
+}
+.char-leg--left { left: 22px; }
+.char-leg--right { left: 34px; }
+.char-body {
+  left: 20px; top: 30px;
+  width: 24px; height: 28px;
+  background: var(--char-coat);
+}
+.char-coat {
+  left: 28px; top: 32px;
+  width: 8px; height: 24px;
+  background: var(--char-trim);
+}
+.char-arm {
+  top: 34px;
+  width: 8px;
+  height: 22px;
+  background: var(--char-coat);
+}
+.char-arm--left { left: 12px; }
+.char-arm--right { left: 44px; }
+.char-head {
+  left: 22px; top: 12px;
+  width: 20px; height: 20px;
+  background: var(--skin);
+}
+.char-hair {
+  left: 20px; top: 8px;
+  width: 24px; height: 10px;
+  background: var(--hair);
+}
+.char-face {
+  left: 28px; top: 21px;
+  width: 4px; height: 4px;
+  background: #111;
+  box-shadow: 8px 0 0 #111;
+}
+.char-hat,
+.char-prop,
+.char-spark { display: none; }
+
+@keyframes characterBob {
+  0%, 100% { transform: translateY(0); }
+  33% { transform: translateY(-3px); }
+  66% { transform: translateY(1px); }
+}
+@keyframes characterArmLeft {
+  0%, 100% { transform: rotate(-6deg); transform-origin: top right; }
+  33% { transform: rotate(10deg); transform-origin: top right; }
+  66% { transform: rotate(-14deg); transform-origin: top right; }
+}
+@keyframes characterArmRight {
+  0%, 100% { transform: rotate(8deg); transform-origin: top left; }
+  33% { transform: rotate(-10deg); transform-origin: top left; }
+  66% { transform: rotate(14deg); transform-origin: top left; }
+}
+.character-sprite .char-arm--left { animation: characterArmLeft 0.9s steps(1) infinite; }
+.character-sprite .char-arm--right { animation: characterArmRight 0.9s steps(1) infinite; }
+
+.character-sprite--fishing-master .char-hat {
+  display: block;
+  left: 16px; top: 5px;
+  width: 32px; height: 5px;
+  background: #facc15;
+}
+.character-sprite--fishing-master .char-prop--one {
+  display: block;
+  left: 48px; top: 20px;
+  width: 3px; height: 42px;
+  background: #8b5a2b;
+  transform: rotate(-18deg);
+}
+.character-sprite--phoebe-cupid { --hair: #7c2d12; }
+.character-sprite--phoebe-cupid .char-prop--one {
+  display: block;
+  left: 8px; top: 22px;
+  width: 8px; height: 8px;
+  background: #ff7ac8;
+  box-shadow: 6px 0 0 #ff7ac8, 3px 5px 0 #ff7ac8;
+  transform: rotate(-18deg);
+}
+.character-sprite--phoebe-cupid .char-spark--one,
+.character-sprite--phoebe-cupid .char-spark--two {
+  display: block;
+  width: 4px; height: 4px;
+  background: #f9a8d4;
+  animation: charSpark 0.9s steps(1) infinite;
+}
+.character-sprite--phoebe-cupid .char-spark--one { left: 48px; top: 12px; }
+.character-sprite--phoebe-cupid .char-spark--two { left: 10px; top: 46px; animation-delay: 0.3s; }
+
+.character-sprite--raiden-shogun { --hair: #312e81; }
+.character-sprite--raiden-shogun .char-hair {
+  height: 14px;
+  box-shadow: 4px 12px 0 #312e81, 12px 18px 0 #312e81;
+}
+.character-sprite--raiden-shogun .char-prop--one {
+  display: block;
+  left: 47px; top: 18px;
+  width: 3px; height: 42px;
+  background: #c4b5fd;
+}
+.character-sprite--raiden-shogun .char-spark--one,
+.character-sprite--raiden-shogun .char-spark--two {
+  display: block;
+  width: 3px; height: 10px;
+  background: #a78bfa;
+  animation: charSpark 0.75s steps(1) infinite;
+}
+.character-sprite--raiden-shogun .char-spark--one { left: 10px; top: 12px; }
+.character-sprite--raiden-shogun .char-spark--two { left: 54px; top: 48px; animation-delay: 0.25s; }
+
+.character-sprite--justin-bieber { --hair: #fbbf24; }
+.character-sprite--justin-bieber .char-prop--one {
+  display: block;
+  left: 8px; top: 30px;
+  width: 6px; height: 6px;
+  background: #e5e7eb;
+  box-shadow: 0 6px 0 #374151;
+}
+.character-sprite--justin-bieber .char-prop--two {
+  display: block;
+  left: 42px; top: 8px;
+  width: 5px; height: 5px;
+  background: #fde68a;
+  box-shadow: 8px 6px 0 #fde68a, -6px 12px 0 #fde68a;
+  animation: charSpark 1.05s steps(1) infinite;
+}
+
+.character-sprite--teemo { --hair: #5b3a1f; --skin: #f1c27d; }
+.character-sprite--teemo .char-hat {
+  display: block;
+  left: 14px; top: 4px;
+  width: 36px; height: 8px;
+  background: #16a34a;
+  box-shadow: 6px -5px 0 #dc2626;
+}
+.character-sprite--teemo .char-prop--one {
+  display: block;
+  left: 7px; top: 38px;
+  width: 10px; height: 14px;
+  background: #92400e;
+  box-shadow: 0 14px 0 #78350f;
+}
+
+@keyframes charSpark {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  33% { opacity: 0.35; transform: translateY(-5px); }
+  66% { opacity: 0.75; transform: translateY(3px); }
+}
 
 /* 首饰系统 */
 .accessory-summary {

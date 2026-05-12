@@ -478,6 +478,55 @@ const PETS = [
       extra: (ctx, bx, by, s, t) => { ctx.fillStyle = '#ffd700'; ctx.fillRect(bx, by - s*8, s, s*3); } } },
 ];
 
+const DEFAULT_CHARACTER_ID = 'fishing_master';
+const CHARACTERS = [
+  {
+    id: 'fishing_master',
+    name: '钓鱼高手',
+    title: '码头上的老练新星',
+    obtain: '初始角色',
+    sprite: 'fishing-master',
+    colors: { coat: '#2563eb', trim: '#facc15' },
+    bio: '从小在像素湖边长大，能听懂水花的节奏。虽然装备朴素，但抛竿稳、收线准，是所有冒险开始时最可靠的伙伴。',
+  },
+  {
+    id: 'phoebe_cupid',
+    name: '菲比丘比',
+    title: '爱心鱼钩的练习生',
+    obtain: '暂未开放',
+    sprite: 'phoebe-cupid',
+    colors: { coat: '#ec4899', trim: '#f9a8d4' },
+    bio: '带着爱心鱼钩旅行的活泼少女，坚信每一次咬钩都是命运的回信。她喜欢把幸运写进瓶中信，再交给浪花送走。',
+  },
+  {
+    id: 'raiden_shogun',
+    name: '雷电将军',
+    title: '雷鸣海域的执竿者',
+    obtain: '暂未开放',
+    sprite: 'raiden-shogun',
+    colors: { coat: '#7c3aed', trim: '#c4b5fd' },
+    bio: '来自雷鸣海域的冷峻强者，挥竿时会让水面闪过细小电光。她追求永恒般稳定的命中，也尊重每一条鱼的锋芒。',
+  },
+  {
+    id: 'justin_bieber',
+    name: 'justin bieber',
+    title: '湖边巡演的流行歌手',
+    obtain: '暂未开放',
+    sprite: 'justin-bieber',
+    colors: { coat: '#f59e0b', trim: '#fde68a' },
+    bio: '把临时舞台搭在湖边的流行歌手，节拍器和卷线轮总能同步。他说灵感常在等待鱼上钩的几秒钟里出现。',
+  },
+  {
+    id: 'teemo',
+    name: '提莫',
+    title: '草丛旁的巡湖斥候',
+    obtain: '暂未开放',
+    sprite: 'teemo',
+    colors: { coat: '#16a34a', trim: '#fde047' },
+    bio: '个子不高，脚步很轻，常在湖边草丛记录鱼群路线。随身带着小背包和地图，最擅长找到别人忽略的钓点。',
+  },
+];
+
 window.GAME_DATA = {
   HITS_BY_RARITY, RARITY_COLOR, RARITY_NAME,
   BAITS, TRASH_POOL, TREASURE_POOL, FISH_PIXEL_ICONS,
@@ -485,5 +534,6 @@ window.GAME_DATA = {
   rollCatch, getCurrentTimeSlot, TIME_SLOT_NAMES,
   ROD_FISH, ROD_FISH_BASE, ALL_ROD_FISH,
   ACCESSORIES, getAccessoryDef, getAccessoryEffects, getAccessoryUpgradeChance, getAccessoryUpgradeCost, clampAccessoryStar,
+  CHARACTERS, DEFAULT_CHARACTER_ID,
   PETS,
 };

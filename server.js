@@ -140,6 +140,8 @@ function defaultUser(name) {
     ownedRods: [],
     ownedPets: [],
     activePet: null,
+    ownedCharacters: ['fishing_master'],
+    activeCharacter: 'fishing_master',
     accessories: [],
     equippedAccessory: null,
     rankRewards: [],
@@ -168,6 +170,8 @@ function loadUser(name) {
     ownedRods: existing.ownedRods || defaults.ownedRods,
     ownedPets: existing.ownedPets || defaults.ownedPets,
     activePet: existing.activePet ?? defaults.activePet,
+    ownedCharacters: Array.isArray(existing.ownedCharacters) ? existing.ownedCharacters : defaults.ownedCharacters,
+    activeCharacter: existing.activeCharacter || defaults.activeCharacter,
     accessories: Array.isArray(existing.accessories) ? existing.accessories : defaults.accessories,
     equippedAccessory: existing.equippedAccessory ?? defaults.equippedAccessory,
   };
@@ -271,6 +275,8 @@ const server = http.createServer(async (req, res) => {
           ownedRods: incoming.ownedRods || existing.ownedRods || [],
           ownedPets: incoming.ownedPets || existing.ownedPets || [],
           activePet: incoming.activePet ?? existing.activePet ?? null,
+          ownedCharacters: Array.isArray(incoming.ownedCharacters) ? incoming.ownedCharacters : (existing.ownedCharacters || ['fishing_master']),
+          activeCharacter: incoming.activeCharacter || existing.activeCharacter || 'fishing_master',
           accessories: Array.isArray(incoming.accessories) ? incoming.accessories : (existing.accessories || []),
           equippedAccessory: incoming.equippedAccessory ?? existing.equippedAccessory ?? null,
         };

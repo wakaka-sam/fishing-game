@@ -314,8 +314,19 @@ function ensureUserDefaults() {
   user.ownedRods = user.ownedRods || [];
   user.ownedPets = user.ownedPets || [];
   user.activePet = user.activePet || null;
+  normalizeCharacters();
   normalizeAccessories();
   unlockBlackSilkRodIfComplete();
+}
+
+function normalizeCharacters() {
+  const defaultId = GAME_DATA.DEFAULT_CHARACTER_ID || 'fishing_master';
+  const validIds = new Set((GAME_DATA.CHARACTERS || []).map(c => c.id));
+  user.ownedCharacters = Array.isArray(user.ownedCharacters) ? user.ownedCharacters.filter(id => validIds.has(id)) : [];
+  if (!user.ownedCharacters.includes(defaultId)) user.ownedCharacters.unshift(defaultId);
+  if (!validIds.has(user.activeCharacter) || !user.ownedCharacters.includes(user.activeCharacter)) {
+    user.activeCharacter = defaultId;
+  }
 }
 
 function makeAccessoryUid() {
@@ -356,6 +367,30 @@ function formatAccessoryEffect(accessory) {
   if (effects.rarityBoost) parts.push(`稀有鱼概率 +${Math.round(effects.rarityBoost * 1000) / 10}%`);
   if (effects.speedSlow) parts.push(`钓鱼条速度 -${Math.round(effects.speedSlow * 1000) / 10}%`);
   return parts.join(' / ') || '无加成';
+}
+
+function renderCharacterSprite(character) {
+  const coat = character.colors?.coat || '#2563eb';
+  const trim = character.colors?.trim || '#facc15';
+  return `
+    <span class="character-sprite character-sprite--${character.sprite}" style="--char-coat:${coat};--char-trim:${trim}" role="img" aria-label="${escapeHtml(character.name)}">
+      <span class="char-shadow"></span>
+      <span class="char-leg char-leg--left"></span>
+      <span class="char-leg char-leg--right"></span>
+      <span class="char-body"></span>
+      <span class="char-coat"></span>
+      <span class="char-arm char-arm--left"></span>
+      <span class="char-arm char-arm--right"></span>
+      <span class="char-head"></span>
+      <span class="char-hair"></span>
+      <span class="char-face"></span>
+      <span class="char-hat"></span>
+      <span class="char-prop char-prop--one"></span>
+      <span class="char-prop char-prop--two"></span>
+      <span class="char-spark char-spark--one"></span>
+      <span class="char-spark char-spark--two"></span>
+    </span>
+  `;
 }
 
 function refreshUI() {
@@ -1142,6 +1177,41 @@ function renderDex() {
   `;
 }
 
+// ====== 角色系统 ======
+const characterOverlay = $('character-overlay');
+$('character-btn').onclick = () => { renderCharacters(); characterOverlay.classList.remove('hidden'); };
+
+function renderCharacters() {
+  normalizeCharacters();
+  const list = $('character-list');
+  list.innerHTML = '';
+  const owned = user.ownedCharacters || [];
+  for (const character of GAME_DATA.CHARACTERS) {
+    const isOwned = owned.includes(character.id);
+    const isActive = user.activeCharacter === character.id;
+    const div = document.createElement('div');
+    div.className = 'character-item' + (isActive ? ' active' : '') + (!isOwned ? ' locked' : '');
+    div.innerHTML = `
+      <div class="character-stage">${renderCharacterSprite(character)}</div>
+      <div class="character-name">${escapeHtml(character.name)}</div>
+      <div class="character-title">${escapeHtml(character.title)}</div>
+      <div class="character-bio">${escapeHtml(character.bio)}</div>
+      ${isOwned
+        ? `<span class="character-badge">${isActive ? '✔ 已装备' : '点击装备'}</span>`
+        : `<span class="character-badge">🔒 ${escapeHtml(character.obtain || '暂未开放')}</span>`}
+    `;
+    if (isOwned) {
+      div.onclick = () => {
+        user.activeCharacter = character.id;
+        refreshUI();
+        saveUser();
+        renderCharacters();
+      };
+    }
+    list.appendChild(div);
+  }
+}
+
 // ====== 宠物系统 ======
 const petOverlay = $('pet-overlay');
 $('pet-btn').onclick = () => { renderPets(); petOverlay.classList.remove('hidden'); };
@@ -1485,14 +1555,16 @@ function updateRodInfo() {
   const next = GAME_DATA.getNextRodSkin(user.dex);
   const dexCount = Object.keys(user.dex).length;
   const accessory = getEquippedAccessory();
+  const character = GAME_DATA.CHARACTERS.find(c => c.id === user.activeCharacter);
   let nextText = '';
   if (next) nextText = `<span class="rod-next">下一把: ${next.name} (${dexCount}/${next.threshold})</span>`;
+  const characterText = character ? `<span class="rod-character">🧍 ${escapeHtml(character.name)}</span>` : '';
   let accessoryText = '';
   if (accessory) {
     const def = GAME_DATA.getAccessoryDef(accessory.type);
     accessoryText = `<span class="rod-accessory">${def.icon} ${def.name} ${accessory.star}★</span>`;
   }
-  el.innerHTML = `<span class="rod-icon">🎣</span> ${skin.name} ${accessoryText} ${nextText}`;
+  el.innerHTML = `<span class="rod-icon">🎣</span> ${skin.name} ${characterText} ${accessoryText} ${nextText}`;
 }
 
 // ====== 兑换码 ======
