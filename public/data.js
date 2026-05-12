@@ -8,6 +8,7 @@ const HITS_BY_RARITY = {
   treasure: 4,
   limited: 4,
   rod_exclusive: 5,
+  character_shard: 5,
 };
 
 // 稀有度颜色
@@ -20,6 +21,7 @@ const RARITY_COLOR = {
   treasure: '#ff8c42',
   limited: '#ff7ac8',
   rod_exclusive: '#ff4500',
+  character_shard: '#f59e0b',
 };
 
 const RARITY_NAME = {
@@ -31,6 +33,7 @@ const RARITY_NAME = {
   treasure: '宝藏',
   limited: '限定',
   rod_exclusive: '鱼竿专属',
+  character_shard: '角色碎片',
 };
 
 const FISH_PIXEL_ICONS = {
@@ -100,6 +103,20 @@ const FISH_PIXEL_ICONS = {
   fire_beast: 'fire-beast',
   jade_turtle: 'jade-turtle',
 };
+
+const CHARACTER_SHARDS_REQUIRED = 10;
+const CHARACTER_SHARD_TARGETS = [
+  { id: 'phoebe_cupid_fragment', characterId: 'phoebe_cupid', name: '菲比丘比碎片', icon: '🧩' },
+  { id: 'raiden_shogun_fragment', characterId: 'raiden_shogun', name: '雷电将军碎片', icon: '🧩' },
+  { id: 'justin_bieber_fragment', characterId: 'justin_bieber', name: 'justin bieber 碎片', icon: '🧩' },
+  { id: 'teemo_fragment', characterId: 'teemo', name: '提莫碎片', icon: '🧩' },
+];
+
+function getAvailableCharacterShardTargets(ownedCharacters = []) {
+  const owned = new Set(Array.isArray(ownedCharacters) ? ownedCharacters : []);
+  const available = CHARACTER_SHARD_TARGETS.filter((target) => !owned.has(target.characterId));
+  return available.length > 0 ? available : CHARACTER_SHARD_TARGETS;
+}
 
 // 鱼饵：每种 5普通 + 3稀有 + 2传说 + 1隐藏
 const BAITS = {
@@ -195,7 +212,7 @@ const BAITS = {
     name: '神仙鱼饵',
     price: 10000,
     currency: 'diamonds',
-    desc: '仙气缭绕的鱼饵，只会钓到传说级和隐藏级的鱼',
+    desc: '仙气缭绕的鱼饵，只会钓到传说级和隐藏级的鱼，也可通过钓鱼极低概率获得',
     color: '#ffd700',
     specialOnly: true,
     fishes: [
@@ -213,12 +230,24 @@ const BAITS = {
       { id: 'leviathan',   name: '海蛇神',   rarity: 'hidden',    minW: 200,  maxW: 1000, price: 8000, icon: '🐉' },
     ],
   },
+  jb: {
+    name: 'JB鱼饵',
+    dexName: '角色碎片',
+    price: 0,
+    purchasable: false,
+    desc: '钓鱼时额外获得的特殊鱼饵，只会钓到角色碎片',
+    color: '#f59e0b',
+    specialOnly: true,
+    characterShardOnly: true,
+    hideDex: true,
+    fishes: [],
+  },
   black_silk: {
     name: '黑丝饵',
     dexName: '黑丝图鉴',
     price: 0,
     purchasable: false,
-    desc: '只能通过钓鱼获得的特殊鱼饵，只会钓到黑丝图鉴限定鱼',
+    desc: '已停止新增获取的特殊鱼饵，现存鱼饵仍可使用，只会钓到黑丝图鉴限定鱼',
     color: '#ff7ac8',
     specialOnly: true,
     fishes: [
@@ -274,8 +303,20 @@ function getCurrentTimeSlot() {
   return 'night';
 }
 
-function rollCatch(baitId, rodId, accessoryEffects = {}) {
+function rollCatch(baitId, rodId, accessoryEffects = {}, ownedCharacters = []) {
   const bait = BAITS[baitId] || BAITS.worm;
+  if (bait.characterShardOnly) {
+    const shard = pickFromArr(getAvailableCharacterShardTargets(ownedCharacters));
+    return {
+      kind: 'character_shard',
+      item: { ...shard, rarity: 'legendary' },
+      characterId: shard.characterId,
+      shardCount: 1,
+      rarity: 'legendary',
+      weight: 0,
+      value: 0,
+    };
+  }
   // 鱼竿专属鱼：装备对应鱼竿时 5% 概率触发
   if (rodId && ROD_FISH[rodId] && Math.random() < 0.05) {
     const fish = pickFromArr(ROD_FISH[rodId]);
@@ -534,6 +575,7 @@ const CHARACTERS = [
 window.GAME_DATA = {
   HITS_BY_RARITY, RARITY_COLOR, RARITY_NAME,
   BAITS, TRASH_POOL, TREASURE_POOL, FISH_PIXEL_ICONS,
+  CHARACTER_SHARD_TARGETS, CHARACTER_SHARDS_REQUIRED, getAvailableCharacterShardTargets,
   ROD_SKINS, GACHA_RODS, SPECIAL_RODS, ALL_RODS, getCurrentRodSkin, getNextRodSkin,
   rollCatch, getCurrentTimeSlot, TIME_SLOT_NAMES,
   ROD_FISH, ROD_FISH_BASE, ALL_ROD_FISH,

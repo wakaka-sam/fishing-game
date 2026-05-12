@@ -1254,6 +1254,7 @@ input, select {
 .result-fish .diamond-value { color: #66e6ff; font-size: 16px; margin-top: 4px; }
 .result-fish .bait-drop { color: #ff7ac8; font-size: 15px; margin-top: 4px; }
 .result-fish .rod-unlock { color: #ff7ac8; font-size: 16px; margin-top: 6px; font-weight: bold; }
+.result-fish .character-unlock { color: #f59e0b; font-size: 16px; margin-top: 6px; font-weight: bold; }
 .result-fish.miss { color: #ff5722; }
 .result-fish.miss .icon { font-size: 48px; }
 
@@ -1706,6 +1707,18 @@ input, select {
 .character-name { color: #ffd700; font-weight: bold; text-align: center; }
 .character-title { color: #4ec9b0; font-size: 12px; text-align: center; margin-top: 4px; }
 .character-bio { color: #aaa; font-size: 12px; line-height: 1.45; margin-top: 8px; min-height: 86px; }
+.character-shards {
+  margin-top: 10px;
+  color: #f59e0b;
+  font-size: 12px;
+  text-align: center;
+}
+.character-compose {
+  display: block;
+  min-width: 92px;
+  margin: 8px auto 0;
+  padding: 5px 10px;
+}
 .character-badge {
   display: block;
   width: fit-content;

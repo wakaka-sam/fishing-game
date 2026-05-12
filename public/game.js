@@ -217,7 +217,10 @@ const vipAutoBtn = $('vip-auto-btn');
 
 const DIAMOND_JACKPOT_CHANCE = 0.01;
 const BLACK_SILK_BAIT_ID = 'black_silk';
-const BLACK_SILK_BAIT_DROP_CHANCE = 0.10;
+const DIVINE_BAIT_ID = 'divine';
+const JB_BAIT_ID = 'jb';
+const DIVINE_BAIT_DROP_CHANCE = 0.0001;
+const JB_BAIT_DROP_CHANCE = 0.05;
 const BLACK_SILK_ROD_ID = 'black_silk_rod';
 const VIP_AUTO_USERNAMES = ['wakaka'];
 const VIP_AUTO_BASE_BAIT_IDS = ['worm', 'shrimp', 'lure', 'magic'];
@@ -490,8 +493,9 @@ function ensureUserDefaults() {
   user.money = Math.max(0, Math.floor(user.money || 0));
   user.diamonds = Math.max(0, Math.floor(user.diamonds || 0));
   user.baits = user.baits || {};
-  user.baits.worm = Math.max(0, Math.floor(user.baits.worm || 0));
-  user.baits[BLACK_SILK_BAIT_ID] = Math.max(0, Math.floor(user.baits[BLACK_SILK_BAIT_ID] || 0));
+  for (const id of Object.keys(BAITS)) {
+    user.baits[id] = Math.max(0, Math.floor(user.baits[id] || 0));
+  }
   user.dex = user.dex || {};
   user.stats = user.stats || {};
   user.history = user.history || [];
@@ -499,6 +503,7 @@ function ensureUserDefaults() {
   user.ownedPets = user.ownedPets || [];
   user.activePet = user.activePet || null;
   normalizeCharacters();
+  normalizeCharacterFragments();
   normalizeAccessories();
   unlockBlackSilkRodIfComplete();
 }
@@ -511,6 +516,43 @@ function normalizeCharacters() {
   if (!validIds.has(user.activeCharacter) || !user.ownedCharacters.includes(user.activeCharacter)) {
     user.activeCharacter = defaultId;
   }
+}
+
+function getCharacterShardTarget(characterId) {
+  return (GAME_DATA.CHARACTER_SHARD_TARGETS || []).find(t => t.characterId === characterId) || null;
+}
+
+function normalizeCharacterFragments() {
+  const validTargets = GAME_DATA.CHARACTER_SHARD_TARGETS || [];
+  const incoming = user.characterFragments || {};
+  const normalized = {};
+  for (const target of validTargets) {
+    const count = incoming[target.characterId] ?? incoming[target.id] ?? 0;
+    normalized[target.characterId] = Math.max(0, Math.floor(count || 0));
+  }
+  user.characterFragments = normalized;
+}
+
+function getCharacterShardCount(characterId) {
+  normalizeCharacterFragments();
+  return user.characterFragments[characterId] || 0;
+}
+
+function synthesizeCharacter(characterId) {
+  normalizeCharacters();
+  normalizeCharacterFragments();
+  const target = getCharacterShardTarget(characterId);
+  const character = GAME_DATA.CHARACTERS.find(c => c.id === characterId);
+  const required = GAME_DATA.CHARACTER_SHARDS_REQUIRED || 10;
+  if (!target || !character || user.ownedCharacters.includes(characterId)) return;
+  if ((user.characterFragments[characterId] || 0) < required) return;
+  user.characterFragments[characterId] -= required;
+  user.ownedCharacters.push(characterId);
+  user.activeCharacter = characterId;
+  statusEl.textContent = `已合成并解锁 ${character.name}`;
+  refreshUI();
+  saveUser();
+  renderCharacters();
 }
 
 function makeAccessoryUid() {
@@ -929,7 +971,7 @@ function startHitbar() {
   // 提前 roll 出钓获结果
   const currentRodId = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods).id;
   const accessoryEffects = getEquippedAccessoryEffects();
-  const result = rollCatch(state.castBait || user.currentBait, currentRodId, accessoryEffects);
+  const result = rollCatch(state.castBait || user.currentBait, currentRodId, accessoryEffects, user.ownedCharacters);
   hb.catch = result;
   const rarity = result.kind === 'fish' ? result.item.rarity : result.kind;
   hb.hitsNeeded = HITS_BY_RARITY[rarity] || 2;
@@ -938,6 +980,7 @@ function startHitbar() {
   hb.cursorDir = 1;
 
   // 难度参数：稀有度越高，光标越快、红区越窄
+  const difficultyRarity = result.kind === 'character_shard' ? 'legendary' : rarity;
   const difficulty = {
     trash: { speed: 0.6, zone: 0.25 },
     common: { speed: 0.8, zone: 0.22 },
@@ -947,11 +990,12 @@ function startHitbar() {
     treasure: { speed: 1.2, zone: 0.16 },
     limited: { speed: 1.3, zone: 0.16 },
     rod_exclusive: { speed: 1.4, zone: 0.14 },
-  }[rarity];
+    character_shard: { speed: 1.5, zone: 0.13 },
+  }[difficultyRarity] || { speed: 0.8, zone: 0.22 };
   hb.cursorSpeed = difficulty.speed;
   const rodSkin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
-  if (rodSkin.speedBonus && rodSkin.speedBonus[rarity]) {
-    hb.cursorSpeed *= (1 + rodSkin.speedBonus[rarity]);
+  if (rodSkin.speedBonus && rodSkin.speedBonus[difficultyRarity]) {
+    hb.cursorSpeed *= (1 + rodSkin.speedBonus[difficultyRarity]);
   }
   if (accessoryEffects.speedSlow) {
     hb.cursorSpeed *= Math.max(0.35, 1 - accessoryEffects.speedSlow);
@@ -959,7 +1003,9 @@ function startHitbar() {
   hb.zoneWidth = difficulty.zone;
   hb.timeLeft = 12;
 
-  hitbarMsg.textContent = `${RARITY_NAME[rarity]}级鱼上钩了！连续命中红区 ${hb.hitsNeeded} 次！`;
+  hitbarMsg.textContent = result.kind === 'character_shard'
+    ? `角色碎片上钩了！连续命中红区 ${hb.hitsNeeded} 次！`
+    : `${RARITY_NAME[rarity]}级鱼上钩了！连续命中红区 ${hb.hitsNeeded} 次！`;
   hitbarMsg.style.color = RARITY_COLOR[rarity];
   hitsNeededEl.textContent = hb.hitsNeeded;
   hitsCurrentEl.textContent = 0;
@@ -1057,17 +1103,19 @@ function getPetBonus() {
 
 // ====== 应用钓获 ======
 function applyCatch(c) {
-  const bonusDiamonds = rollDiamondReward();
+  const isCharacterShardCatch = c.kind === 'character_shard';
+  const bonusDiamonds = isCharacterShardCatch ? 0 : rollDiamondReward();
   const saleDiamonds = c.diamondValue || 0;
-  const blackSilkBaitDrop = rollBlackSilkBaitDrop();
-  const petBonus = getPetBonus();
+  const baitDrops = isCharacterShardCatch ? [] : rollBonusBaitDrops();
+  const petBonus = isCharacterShardCatch ? { coins: 0, diamonds: 0 } : getPetBonus();
+  const shardUnlock = applyCharacterShardCatch(c);
   c.petBonusCoins = petBonus.coins;
   c.petBonusDiamonds = petBonus.diamonds;
   c.value += petBonus.coins;
   user.money += c.value;
   user.diamonds = (user.diamonds || 0) + saleDiamonds + bonusDiamonds + petBonus.diamonds;
-  if (blackSilkBaitDrop > 0) {
-    user.baits[BLACK_SILK_BAIT_ID] = (user.baits[BLACK_SILK_BAIT_ID] || 0) + blackSilkBaitDrop;
+  for (const drop of baitDrops) {
+    user.baits[drop.id] = (user.baits[drop.id] || 0) + drop.count;
   }
   user.stats.totalCatches = (user.stats.totalCatches || 0) + 1;
   user.stats.totalEarned = (user.stats.totalEarned || 0) + c.value;
@@ -1086,20 +1134,26 @@ function applyCatch(c) {
     user.dex[id].count++;
     if (c.weight > user.dex[id].maxWeight) user.dex[id].maxWeight = c.weight;
   }
+  const rarity = c.kind === 'fish' ? c.item.rarity : c.kind;
   user.history.push({
     t: Date.now(),
     kind: c.kind,
     name: c.item.name,
-    rarity: c.kind === 'fish' ? c.item.rarity : c.kind,
+    rarity,
     weight: c.weight,
     value: c.value,
     diamondValue: saleDiamonds,
     diamonds: bonusDiamonds,
-    baitDrop: blackSilkBaitDrop ? { id: BLACK_SILK_BAIT_ID, count: blackSilkBaitDrop } : null,
+    baitDrops,
+    baitDrop: baitDrops[0] || null,
+    characterId: c.characterId || null,
+    shardCount: c.shardCount || 0,
   });
   const unlockedBlackSilkRod = unlockBlackSilkRodIfComplete();
   c.diamonds = bonusDiamonds;
-  c.baitDrop = blackSilkBaitDrop ? { id: BLACK_SILK_BAIT_ID, count: blackSilkBaitDrop } : null;
+  c.baitDrops = baitDrops;
+  c.baitDrop = baitDrops[0] || null;
+  c.unlockedCharacter = shardUnlock;
   c.unlockedRod = unlockedBlackSilkRod ? BLACK_SILK_ROD_ID : null;
   if (user.history.length > 50) user.history.shift();
   refreshUI();
@@ -1111,8 +1165,35 @@ function rollDiamondReward() {
   return 1 + Math.floor(Math.random() * 3);
 }
 
-function rollBlackSilkBaitDrop() {
-  return Math.random() < BLACK_SILK_BAIT_DROP_CHANCE ? 1 : 0;
+function rollBonusBaitDrops() {
+  const drops = [];
+  if (Math.random() < DIVINE_BAIT_DROP_CHANCE) drops.push({ id: DIVINE_BAIT_ID, count: 1 });
+  if (Math.random() < JB_BAIT_DROP_CHANCE) drops.push({ id: JB_BAIT_ID, count: 1 });
+  return drops;
+}
+
+function applyCharacterShardCatch(c) {
+  if (c.kind !== 'character_shard' || !c.characterId) return null;
+  normalizeCharacters();
+  normalizeCharacterFragments();
+  const target = getCharacterShardTarget(c.characterId);
+  const character = GAME_DATA.CHARACTERS.find(ch => ch.id === c.characterId);
+  if (!target || !character) return null;
+  if (!user.ownedCharacters.includes(c.characterId)) {
+    user.characterFragments[c.characterId] = (user.characterFragments[c.characterId] || 0) + (c.shardCount || 1);
+  }
+  c.character = character;
+  c.shardName = target.name;
+  c.shardProgress = user.characterFragments[c.characterId] || 0;
+  c.shardsRequired = GAME_DATA.CHARACTER_SHARDS_REQUIRED || 10;
+  if (!user.ownedCharacters.includes(c.characterId) && c.shardProgress >= c.shardsRequired) {
+    user.characterFragments[c.characterId] -= c.shardsRequired;
+    user.ownedCharacters.push(c.characterId);
+    user.activeCharacter = c.characterId;
+    c.shardProgress = user.characterFragments[c.characterId] || 0;
+    return c.characterId;
+  }
+  return null;
 }
 
 function isBaitDexComplete(baitId) {
@@ -1162,18 +1243,28 @@ function showResult(c) {
   if (retryBox) retryBox.classList.add('hidden');
   const rarity = c.kind === 'fish' ? c.item.rarity : c.kind;
   const color = RARITY_COLOR[rarity];
+  const character = c.character || (c.characterId ? GAME_DATA.CHARACTERS.find(ch => ch.id === c.characterId) : null);
   let weightLine = '';
   if (c.kind === 'fish') {
     const priceLine = c.diamondValue
       ? `<div>售价：${c.diamondValue} 钻石</div>`
       : `<div>单价：${c.item.price} 金/kg</div>`;
     weightLine = `<div>重量：${c.weight} kg</div>${priceLine}`;
+  } else if (c.kind === 'character_shard') {
+    const required = c.shardsRequired || GAME_DATA.CHARACTER_SHARDS_REQUIRED || 10;
+    const progress = c.unlockedCharacter ? required : (c.shardProgress || 0);
+    const characterName = character ? character.name : c.item.name;
+    weightLine = `<div>${escapeHtml(characterName)} 碎片：${progress} / ${required}</div>`;
   }
   const coinLine = c.value ? `<div class="value">+${c.value} 金币</div>` : '';
   const saleDiamondLine = c.diamondValue ? `<div class="diamond-value">+${c.diamondValue} 钻石</div>` : '';
   const diamondLine = c.diamonds ? `<div class="diamond-value">额外 +${c.diamonds} 钻石</div>` : '';
-  const baitDropLine = c.baitDrop ? `<div class="bait-drop">获得 ${BAITS[c.baitDrop.id].name} ×${c.baitDrop.count}</div>` : '';
+  const baitDrops = c.baitDrops || (c.baitDrop ? [c.baitDrop] : []);
+  const baitDropLine = baitDrops.map(drop => `<div class="bait-drop">获得 ${BAITS[drop.id].name} ×${drop.count}</div>`).join('');
   const rodLine = c.unlockedRod ? '<div class="rod-unlock">解锁 黑丝鱼竿</div>' : '';
+  const characterLine = c.unlockedCharacter && character
+    ? `<div class="character-unlock">解锁角色 ${escapeHtml(character.name)}</div>`
+    : '';
   const petCoinLine = c.petBonusCoins ? `<div class="pet-bonus">🐾 宠物加成 +${c.petBonusCoins} 金币</div>` : '';
   const petDiamondLine = c.petBonusDiamonds ? `<div class="pet-bonus">🐾 宠物加成 +${c.petBonusDiamonds} 钻石</div>` : '';
   resultContent.innerHTML = `
@@ -1187,6 +1278,7 @@ function showResult(c) {
       ${diamondLine}
       ${baitDropLine}
       ${rodLine}
+      ${characterLine}
       ${petCoinLine}
       ${petDiamondLine}
     </div>
@@ -1196,8 +1288,9 @@ function showResult(c) {
   if (c.value) rewards.push(`+${c.value} 金币`);
   if (c.diamondValue) rewards.push(`+${c.diamondValue} 钻石`);
   if (c.diamonds) rewards.push(`额外 +${c.diamonds} 钻石`);
-  if (c.baitDrop) rewards.push(`获得 ${BAITS[c.baitDrop.id].name} ×${c.baitDrop.count}`);
+  for (const drop of baitDrops) rewards.push(`获得 ${BAITS[drop.id].name} ×${drop.count}`);
   if (c.unlockedRod) rewards.push('解锁黑丝鱼竿');
+  if (c.unlockedCharacter && character) rewards.push(`解锁角色 ${character.name}`);
   statusEl.textContent = `钓到了 ${c.item.name}！${rewards.join('，')}`;
 }
 
@@ -1302,6 +1395,7 @@ function renderDex() {
   const tabs = $('dex-tabs');
   tabs.innerHTML = '';
   for (const [id, b] of Object.entries(BAITS)) {
+    if (b.hideDex) continue;
     const btn = document.createElement('button');
     btn.textContent = b.dexName || b.name;
     if (id === activeDexBait) btn.classList.add('active');
@@ -1382,12 +1476,22 @@ $('character-btn').onclick = () => { renderCharacters(); characterOverlay.classL
 
 function renderCharacters() {
   normalizeCharacters();
+  normalizeCharacterFragments();
   const list = $('character-list');
   list.innerHTML = '';
   const owned = user.ownedCharacters || [];
+  const required = GAME_DATA.CHARACTER_SHARDS_REQUIRED || 10;
   for (const character of GAME_DATA.CHARACTERS) {
     const isOwned = owned.includes(character.id);
     const isActive = user.activeCharacter === character.id;
+    const shardTarget = getCharacterShardTarget(character.id);
+    const shardCount = shardTarget ? getCharacterShardCount(character.id) : 0;
+    const canSynthesize = !!shardTarget && !isOwned && shardCount >= required;
+    const obtainLine = isOwned
+      ? `<span class="character-badge">${isActive ? '✔ 已装备' : '点击装备'}</span>`
+      : (shardTarget
+        ? `<div class="character-shards">碎片 ${shardCount} / ${required}</div><button class="character-compose" data-compose="${character.id}" ${canSynthesize ? '' : 'disabled'}>合成角色</button>`
+        : `<span class="character-badge">🔒 ${escapeHtml(character.obtain || '暂未开放')}</span>`);
     const div = document.createElement('div');
     div.className = 'character-item' + (isActive ? ' active' : '') + (!isOwned ? ' locked' : '');
     div.innerHTML = `
@@ -1395,9 +1499,7 @@ function renderCharacters() {
       <div class="character-name">${escapeHtml(character.name)}</div>
       <div class="character-title">${escapeHtml(character.title)}</div>
       <div class="character-bio">${escapeHtml(character.bio)}</div>
-      ${isOwned
-        ? `<span class="character-badge">${isActive ? '✔ 已装备' : '点击装备'}</span>`
-        : `<span class="character-badge">🔒 ${escapeHtml(character.obtain || '暂未开放')}</span>`}
+      ${obtainLine}
     `;
     if (isOwned) {
       div.onclick = () => {
@@ -1405,6 +1507,11 @@ function renderCharacters() {
         refreshUI();
         saveUser();
         renderCharacters();
+      };
+    } else if (canSynthesize) {
+      div.querySelector('[data-compose]').onclick = (e) => {
+        e.stopPropagation();
+        synthesizeCharacter(character.id);
       };
     }
     list.appendChild(div);

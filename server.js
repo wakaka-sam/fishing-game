@@ -139,7 +139,7 @@ function defaultUser(name) {
     vip: false,
     money: 100,
     diamonds: 0,
-    baits: { worm: 5, black_silk: 0, divine: 0 },
+    baits: { worm: 5, black_silk: 0, divine: 0, jb: 0 },
     currentBait: 'worm',
     dex: {}, // fishId -> { count, maxWeight }
     stats: { totalCatches: 0, totalEarned: 0, totalDiamonds: 0 },
@@ -152,6 +152,7 @@ function defaultUser(name) {
     activePet: null,
     ownedCharacters: ['fishing_master'],
     activeCharacter: 'fishing_master',
+    characterFragments: {},
     accessories: [],
     equippedAccessory: null,
     rankRewards: [],
@@ -183,6 +184,7 @@ function loadUser(name) {
     activePet: existing.activePet ?? defaults.activePet,
     ownedCharacters: Array.isArray(existing.ownedCharacters) ? existing.ownedCharacters : defaults.ownedCharacters,
     activeCharacter: existing.activeCharacter || defaults.activeCharacter,
+    characterFragments: existing.characterFragments || defaults.characterFragments,
     accessories: Array.isArray(existing.accessories) ? existing.accessories : defaults.accessories,
     equippedAccessory: existing.equippedAccessory ?? defaults.equippedAccessory,
   };
@@ -360,6 +362,7 @@ const server = http.createServer(async (req, res) => {
           activePet: incoming.activePet ?? existing.activePet ?? null,
           ownedCharacters: Array.isArray(incoming.ownedCharacters) ? incoming.ownedCharacters : (existing.ownedCharacters || ['fishing_master']),
           activeCharacter: incoming.activeCharacter || existing.activeCharacter || 'fishing_master',
+          characterFragments: incoming.characterFragments || existing.characterFragments || {},
           accessories: Array.isArray(incoming.accessories) ? incoming.accessories : (existing.accessories || []),
           equippedAccessory: incoming.equippedAccessory ?? existing.equippedAccessory ?? null,
         };
