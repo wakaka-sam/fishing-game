@@ -223,7 +223,6 @@ const DIVINE_BAIT_DROP_CHANCE = 0.0001;
 const JB_BAIT_DROP_CHANCE = 0.05;
 const BLACK_SILK_ROD_ID = 'black_silk_rod';
 const VIP_AUTO_USERNAMES = ['wakaka'];
-const VIP_AUTO_BASE_BAIT_IDS = ['worm', 'shrimp', 'lure', 'magic'];
 const VIP_AUTO_FIRST_IDLE_MS = 1000;
 const VIP_AUTO_RESUME_IDLE_MS = 3000;
 const VIP_AUTO_TICK_MS = 500;
@@ -233,6 +232,7 @@ const vipAuto = {
   running: false,
   idleTimer: null,
   tickTimer: null,
+  baitId: null,
   nextDelay: VIP_AUTO_FIRST_IDLE_MS,
   noBaitNotified: false,
 };
@@ -241,11 +241,16 @@ function canUseVipAuto() {
   return !!user && (user.vip === true || VIP_AUTO_USERNAMES.includes(user.username));
 }
 
-function getBestVipAutoBait() {
+function getSelectedVipAutoBait() {
+  const baitId = baitSelect.value || user?.currentBait;
+  return BAITS[baitId] ? baitId : null;
+}
+
+function getVipAutoBait() {
   if (!user || !user.baits) return null;
-  return VIP_AUTO_BASE_BAIT_IDS
-    .filter((id) => BAITS[id] && (user.baits[id] || 0) > 0)
-    .sort((a, b) => (BAITS[b].price || 0) - (BAITS[a].price || 0))[0] || null;
+  const baitId = vipAuto.baitId || getSelectedVipAutoBait();
+  if (!baitId || !BAITS[baitId]) return null;
+  return (user.baits[baitId] || 0) > 0 ? baitId : null;
 }
 
 function clearVipAutoIdleTimer() {
@@ -264,9 +269,21 @@ function stopVipAutoRunning() {
   updateVipAutoUI();
 }
 
+function stopVipAutoDueToNoBait() {
+  vipAuto.enabled = false;
+  vipAuto.running = false;
+  vipAuto.baitId = null;
+  clearVipAutoIdleTimer();
+  clearVipAutoTickTimer();
+  statusEl.textContent = 'VIP自动钓鱼：当前鱼饵不足，已停止';
+  vipAuto.noBaitNotified = true;
+  updateVipAutoUI();
+}
+
 function resetVipAutoForUser() {
   vipAuto.enabled = false;
   vipAuto.running = false;
+  vipAuto.baitId = null;
   vipAuto.nextDelay = VIP_AUTO_FIRST_IDLE_MS;
   vipAuto.noBaitNotified = false;
   clearVipAutoIdleTimer();
@@ -293,13 +310,11 @@ function startVipAutoRunning() {
     stopVipAutoRunning();
     return;
   }
-  if (state.phase === 'idle' && !getBestVipAutoBait()) {
-    stopVipAutoRunning();
-    if (!vipAuto.noBaitNotified) {
-      statusEl.textContent = 'VIP自动钓鱼：四款基础鱼饵已用完';
-      vipAuto.noBaitNotified = true;
-    }
-    updateVipAutoUI();
+  if (state.phase === 'idle') {
+    if (!vipAuto.baitId) vipAuto.baitId = getSelectedVipAutoBait();
+  }
+  if (state.phase === 'idle' && !getVipAutoBait()) {
+    stopVipAutoDueToNoBait();
     return;
   }
   vipAuto.noBaitNotified = false;
@@ -317,7 +332,7 @@ function noteVipAutoManualActivity() {
 }
 
 function maybeResumeVipAutoAfterInventoryChange() {
-  if (!vipAuto.enabled || vipAuto.running || !getBestVipAutoBait()) return;
+  if (!vipAuto.enabled || vipAuto.running || !getVipAutoBait()) return;
   scheduleVipAutoStart(VIP_AUTO_RESUME_IDLE_MS);
 }
 
@@ -327,12 +342,10 @@ function runVipAutoTick() {
     return;
   }
   if (state.phase === 'idle') {
-    const baitId = getBestVipAutoBait();
+    if (!vipAuto.baitId) vipAuto.baitId = getSelectedVipAutoBait();
+    const baitId = getVipAutoBait();
     if (!baitId) {
-      stopVipAutoRunning();
-      statusEl.textContent = 'VIP自动钓鱼：四款基础鱼饵已用完';
-      vipAuto.noBaitNotified = true;
-      updateVipAutoUI();
+      stopVipAutoDueToNoBait();
       return;
     }
     const resultEl = $('result-overlay');
@@ -356,7 +369,7 @@ function updateVipAutoUI() {
   } else if (vipAuto.running) {
     vipAutoBtn.textContent = 'VIP自动: 中';
   } else {
-    vipAutoBtn.textContent = getBestVipAutoBait() ? 'VIP自动: 待' : 'VIP自动: 缺饵';
+    vipAutoBtn.textContent = getVipAutoBait() ? 'VIP自动: 待' : 'VIP自动: 缺饵';
   }
 }
 
@@ -368,6 +381,7 @@ if (vipAutoBtn) {
       return;
     }
     vipAuto.enabled = !vipAuto.enabled;
+    vipAuto.baitId = vipAuto.enabled ? getSelectedVipAutoBait() : null;
     vipAuto.noBaitNotified = false;
     stopVipAutoRunning();
     if (vipAuto.enabled) {
@@ -662,6 +676,7 @@ function updateBaitCount() {
 
 baitSelect.onchange = () => {
   user.currentBait = baitSelect.value;
+  if (vipAuto.enabled) vipAuto.baitId = getSelectedVipAutoBait();
   updateBaitCount();
   saveUser();
 };
