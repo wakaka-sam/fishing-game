@@ -370,6 +370,11 @@ function formatAccessoryEffect(accessory) {
 }
 
 function renderCharacterSprite(character) {
+  if (character.spriteImage) {
+    return `
+      <span class="character-sprite character-sprite--sheet character-sprite--${character.sprite}" style="--char-sheet:url('${escapeHtml(character.spriteImage)}')" role="img" aria-label="${escapeHtml(character.name)}"></span>
+    `;
+  }
   const coat = character.colors?.coat || '#2563eb';
   const trim = character.colors?.trim || '#facc15';
   return `

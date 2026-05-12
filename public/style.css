@@ -1676,7 +1676,7 @@ input, select {
 .character-item.active { border-color: #4ec9b0; box-shadow: 0 0 10px rgba(78,201,176,0.35); }
 .character-item.locked { opacity: 0.58; cursor: default; }
 .character-stage {
-  height: 98px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1714,6 +1714,15 @@ input, select {
   animation: characterBob 0.9s steps(1) infinite;
 }
 .character-sprite span { position: absolute; display: block; }
+.character-sprite--sheet {
+  width: 88px;
+  height: 132px;
+  background-image: var(--char-sheet);
+  background-repeat: no-repeat;
+  background-size: 300% 100%;
+  background-position: 0 0;
+  animation: characterSheet3 0.9s steps(1) infinite;
+}
 .char-shadow {
   left: 14px; bottom: 0;
   width: 36px; height: 6px;
@@ -1770,6 +1779,11 @@ input, select {
   33% { transform: translateY(-3px); }
   66% { transform: translateY(1px); }
 }
+@keyframes characterSheet3 {
+  0%, 100% { background-position: 0 0; }
+  33% { background-position: 50% 0; }
+  66% { background-position: 100% 0; }
+}
 @keyframes characterArmLeft {
   0%, 100% { transform: rotate(-6deg); transform-origin: top right; }
   33% { transform: rotate(10deg); transform-origin: top right; }
@@ -1814,27 +1828,6 @@ input, select {
 }
 .character-sprite--phoebe-cupid .char-spark--one { left: 48px; top: 12px; }
 .character-sprite--phoebe-cupid .char-spark--two { left: 10px; top: 46px; animation-delay: 0.3s; }
-
-.character-sprite--raiden-shogun { --hair: #312e81; }
-.character-sprite--raiden-shogun .char-hair {
-  height: 14px;
-  box-shadow: 4px 12px 0 #312e81, 12px 18px 0 #312e81;
-}
-.character-sprite--raiden-shogun .char-prop--one {
-  display: block;
-  left: 47px; top: 18px;
-  width: 3px; height: 42px;
-  background: #c4b5fd;
-}
-.character-sprite--raiden-shogun .char-spark--one,
-.character-sprite--raiden-shogun .char-spark--two {
-  display: block;
-  width: 3px; height: 10px;
-  background: #a78bfa;
-  animation: charSpark 0.75s steps(1) infinite;
-}
-.character-sprite--raiden-shogun .char-spark--one { left: 10px; top: 12px; }
-.character-sprite--raiden-shogun .char-spark--two { left: 54px; top: 48px; animation-delay: 0.25s; }
 
 .character-sprite--justin-bieber { --hair: #fbbf24; }
 .character-sprite--justin-bieber .char-prop--one {

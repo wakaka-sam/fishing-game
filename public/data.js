@@ -504,8 +504,9 @@ const CHARACTERS = [
     title: '雷鸣海域的执竿者',
     obtain: '暂未开放',
     sprite: 'raiden-shogun',
-    colors: { coat: '#7c3aed', trim: '#c4b5fd' },
-    bio: '来自雷鸣海域的冷峻强者，挥竿时会让水面闪过细小电光。她追求永恒般稳定的命中，也尊重每一条鱼的锋芒。',
+    spriteImage: 'assets/characters/raiden-shogun-sprite.png',
+    colors: { coat: '#6d28d9', trim: '#ef4444' },
+    bio: '来自稻妻雷鸣海域的冷峻强者，紫发、和服与雷光是她最醒目的标志。挥竿时水面会闪过细小电光，像在追求永恒般稳定的命中。',
   },
   {
     id: 'justin_bieber',
