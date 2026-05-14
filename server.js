@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -12,10 +13,60 @@ if (!fs.existsSync(USERS_DIR)) fs.mkdirSync(USERS_DIR, { recursive: true });
 
 const CODES_FILE = path.join(ROOT, 'data', 'codes.json');
 const REWARDS_FILE = path.join(ROOT, 'data', 'rewards.json');
+const BACKEND_API_URL = process.env.FISH_BACKEND_URL || process.env.FISH_API_URL || 'https://fishapi.wakaka007.cn';
+const BACKEND_TIMEOUT_MS = Number(process.env.FISH_BACKEND_TIMEOUT_MS || 5000);
+const BACKEND_DISABLED = /^(0|false|off)$/i.test(process.env.FISH_BACKEND_MIRROR || '');
 
 function bjNow() { return new Date(Date.now() + 8 * 3600000); }
 function bjDateStr(d) { return d.toISOString().slice(0, 10); }
 function bjMinutes(d) { return d.getUTCHours() * 60 + d.getUTCMinutes(); }
+
+function backendUrl(pathname) {
+  if (BACKEND_DISABLED || !BACKEND_API_URL) return null;
+  try {
+    return new URL(pathname, BACKEND_API_URL.endsWith('/') ? BACKEND_API_URL : BACKEND_API_URL + '/');
+  } catch (e) {
+    console.warn(`[后端双写] FISH_BACKEND_URL 无效: ${e.message}`);
+    return null;
+  }
+}
+
+function backendPost(pathname, payload) {
+  const url = backendUrl(pathname);
+  if (!url) return Promise.resolve(null);
+  const data = JSON.stringify(payload || {});
+  const transport = url.protocol === 'https:' ? https : http;
+  return new Promise((resolve, reject) => {
+    const req = transport.request(url, {
+      method: 'POST',
+      timeout: BACKEND_TIMEOUT_MS,
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data),
+      },
+    }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(body ? JSON.parse(body) : null);
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 200)}`));
+        }
+      });
+    });
+    req.on('timeout', () => req.destroy(new Error('request timeout')));
+    req.on('error', reject);
+    req.end(data);
+  });
+}
+
+function mirrorUserToBackend(user) {
+  if (!user || !user.username) return;
+  backendPost('/api/save', { username: user.username, state: user })
+    .catch(err => console.warn(`[后端双写] user:${user.username} 写入失败: ${err.message}`));
+}
 
 function loadRewards() {
   if (fs.existsSync(REWARDS_FILE)) return JSON.parse(fs.readFileSync(REWARDS_FILE, 'utf8'));
@@ -101,7 +152,7 @@ function loadCodes() {
   for (const [key, val] of Object.entries(DEFAULT_CODES)) {
     if (!codes[key]) { codes[key] = val; updated = true; }
   }
-  if (updated) fs.writeFileSync(CODES_FILE, JSON.stringify(codes, null, 2));
+  if (updated) saveCodes(codes);
   return codes;
 }
 
@@ -163,7 +214,7 @@ function loadUser(name) {
   const p = userPath(name);
   if (!fs.existsSync(p)) {
     const u = defaultUser(name);
-    fs.writeFileSync(p, JSON.stringify(u, null, 2));
+    saveUser(u);
     return u;
   }
   const existing = JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -192,6 +243,7 @@ function loadUser(name) {
 
 function saveUser(user) {
   fs.writeFileSync(userPath(user.username), JSON.stringify(user, null, 2));
+  mirrorUserToBackend(user);
 }
 
 function readBody(req) {
