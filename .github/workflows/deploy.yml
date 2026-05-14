@@ -32,7 +32,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             root@sub2api.wakaka007.cn \
-            "mkdir -p /opt/fishing-game/data/users && systemctl restart fishing-game && sleep 1 && systemctl is-active fishing-game"
+            "systemctl restart fishing-game && sleep 1 && systemctl is-active fishing-game"
 
       - name: Health check
         run: |

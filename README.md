@@ -1,6 +1,6 @@
 # 像素钓鱼 🎣
 
-一个像素风第一视角钓鱼小游戏，纯 Node.js 实现（无外部依赖）。
+一个像素风第一视角钓鱼小游戏。当前仓库只保留前端静态资源和 API 代理；真实后端逻辑在 `/Volumes/bigger/workspace/fish_backend`，线上服务为 `https://fishapi.wakaka007.cn`。
 
 线上演示：<https://fish.wakaka007.cn>
 
@@ -25,29 +25,31 @@
 ```bash
 node server.js          # 默认 3000
 PORT=3456 node server.js # 自定义端口
+FISH_BACKEND_URL=http://localhost:3000 node server.js # 指向本地后端调试
 ```
 
 访问 `http://localhost:3000`。
+
+`server.js` 只负责两件事：
+
+- 服务 `public/` 静态文件
+- 将 `/api/*` 原样代理到 `FISH_BACKEND_URL`，默认 `https://fishapi.wakaka007.cn`
 
 ## 目录结构
 
 ```
 .
-├── server.js          # Node http 服务（无依赖）
+├── server.js          # 前端静态服务 + API 代理（无业务后端逻辑）
 ├── public/
 │   ├── index.html     # 页面骨架
 │   ├── style.css      # 像素风样式
 │   ├── data.js        # 鱼饵 / 鱼 / 概率配置
 │   └── game.js        # 游戏逻辑
-└── data/users/        # 用户存档（JSON）
 ```
 
 ## API
 
-| 端点 | 说明 |
-|---|---|
-| `POST /api/login` | `{username}` → 加载或创建用户 |
-| `POST /api/save`  | `{username, state}` → 保存用户状态 |
+本仓库不实现 API。所有 `/api/*` 请求由 `server.js` 代理到 fish backend。新增或修改登录、保存、排行榜、兑换、抽奖、数据库等逻辑时，请修改 `/Volumes/bigger/workspace/fish_backend`。
 
 ## 部署
 
