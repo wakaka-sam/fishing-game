@@ -15,7 +15,7 @@ const CODES_FILE = path.join(ROOT, 'data', 'codes.json');
 const REWARDS_FILE = path.join(ROOT, 'data', 'rewards.json');
 const BACKEND_API_URL = process.env.FISH_BACKEND_URL || process.env.FISH_API_URL || 'https://fishapi.wakaka007.cn';
 const BACKEND_TIMEOUT_MS = Number(process.env.FISH_BACKEND_TIMEOUT_MS || 5000);
-const BACKEND_DISABLED = /^(0|false|off)$/i.test(process.env.FISH_BACKEND_MIRROR || '');
+const BACKEND_DISABLED = /^(0|false|off)$/i.test(process.env.FISH_BACKEND_PROXY || process.env.FISH_BACKEND_MIRROR || '');
 
 function bjNow() { return new Date(Date.now() + 8 * 3600000); }
 function bjDateStr(d) { return d.toISOString().slice(0, 10); }
@@ -26,46 +26,36 @@ function backendUrl(pathname) {
   try {
     return new URL(pathname, BACKEND_API_URL.endsWith('/') ? BACKEND_API_URL : BACKEND_API_URL + '/');
   } catch (e) {
-    console.warn(`[后端双写] FISH_BACKEND_URL 无效: ${e.message}`);
+    console.warn(`[后端代理] FISH_BACKEND_URL 无效: ${e.message}`);
     return null;
   }
 }
 
-function backendPost(pathname, payload) {
-  const url = backendUrl(pathname);
-  if (!url) return Promise.resolve(null);
-  const data = JSON.stringify(payload || {});
+function proxyApiRequest(req, res) {
+  const url = backendUrl(req.url);
+  if (!url) return false;
   const transport = url.protocol === 'https:' ? https : http;
-  return new Promise((resolve, reject) => {
-    const req = transport.request(url, {
-      method: 'POST',
-      timeout: BACKEND_TIMEOUT_MS,
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(data),
-      },
-    }, (res) => {
-      let body = '';
-      res.setEncoding('utf8');
-      res.on('data', chunk => { body += chunk; });
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(body ? JSON.parse(body) : null);
-        } else {
-          reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 200)}`));
-        }
-      });
-    });
-    req.on('timeout', () => req.destroy(new Error('request timeout')));
-    req.on('error', reject);
-    req.end(data);
-  });
-}
+  const headers = { ...req.headers, host: url.host };
+  delete headers.connection;
 
-function mirrorUserToBackend(user) {
-  if (!user || !user.username) return;
-  backendPost('/api/save', { username: user.username, state: user })
-    .catch(err => console.warn(`[后端双写] user:${user.username} 写入失败: ${err.message}`));
+  const proxyReq = transport.request(url, {
+    method: req.method,
+    timeout: BACKEND_TIMEOUT_MS,
+    headers,
+  }, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+  proxyReq.on('timeout', () => proxyReq.destroy(new Error('backend request timeout')));
+  proxyReq.on('error', (err) => {
+    console.warn(`[后端代理] ${req.method} ${req.url} 失败: ${err.message}`);
+    if (!res.headersSent) {
+      return json(res, 502, { error: '后端服务暂时不可用' });
+    }
+    res.destroy(err);
+  });
+  req.pipe(proxyReq);
+  return true;
 }
 
 function loadRewards() {
@@ -243,7 +233,6 @@ function loadUser(name) {
 
 function saveUser(user) {
   fs.writeFileSync(userPath(user.username), JSON.stringify(user, null, 2));
-  mirrorUserToBackend(user);
 }
 
 function readBody(req) {
@@ -369,6 +358,8 @@ function getLeaderboard() {
 
 const server = http.createServer(async (req, res) => {
   if (req.url.startsWith('/api/')) {
+    if (proxyApiRequest(req, res)) return;
+
     try {
       if (req.url === '/api/leaderboard') {
         return json(res, 200, getLeaderboard());
@@ -554,6 +545,11 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Fishing game running at http://localhost:${PORT}`);
-  settleRankRewardIfDue();
-  scheduleSettlement();
+  if (BACKEND_DISABLED || !BACKEND_API_URL) {
+    settleRankRewardIfDue();
+    scheduleSettlement();
+  } else {
+    console.log(`[后端代理] API 使用 ${BACKEND_API_URL}`);
+    console.log('[排名奖励] 由后端服务处理');
+  }
 });
