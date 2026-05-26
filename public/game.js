@@ -4,6 +4,8 @@ if (!window.GAME_DATA) {
     '</div>';
   throw new Error('GAME_DATA missing');
 }
+
+const API_BASE = 'https://fishapi.wakaka007.cn';
 // HITS_BY_RARITY / RARITY_COLOR / RARITY_NAME / BAITS / rollCatch 由 data.js 顶层声明，已在脚本作用域可见
 
 function todayCN() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
@@ -416,7 +418,7 @@ async function login() {
     return;
   }
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch(API_BASE + '/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: name }),
@@ -450,7 +452,7 @@ $('logout-btn').onclick = () => {
     const saved = localStorage.getItem('fishing_username');
     if (saved && location.protocol !== 'file:') {
       usernameInput.value = saved;
-      const res = await fetch('/api/login', {
+      const res = await fetch(API_BASE + '/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: saved }),
@@ -474,7 +476,7 @@ async function saveUser() {
   const revision = ++saveRevision;
   saveQueue = saveQueue.catch(() => {}).then(async () => {
     try {
-      const res = await fetch('/api/save', {
+      const res = await fetch(API_BASE + '/api/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
@@ -1746,7 +1748,7 @@ async function loadLeaderboard() {
   loading.classList.remove('hidden');
   list.innerHTML = '';
   try {
-    const [lbRes, histRes] = await Promise.all([fetch('/api/leaderboard'), fetch('/api/rank-history')]);
+    const [lbRes, histRes] = await Promise.all([fetch(API_BASE + '/api/leaderboard'), fetch(API_BASE + '/api/rank-history')]);
     rankData = await lbRes.json();
     rankHistory = (await histRes.json()).history || [];
     renderLeaderboard();
@@ -1905,7 +1907,7 @@ async function redeemCode() {
   const status = $('redeem-status');
   if (!code) { status.textContent = '请输入兑换码'; status.className = 'redeem-status error'; return; }
   try {
-    const res = await fetch('/api/redeem', {
+    const res = await fetch(API_BASE + '/api/redeem', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user.username, code }),
@@ -2092,7 +2094,7 @@ async function doGacha(count, currency = activeGachaCurrency, season) {
     return;
   }
   try {
-    const res = await fetch('/api/gacha', {
+    const res = await fetch(API_BASE + '/api/gacha', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user.username, count, currency, season }),
