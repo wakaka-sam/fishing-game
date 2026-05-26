@@ -1,12 +1,14 @@
 # 像素钓鱼 🎣
 
-一个像素风第一视角钓鱼小游戏，纯 Node.js 实现（无外部依赖）。
+一个像素风第一视角钓鱼小游戏，纯前端实现，直接打开 `public/index.html` 即可运行。
 
 线上演示：<https://fish.wakaka007.cn>
 
+> 这是一个纯前端项目，不含任何服务端代码。游戏数据通过外部 API 服务持久化。
+
 ## 玩法
 
-- 输入用户名登录（数据按用户名持久化在服务器）
+- 输入用户名登录（数据持久化在云端）
 - 在商店购买不同档次的鱼饵（蚯蚓 / 鲜虾 / 亮片 / 魔法鱼饵 / 神仙鱼饵）
 - 抛竿钓鱼 → 等待鱼上钩 → 命中条小游戏，连续击中红区即可拉鱼上岸
 - 越稀有的鱼需要的连续命中次数越多、光标越快、红区越窄
@@ -22,9 +24,11 @@
 
 ## 本地运行
 
+直接用浏览器打开 `public/index.html`，或用任意静态文件服务器托管 `public/` 目录：
+
 ```bash
-node server.js          # 默认 3000
-PORT=3456 node server.js # 自定义端口
+# 例如用 Python
+python3 -m http.server 3000 --directory public
 ```
 
 访问 `http://localhost:3000`。
@@ -33,29 +37,15 @@ PORT=3456 node server.js # 自定义端口
 
 ```
 .
-├── server.js          # Node http 服务（无依赖）
 ├── public/
 │   ├── index.html     # 页面骨架
 │   ├── style.css      # 像素风样式
 │   ├── data.js        # 鱼饵 / 鱼 / 概率配置
-│   └── game.js        # 游戏逻辑
-└── data/users/        # 用户存档（JSON）
+│   ├── game.js        # 游戏逻辑
+│   └── version.json   # 版本信息
+└── scripts/
+    └── bump-version.sh  # 版本递增工具
 ```
-
-## API
-
-| 端点 | 说明 |
-|---|---|
-| `POST /api/login` | `{username}` → 加载或创建用户 |
-| `POST /api/save`  | `{username, state}` → 保存用户状态 |
-
-## 部署
-
-参考线上部署方式：
-
-1. `rsync` 代码到服务器
-2. `systemd` 跑 `node server.js`（服务名 `fishing-game.service`）
-3. nginx 反代 `127.0.0.1:3456`，Let's Encrypt 上 HTTPS
 
 ## 许可
 
