@@ -729,13 +729,119 @@ let hookX = W / 2;
 let hookY = H * 0.55;
 let lineSlack = 0;
 
+function pixelLabel(text, x, y, size, color = '#ffe9a8', align = 'center') {
+  ctx.font = `900 ${size}px "Microsoft YaHei", sans-serif`;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(6,14,24,0.92)';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawDiveRay(x1, x2, x3, x4, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const ray = ctx.createLinearGradient(0, 0, 0, H * 0.92);
+  ray.addColorStop(0, 'rgba(255,255,220,0.95)');
+  ray.addColorStop(0.66, 'rgba(147,255,237,0.12)');
+  ray.addColorStop(1, 'rgba(255,255,220,0)');
+  ctx.fillStyle = ray;
+  ctx.beginPath();
+  ctx.moveTo(x1, 0);
+  ctx.lineTo(x2, 0);
+  ctx.lineTo(x3, H);
+  ctx.lineTo(x4, H);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCaveWall(side, tint, rim, depth, start, t) {
+  ctx.save();
+  ctx.globalAlpha = depth;
+  ctx.fillStyle = tint;
+  ctx.beginPath();
+  if (side === 'left') {
+    ctx.moveTo(0, start);
+    for (let y = start; y <= H + 28; y += 20) {
+      const x = 22 + Math.sin(y * 0.045 + t * 0.12) * 18 + Math.sin(y * 0.011) * 18;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(0, H + 28);
+  } else {
+    ctx.moveTo(W, start);
+    for (let y = start; y <= H + 28; y += 20) {
+      const x = W - 22 - Math.sin(y * 0.043 + 0.8) * 17 - Math.cos(y * 0.016) * 20;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H + 28);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = rim;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSeaweed(x, y, h, c1, c2) {
+  px(x, y - h, 5, h, c1);
+  px(x + 8, y - h * 0.82, 5, h * 0.82, c2);
+  px(x - 7, y - h * 0.62, 5, h * 0.62, c2);
+  px(x - 11, y - h * 0.72, 18, 5, c2);
+  px(x + 6, y - h * 0.95, 18, 5, c1);
+}
+
+function drawAnemone(x, y, c1, c2) {
+  for (let i = 0; i < 6; i++) {
+    const dx = (i - 2.5) * 5;
+    px(x + dx, y - 18 - (i % 2) * 6, 4, 18 + (i % 2) * 6, i % 2 ? c1 : c2);
+  }
+  px(x - 17, y - 6, 38, 8, '#0c3a45');
+}
+
+function drawLargeFish(x, y, scale, body, fin, dir = -1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir * scale, scale);
+  px(-34, -15, 58, 30, '#04111d');
+  px(-22, -23, 28, 46, '#04111d');
+  px(-28, -12, 48, 24, body);
+  px(-16, -18, 28, 36, body);
+  px(-9, 6, 26, 8, '#bfe8ef');
+  px(-4, -26, 12, 13, fin);
+  px(-8, 12, 15, 12, fin);
+  ctx.fillStyle = '#04111d';
+  ctx.beginPath();
+  ctx.moveTo(-34, 0);
+  ctx.lineTo(-56, -17);
+  ctx.lineTo(-49, 0);
+  ctx.lineTo(-56, 17);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = fin;
+  ctx.beginPath();
+  ctx.moveTo(-32, 0);
+  ctx.lineTo(-51, -13);
+  ctx.lineTo(-44, 0);
+  ctx.lineTo(-51, 13);
+  ctx.closePath();
+  ctx.fill();
+  px(15, -4, 5, 5, '#04111d');
+  ctx.restore();
+}
+
 function render() {
   const t = Date.now() / 1000;
   const water = ctx.createLinearGradient(0, 0, 0, H);
-  water.addColorStop(0, '#18b6c7');
-  water.addColorStop(0.22, '#0b7fa3');
-  water.addColorStop(0.58, '#075477');
-  water.addColorStop(1, '#041a31');
+  water.addColorStop(0, '#2dd2d2');
+  water.addColorStop(0.18, '#0e91ac');
+  water.addColorStop(0.44, '#086586');
+  water.addColorStop(0.72, '#063c5f');
+  water.addColorStop(1, '#03182d');
   ctx.fillStyle = water;
   ctx.fillRect(0, 0, W, H);
 
@@ -744,7 +850,12 @@ function render() {
   for (let x = -20; x < W + 20; x += 34) {
     const waveY = 26 + Math.sin(t * 1.8 + x * 0.08) * 3;
     px(x, waveY, 22, 2, 'rgba(226,255,249,0.62)');
+    px(x + 14, waveY + 8, 18, 2, 'rgba(200,245,243,0.46)');
   }
+  px(0, 38, W, 3, 'rgba(250, 255, 234, 0.26)');
+  drawDiveRay(W * 0.33, W * 0.53, W * 0.33, W * 0.16, 0.24);
+  drawDiveRay(W * 0.62, W * 0.79, W * 0.71, W * 0.55, 0.18);
+  drawDiveRay(W * 0.86, W * 1.02, W * 0.98, W * 0.78, 0.14);
   ctx.save();
   ctx.globalAlpha = 0.28;
   const ray = ctx.createLinearGradient(0, 0, 0, H * 0.74);
@@ -767,6 +878,18 @@ function render() {
   ctx.fill();
   ctx.restore();
 
+  // 远景遗迹和前后层岩壁，拉开蓝洞深度
+  px(48, 118, 82, 9, 'rgba(10,72,92,0.34)');
+  px(232, 132, 104, 8, 'rgba(10,72,92,0.28)');
+  px(264, 102, 9, 88, 'rgba(7,55,79,0.26)');
+  px(282, 112, 8, 70, 'rgba(7,55,79,0.22)');
+  px(246, 188, 52, 8, 'rgba(7,55,79,0.24)');
+  for (let i = 0; i < 7; i++) {
+    px(24 + i * 52, 72 + (i % 2) * 18, 4, 4, 'rgba(181,249,245,0.28)');
+  }
+  drawCaveWall('left', '#073956', '#0b6b86', 0.36, H * 0.11, t);
+  drawCaveWall('right', '#06304a', '#0a607b', 0.38, H * 0.08, t);
+
   // 岩壁和珊瑚礁
   ctx.fillStyle = '#06304d';
   ctx.beginPath();
@@ -788,6 +911,8 @@ function render() {
   ctx.lineTo(W, H + 20);
   ctx.closePath();
   ctx.fill();
+  drawCaveWall('left', '#031b2d', 'rgba(15,111,135,0.52)', 0.56, H * 0.38, t);
+  drawCaveWall('right', '#031a2c', 'rgba(15,111,135,0.48)', 0.58, H * 0.31, t);
 
   const floor = ctx.createLinearGradient(0, H * 0.79, 0, H);
   floor.addColorStop(0, 'rgba(8, 68, 80, 0)');
@@ -814,11 +939,22 @@ function render() {
   coral(22, H - 14, '#4bcf93', '#ef6d73');
   coral(W - 30, H - 10, '#54d39a', '#b65cff');
   coral(W - 72, H - 4, '#f39a4b', '#e65463');
+  drawSeaweed(78, H - 7, 48, '#41d097', '#77f0c2');
+  drawAnemone(W - 92, H - 8, '#fc5f7d', '#b55cff');
+  drawSeaweed(W - 58, H - 5, 56, '#54d39a', '#5ed6ff');
+  px(126, H - 34, 38, 24, '#3f2919');
+  px(128, H - 31, 34, 7, '#aa7436');
+  px(142, H - 33, 6, 23, '#8a592b');
+  px(114, H - 47, 8, 35, '#d58b36');
+  px(109, H - 57, 18, 10, '#ffd269');
+  px(112, H - 70, 12, 13, 'rgba(255,220,112,0.72)');
 
   function fish(x, y, scale, body, fin, dir = 1) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(dir * scale, scale);
+    px(-19, -8, 31, 16, '#06121e');
+    px(-14, -11, 20, 22, '#06121e');
     px(-16, -6, 28, 12, body);
     px(-10, -9, 16, 18, body);
     ctx.fillStyle = fin;
@@ -830,6 +966,7 @@ function render() {
     ctx.closePath();
     ctx.fill();
     px(8, -3, 3, 3, '#08131f');
+    px(-4, -10, 9, 4, 'rgba(255,255,255,0.22)');
     ctx.restore();
   }
   for (let i = 0; i < 10; i++) {
@@ -838,15 +975,26 @@ function render() {
     fish(x, y, i % 3 === 0 ? 0.55 : 0.42, i % 2 ? '#ffd65d' : '#5bd6ff', i % 2 ? '#ef7554' : '#3b62db', i % 2 ? -1 : 1);
   }
   fish(W - 84, H * 0.37, 1.18, '#2c83bd', '#1c557f', -1);
+  drawLargeFish(W - 70 + Math.sin(t * 0.6) * 5, H * 0.36, 0.82, '#2c83bd', '#174e7a', -1);
+  drawLargeFish(W + 26 - ((t * 18) % (W + 120)), H * 0.23 + Math.sin(t) * 8, 0.48, '#e9d083', '#e15a44', 1);
 
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 34; i++) {
     const x = (i * 37 + Math.sin(t + i) * 18) % W;
-    const y = (H + 20 - ((t * 26 + i * 53) % (H + 60)));
+    const y = H + 20 - ((t * (18 + (i % 5) * 4) + i * 53) % (H + 60));
     const s = 2 + (i % 4);
-    ctx.strokeStyle = 'rgba(210,252,255,0.56)';
+    ctx.strokeStyle = i % 5 === 0 ? 'rgba(255,247,204,0.62)' : 'rgba(210,252,255,0.48)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, s, s);
   }
+
+  // 画布内信息牌，增加经营游戏的密度
+  px(12, 12, 96, 38, 'rgba(3,20,34,0.82)');
+  px(16, 16, 88, 4, '#d59a43');
+  px(18, 36, 62, 8, 'rgba(94,235,219,0.28)');
+  pixelLabel('BLUE HOLE', 60, 29, 10, '#fff0b4');
+  px(W - 94, 14, 78, 34, 'rgba(3,20,34,0.78)');
+  px(W - 88, 19, 12, 12, '#ffd65d');
+  pixelLabel('18m', W - 50, 31, 13, '#8ff4d4');
 
   // 小木屋招牌，呼应补给经营感
   px(W - 138, H * 0.54, 116, 48, 'rgba(45,30,18,0.82)');
@@ -857,9 +1005,9 @@ function render() {
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 3;
   ctx.strokeStyle = '#2a160a';
-  ctx.strokeText('达夫渔场', W - 80, H * 0.586);
+  ctx.strokeText('蓝洞渔场', W - 80, H * 0.586);
   ctx.fillStyle = '#ffe6a0';
-  ctx.fillText('达夫渔场', W - 80, H * 0.586);
+  ctx.fillText('蓝洞渔场', W - 80, H * 0.586);
   ctx.textBaseline = 'alphabetic';
 
   // 潜水员和鱼竿
@@ -871,21 +1019,40 @@ function render() {
   const rodTipX = W * 0.53 + Math.sin(t * 1.5) * 5;
   const rodTipY = H * 0.47;
 
+  for (let i = 0; i < 5; i++) {
+    px(diverX - 46 + i * 8 + Math.sin(t * 2 + i) * 2, diverY - 62 - i * 15, 4, 4, 'rgba(221,255,249,0.56)');
+  }
   ctx.save();
   ctx.translate(diverX, diverY);
   ctx.rotate(-0.08);
-  px(-26, -10, 17, 52, '#8b642d');
-  px(-31, -2, 8, 34, '#d6dde1');
-  px(-22, 8, 28, 36, '#1f3345');
-  px(-16, -24, 26, 24, '#f1c28d');
-  px(-21, -27, 34, 18, 'rgba(216,255,255,0.9)');
-  px(-19, -30, 38, 8, '#e8f7ff');
-  px(-20, 17, 11, 38, '#16263a');
-  px(0, 18, 11, 36, '#16263a');
-  px(-30, 49, 22, 8, '#f3c44e');
-  px(-2, 49, 22, 8, '#f3c44e');
-  px(-34, -2, 16, 9, '#f4be72');
-  px(2, -8, 38, 10, '#f4be72');
+  px(-38, -20, 17, 60, '#06111d');
+  px(-35, -17, 12, 54, '#ad7138');
+  px(-33, -12, 8, 43, '#d79b4f');
+  px(-24, 0, 41, 42, '#06111d');
+  px(-20, 4, 34, 36, '#17334a');
+  px(-15, 5, 14, 35, '#0b2033');
+  px(-27, -38, 41, 33, '#06111d');
+  px(-23, -34, 34, 28, '#f0c28f');
+  px(-25, -34, 38, 16, '#06273e');
+  px(-20, -31, 28, 10, 'rgba(181,246,255,0.96)');
+  px(-16, -29, 9, 6, '#5fd0e8');
+  px(-4, -29, 9, 6, '#5fd0e8');
+  px(9, -25, 9, 6, '#06111d');
+  px(17, -23, 12, 4, '#8fd8e7');
+  px(-32, -6, 16, 9, '#f4be72');
+  px(4, -12, 41, 11, '#06111d');
+  px(7, -9, 37, 8, '#f4be72');
+  px(34, -13, 9, 16, '#f0c28f');
+  px(-22, 35, 12, 42, '#06111d');
+  px(-17, 38, 12, 35, '#142b42');
+  px(0, 35, 12, 40, '#06111d');
+  px(4, 38, 12, 33, '#142b42');
+  px(-34, 72, 28, 9, '#06111d');
+  px(-31, 70, 27, 8, '#ffd15d');
+  px(0, 72, 30, 9, '#06111d');
+  px(2, 70, 28, 8, '#ffd15d');
+  px(-41, -2, 7, 22, '#06111d');
+  px(-43, 16, 11, 8, '#ffd166');
   ctx.restore();
 
   // 暗夜竿特效：发光光晕
