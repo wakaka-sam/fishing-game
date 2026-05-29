@@ -161,7 +161,7 @@ function onAdRewardGranted() {
   user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
   user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
   refreshUI();
-  saveUser();
+  saveUser('wallet');
   showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石！`);
   updateAdButtons();
 }
@@ -195,6 +195,22 @@ document.addEventListener('DOMContentLoaded', () => {
 let user = null;
 let saveQueue = Promise.resolve();
 let saveRevision = 0;
+const SAVE_SCOPES = {
+  wallet: { endpoint: '/api/player/wallet', fields: ['money', 'diamonds', 'stats'] },
+  selection: { endpoint: '/api/player/selection', fields: ['currentBait', 'activePet', 'activeCharacter', 'equippedAccessory'] },
+  cast: { endpoint: '/api/player/cast', fields: ['baits', 'currentBait'] },
+  catch: {
+    endpoint: '/api/player/catch',
+    fields: ['money', 'diamonds', 'baits', 'dex', 'stats', 'history', 'dailyStats', 'ownedRods', 'ownedCharacters', 'activeCharacter', 'characterFragments'],
+  },
+  shop: { endpoint: '/api/shop/purchase', fields: ['money', 'diamonds', 'baits', 'currentBait'] },
+  character: { endpoint: '/api/player/characters', fields: ['ownedCharacters', 'activeCharacter', 'characterFragments'] },
+  pet: { endpoint: '/api/player/pets', fields: ['ownedPets', 'activePet'] },
+  accessory: { endpoint: '/api/player/accessories', fields: ['money', 'accessories', 'equippedAccessory'] },
+  rod: { endpoint: '/api/player/rod-skin', fields: ['rodSkin'] },
+  share: { endpoint: '/api/player/share-reward', fields: ['money', 'lastShareDate'] },
+  full: { endpoint: '/api/save', fields: null },
+};
 const state = {
   phase: 'idle', // idle | casting | waiting | hooked | reeling
   castStart: 0,
@@ -418,7 +434,7 @@ async function login() {
     return;
   }
   try {
-    const res = await fetch(API_BASE + '/api/login', {
+    const res = await fetch(API_BASE + '/api/session/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: name }),
@@ -452,7 +468,7 @@ $('logout-btn').onclick = () => {
     const saved = localStorage.getItem('fishing_username');
     if (saved && location.protocol !== 'file:') {
       usernameInput.value = saved;
-      const res = await fetch(API_BASE + '/api/login', {
+      const res = await fetch(API_BASE + '/api/session/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: saved }),
@@ -469,21 +485,34 @@ $('logout-btn').onclick = () => {
   } catch (_) {}
 })();
 
-async function saveUser() {
+function pickUserFields(fields) {
+  if (!fields) return user;
+  const patch = {};
+  for (const field of fields) patch[field] = user[field];
+  return patch;
+}
+
+async function saveUser(scope = 'full') {
   if (!user) return;
+  const config = SAVE_SCOPES[scope] || SAVE_SCOPES.full;
   const username = user.username;
-  const body = JSON.stringify({ username, state: user });
+  const body = JSON.stringify({ username, patch: pickUserFields(config.fields) });
   const revision = ++saveRevision;
   saveQueue = saveQueue.catch(() => {}).then(async () => {
     try {
-      const res = await fetch(API_BASE + '/api/save', {
+      const res = await fetch(API_BASE + config.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
       });
-      const saved = await res.json();
+      const saved = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(saved.error || 'HTTP ' + res.status);
       if (revision === saveRevision && user && user.username === username) {
-        user = saved;
+        if (saved && saved.patch) {
+          Object.assign(user, saved.patch);
+        } else {
+          user = saved;
+        }
         ensureUserDefaults();
       }
       return saved;
@@ -567,7 +596,7 @@ function synthesizeCharacter(characterId) {
   user.activeCharacter = characterId;
   statusEl.textContent = `已合成并解锁 ${character.name}`;
   refreshUI();
-  saveUser();
+  saveUser('character');
   renderCharacters();
 }
 
@@ -680,7 +709,7 @@ baitSelect.onchange = () => {
   user.currentBait = baitSelect.value;
   if (vipAuto.enabled) vipAuto.baitId = getSelectedVipAutoBait();
   updateBaitCount();
-  saveUser();
+  saveUser('selection');
 };
 
 // ====== 画布渲染（第一视角） ======
@@ -920,7 +949,7 @@ function startCast(preferredBaitId = null, options = {}) {
   hookY = H * 0.55 + Math.random() * 30;
   statusEl.textContent = '已抛竿，等待鱼上钩...';
   refreshUI();
-  saveUser();
+  saveUser('cast');
 
   // 随机 2-7 秒后上钩
   const wait = 2000 + Math.random() * 5000;
@@ -1174,7 +1203,7 @@ function applyCatch(c) {
   c.unlockedRod = unlockedBlackSilkRod ? BLACK_SILK_ROD_ID : null;
   if (user.history.length > 50) user.history.shift();
   refreshUI();
-  saveUser();
+  saveUser('catch');
 }
 
 function rollDiamondReward() {
@@ -1330,7 +1359,7 @@ function showMiss(msg) {
         user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
         user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
         refreshUI();
-        saveUser();
+        saveUser('wallet');
         resultOverlay.classList.add('hidden');
         showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石，再来一次！`);
         startCast();
@@ -1340,7 +1369,7 @@ function showMiss(msg) {
         user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
         user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
         refreshUI();
-        saveUser();
+        saveUser('wallet');
         resultOverlay.classList.add('hidden');
         startCast();
       });
@@ -1397,7 +1426,7 @@ function renderShop() {
     user.baits[id] = (user.baits[id] || 0) + n;
     refreshUI();
     renderShop();
-    saveUser();
+    saveUser('shop');
     maybeResumeVipAutoAfterInventoryChange();
   };
 }
@@ -1490,6 +1519,7 @@ function renderDex() {
 // ====== 角色系统 ======
 const characterOverlay = $('character-overlay');
 $('character-btn').onclick = () => { renderCharacters(); characterOverlay.classList.remove('hidden'); };
+$('avatar-btn').onclick = () => { renderCharacters(); characterOverlay.classList.remove('hidden'); };
 
 function renderCharacters() {
   normalizeCharacters();
@@ -1522,7 +1552,7 @@ function renderCharacters() {
       div.onclick = () => {
         user.activeCharacter = character.id;
         refreshUI();
-        saveUser();
+        saveUser('selection');
         renderCharacters();
       };
     } else if (canSynthesize) {
@@ -1564,7 +1594,7 @@ function renderPets() {
     if (isOwned) {
       div.onclick = () => {
         user.activePet = isActive ? null : pet.id;
-        refreshUI(); saveUser(); renderPets();
+        refreshUI(); saveUser('pet'); renderPets();
       };
     }
     list.appendChild(div);
@@ -1660,7 +1690,7 @@ function renderAccessories(message = '') {
     list.querySelectorAll('[data-equip]').forEach((btn) => {
       btn.onclick = () => {
         user.equippedAccessory = user.equippedAccessory === btn.dataset.equip ? null : btn.dataset.equip;
-        saveUser();
+        saveUser('selection');
         refreshUI();
         renderAccessories(user.equippedAccessory ? '已装备首饰' : '已卸下首饰');
       };
@@ -1702,7 +1732,7 @@ function upgradeAccessory(uid) {
   user.money -= cost;
   if (success) target.star = GAME_DATA.clampAccessoryStar(target.star + 1);
   user.accessories = user.accessories.filter(item => item.uid !== material.uid);
-  saveUser();
+  saveUser('accessory');
   refreshUI();
   renderAccessories(success
     ? `${def.name} 强化成功，消耗 ${cost} 金币，升至 ${target.star} 星`
@@ -1841,7 +1871,7 @@ function renderRodSkins() {
     if (unlocked && !isActive) {
       div.onclick = () => {
         user.rodSkin = skin.id;
-        saveUser();
+        saveUser('rod');
         refreshUI();
         renderRodSkins();
       };
@@ -1907,18 +1937,20 @@ async function redeemCode() {
   const status = $('redeem-status');
   if (!code) { status.textContent = '请输入兑换码'; status.className = 'redeem-status error'; return; }
   try {
-    const res = await fetch(API_BASE + '/api/redeem', {
+    const res = await fetch(API_BASE + '/api/redeem/claim', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user.username, code }),
     });
     const data = await res.json();
     if (data.success) {
-      user = data.user;
+      Object.assign(user, data.patch || {});
+      ensureUserDefaults();
       refreshUI();
+      const rewardData = data.reward || {};
       let reward = '';
-      if (data.coins) reward += `+${data.coins} 金币 `;
-      if (data.diamonds) reward += `+${data.diamonds} 钻石 `;
+      if (rewardData.coins) reward += `+${rewardData.coins} 金币 `;
+      if (rewardData.diamonds) reward += `+${rewardData.diamonds} 钻石 `;
       status.innerHTML = `兑换成功！<br>${data.desc} ${reward}🎉`;
       status.className = 'redeem-status success';
       $('redeem-input').value = '';
@@ -1959,7 +1991,7 @@ $('copy-link-btn').onclick = () => {
       user.money += 10;
       user.lastShareDate = todayKey;
       refreshUI();
-      saveUser();
+      saveUser('share');
       status.textContent = '链接已复制！获得 10 金币奖励 🎉';
       status.className = 'share-status success';
     } else {
@@ -1974,7 +2006,7 @@ $('copy-link-btn').onclick = () => {
       user.money += 10;
       user.lastShareDate = todayKey;
       refreshUI();
-      saveUser();
+      saveUser('share');
       status.textContent = '链接已复制！获得 10 金币奖励 🎉';
       status.className = 'share-status success';
     } else {
@@ -2094,14 +2126,14 @@ async function doGacha(count, currency = activeGachaCurrency, season) {
     return;
   }
   try {
-    const res = await fetch(API_BASE + '/api/gacha', {
+    const res = await fetch(API_BASE + '/api/gacha/draw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user.username, count, currency, season }),
     });
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
-    user = data.user;
+    Object.assign(user, data.patch || {});
     ensureUserDefaults();
     refreshUI();
     showGachaResult(data.results);
