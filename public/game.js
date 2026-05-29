@@ -731,53 +731,163 @@ let lineSlack = 0;
 
 function render() {
   const t = Date.now() / 1000;
+  const water = ctx.createLinearGradient(0, 0, 0, H);
+  water.addColorStop(0, '#18b6c7');
+  water.addColorStop(0.22, '#0b7fa3');
+  water.addColorStop(0.58, '#075477');
+  water.addColorStop(1, '#041a31');
+  ctx.fillStyle = water;
+  ctx.fillRect(0, 0, W, H);
 
-  // 天空渐变
-  const skyH = H * 0.4;
-  for (let i = 0; i < skyH; i += 4) {
-    const r = 135 + (255 - 135) * (i / skyH) * 0.1;
-    const g = 206 + (200 - 206) * (i / skyH) * 0.1;
-    const b = 235 - (235 - 180) * (i / skyH) * 0.3;
-    px(0, i, W, 4, `rgb(${r|0},${g|0},${b|0})`);
+  // 水面和光束
+  px(0, 0, W, 42, 'rgba(173, 248, 238, 0.34)');
+  for (let x = -20; x < W + 20; x += 34) {
+    const waveY = 26 + Math.sin(t * 1.8 + x * 0.08) * 3;
+    px(x, waveY, 22, 2, 'rgba(226,255,249,0.62)');
   }
-
-  // 远山
-  ctx.fillStyle = '#3d5a73';
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  const ray = ctx.createLinearGradient(0, 0, 0, H * 0.74);
+  ray.addColorStop(0, 'rgba(255,255,226,0.8)');
+  ray.addColorStop(1, 'rgba(255,255,226,0)');
+  ctx.fillStyle = ray;
   ctx.beginPath();
-  ctx.moveTo(0, skyH);
-  for (let x = 0; x <= W; x += 20) {
-    const h = 30 + Math.sin(x * 0.02) * 15 + Math.sin(x * 0.05) * 8;
-    ctx.lineTo(x, skyH - h);
+  ctx.moveTo(W * 0.42, 0);
+  ctx.lineTo(W * 0.64, 0);
+  ctx.lineTo(W * 0.42, H * 0.92);
+  ctx.lineTo(W * 0.27, H * 0.92);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(W * 0.76, 0);
+  ctx.lineTo(W * 0.93, 0);
+  ctx.lineTo(W * 0.88, H * 0.74);
+  ctx.lineTo(W * 0.68, H * 0.74);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // 岩壁和珊瑚礁
+  ctx.fillStyle = '#06304d';
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.18);
+  for (let y = H * 0.18; y <= H + 20; y += 26) {
+    const x = 20 + Math.sin(y * 0.045 + t * 0.2) * 18 + Math.sin(y * 0.018) * 12;
+    ctx.lineTo(x, y);
   }
-  ctx.lineTo(W, skyH);
+  ctx.lineTo(0, H + 20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#052a43';
+  ctx.beginPath();
+  ctx.moveTo(W, H * 0.12);
+  for (let y = H * 0.12; y <= H + 20; y += 24) {
+    const x = W - 26 - Math.sin(y * 0.04 + 0.6) * 18 - Math.sin(y * 0.02) * 15;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H + 20);
+  ctx.closePath();
   ctx.fill();
 
-  // 水面
-  px(0, skyH, W, H - skyH, '#1e6091');
-  // 波纹
-  for (let y = skyH; y < H; y += 6) {
-    const wave = Math.sin(t * 2 + y * 0.1) * 2;
-    const shade = 30 + (y - skyH) / (H - skyH) * 60;
-    px(0, y + wave, W, 2, `rgb(${20+shade*0.3|0},${60+shade*0.5|0},${120+shade*0.4|0})`);
+  const floor = ctx.createLinearGradient(0, H * 0.79, 0, H);
+  floor.addColorStop(0, 'rgba(8, 68, 80, 0)');
+  floor.addColorStop(0.42, '#0d4f55');
+  floor.addColorStop(1, '#08283d');
+  ctx.fillStyle = floor;
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.86);
+  for (let x = 0; x <= W; x += 24) {
+    ctx.lineTo(x, H * 0.84 + Math.sin(x * 0.04) * 12 + Math.sin(x * 0.11) * 5);
   }
-  // 高光
-  for (let i = 0; i < 30; i++) {
-    const x = (i * 47 + t * 30) % W;
-    const y = skyH + ((i * 31) % (H - skyH));
-    px(x, y, 3, 1, 'rgba(255,255,255,0.5)');
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
+
+  function coral(x, y, c1, c2) {
+    px(x, y - 34, 7, 34, c1);
+    px(x - 10, y - 22, 7, 22, c2);
+    px(x + 10, y - 26, 7, 26, c2);
+    px(x - 15, y - 28, 18, 7, c2);
+    px(x + 8, y - 36, 16, 7, c1);
+  }
+  coral(22, H - 14, '#4bcf93', '#ef6d73');
+  coral(W - 30, H - 10, '#54d39a', '#b65cff');
+  coral(W - 72, H - 4, '#f39a4b', '#e65463');
+
+  function fish(x, y, scale, body, fin, dir = 1) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(dir * scale, scale);
+    px(-16, -6, 28, 12, body);
+    px(-10, -9, 16, 18, body);
+    ctx.fillStyle = fin;
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.lineTo(-29, -9);
+    ctx.lineTo(-25, 0);
+    ctx.lineTo(-29, 9);
+    ctx.closePath();
+    ctx.fill();
+    px(8, -3, 3, 3, '#08131f');
+    ctx.restore();
+  }
+  for (let i = 0; i < 10; i++) {
+    const x = (i * 47 + t * 16) % (W + 60) - 30;
+    const y = 82 + (i * 37) % 210 + Math.sin(t * 1.5 + i) * 4;
+    fish(x, y, i % 3 === 0 ? 0.55 : 0.42, i % 2 ? '#ffd65d' : '#5bd6ff', i % 2 ? '#ef7554' : '#3b62db', i % 2 ? -1 : 1);
+  }
+  fish(W - 84, H * 0.37, 1.18, '#2c83bd', '#1c557f', -1);
+
+  for (let i = 0; i < 24; i++) {
+    const x = (i * 37 + Math.sin(t + i) * 18) % W;
+    const y = (H + 20 - ((t * 26 + i * 53) % (H + 60)));
+    const s = 2 + (i % 4);
+    ctx.strokeStyle = 'rgba(210,252,255,0.56)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, s, s);
   }
 
-  // 太阳
-  px(W - 80, 40, 24, 24, '#ffeb3b');
-  px(W - 84, 48, 32, 8, '#ffeb3b');
-  px(W - 80, 36, 24, 4, '#ffeb3b');
+  // 小木屋招牌，呼应补给经营感
+  px(W - 138, H * 0.54, 116, 48, 'rgba(45,30,18,0.82)');
+  px(W - 130, H * 0.555, 100, 8, '#d18a42');
+  px(W - 130, H * 0.608, 100, 6, '#f0c56a');
+  ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a160a';
+  ctx.strokeText('达夫渔场', W - 80, H * 0.586);
+  ctx.fillStyle = '#ffe6a0';
+  ctx.fillText('达夫渔场', W - 80, H * 0.586);
+  ctx.textBaseline = 'alphabetic';
 
-  // 钓竿（第一视角，从右下伸出）— 使用当前鱼竿皮肤
+  // 潜水员和鱼竿
   const rodSkin = user ? GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods) : GAME_DATA.ROD_SKINS[0];
-  const rodTipX = W * 0.45 + Math.sin(t * 1.5) * 4;
-  const rodTipY = H * 0.35;
-  const rodBaseX = W * 0.95;
-  const rodBaseY = H + 10;
+  const diverX = W * 0.22;
+  const diverY = H * 0.68 + Math.sin(t * 1.4) * 3;
+  const rodBaseX = diverX + 38;
+  const rodBaseY = diverY - 18;
+  const rodTipX = W * 0.53 + Math.sin(t * 1.5) * 5;
+  const rodTipY = H * 0.47;
+
+  ctx.save();
+  ctx.translate(diverX, diverY);
+  ctx.rotate(-0.08);
+  px(-26, -10, 17, 52, '#8b642d');
+  px(-31, -2, 8, 34, '#d6dde1');
+  px(-22, 8, 28, 36, '#1f3345');
+  px(-16, -24, 26, 24, '#f1c28d');
+  px(-21, -27, 34, 18, 'rgba(216,255,255,0.9)');
+  px(-19, -30, 38, 8, '#e8f7ff');
+  px(-20, 17, 11, 38, '#16263a');
+  px(0, 18, 11, 36, '#16263a');
+  px(-30, 49, 22, 8, '#f3c44e');
+  px(-2, 49, 22, 8, '#f3c44e');
+  px(-34, -2, 16, 9, '#f4be72');
+  px(2, -8, 38, 10, '#f4be72');
+  ctx.restore();
+
   // 暗夜竿特效：发光光晕
   if (rodSkin.fx === 'night') {
     ctx.save();
@@ -825,26 +935,22 @@ function render() {
     ctx.quadraticCurveTo(midX, midY, hookX, hookY);
     ctx.stroke();
 
-    // 浮标
+    // 鱼钩
     const bobX = hookX;
     const bobY = hookY + Math.sin(t * 4) * (state.phase === 'hooked' ? 5 : 1);
-    px(bobX - 4, bobY - 8, 8, 8, '#ff5722');
-    px(bobX - 2, bobY - 8, 4, 4, '#fff');
-    px(bobX - 1, bobY, 2, 6, '#3e2723');
+    px(bobX - 2, bobY - 8, 4, 10, '#f7e2aa');
+    px(bobX + 2, bobY - 2, 6, 3, '#f7e2aa');
+    px(bobX + 5, bobY - 6, 3, 7, '#f7e2aa');
+    px(bobX - 4, bobY - 13, 8, 6, '#ef6a4d');
   }
 
-  // 第一视角的手（角落）
-  px(W * 0.78, H - 30, 30, 30, '#fdbcb4');
-  px(W * 0.78, H - 30, 30, 6, '#d99086');
-  px(W * 0.85, H - 24, 18, 18, '#fdbcb4');
-
-  // 宠物渲染（像素风格带手脚）
+  // 宠物渲染（潜水伙伴）
   if (user && user.activePet) {
     const pet = GAME_DATA.PETS.find(p => p.id === user.activePet);
     if (pet) {
-      const bx = pet.canvasX * W;
-      const by = pet.canvasY * H + Math.sin(t * 2) * 2;
-      const s = 4;
+      const bx = Math.max(W * 0.13, pet.canvasX * W);
+      const by = Math.min(H * 0.78, pet.canvasY * H) + Math.sin(t * 2) * 2;
+      const s = 3;
       const c = pet.colors;
       const legSwing = Math.sin(t * 4) * 2;
       // 耳朵
@@ -883,9 +989,9 @@ function render() {
 
   // 状态消息
   if (state.phase === 'waiting') {
-    drawText('等待鱼上钩...', W / 2, H - 24, '#fff', 12);
+    drawText('等待鱼群靠近...', W / 2, H - 20, '#fff6c8', 13);
   } else if (state.phase === 'hooked') {
-    drawText('!!! 鱼上钩了 !!!', W / 2, H - 24, '#ff5722', 16);
+    drawText('!!! 目标咬钩 !!!', W / 2, H - 20, '#ffd35a', 16);
   }
 }
 
@@ -947,7 +1053,7 @@ function startCast(preferredBaitId = null, options = {}) {
   state.phase = 'waiting';
   hookX = W / 2 + (Math.random() - 0.5) * 100;
   hookY = H * 0.55 + Math.random() * 30;
-  statusEl.textContent = '已抛竿，等待鱼上钩...';
+  statusEl.textContent = '已下潜，等待鱼群靠近...';
   refreshUI();
   saveUser('cast');
 
@@ -955,7 +1061,7 @@ function startCast(preferredBaitId = null, options = {}) {
   const wait = 2000 + Math.random() * 5000;
   waitTimer = setTimeout(() => {
     state.phase = 'hooked';
-    statusEl.textContent = '鱼上钩了！点击响应';
+    statusEl.textContent = '目标咬钩！点击响应';
     if (typeof updateMobileBtn === 'function') updateMobileBtn();
     // 玩家有 3 秒响应时间，否则跑掉
     waitTimer = setTimeout(() => {
@@ -1051,7 +1157,7 @@ function startHitbar() {
 
   hitbarMsg.textContent = result.kind === 'character_shard'
     ? `角色碎片上钩了！连续命中红区 ${hb.hitsNeeded} 次！`
-    : `${RARITY_NAME[rarity]}级鱼上钩了！连续命中红区 ${hb.hitsNeeded} 次！`;
+    : `${RARITY_NAME[rarity]}级目标咬钩！连续命中高亮区 ${hb.hitsNeeded} 次！`;
   hitbarMsg.style.color = RARITY_COLOR[rarity];
   hitsNeededEl.textContent = hb.hitsNeeded;
   hitsCurrentEl.textContent = 0;
@@ -2022,7 +2128,7 @@ const mobileBtnText = $('mobile-btn-text');
 
 function updateMobileBtn() {
   if (state.phase === 'idle') {
-    mobileBtnText.textContent = '抛竿';
+    mobileBtnText.textContent = '下潜';
     mobileBtn.style.background = 'linear-gradient(135deg, #d35400, #ff6f00)';
   } else if (state.phase === 'waiting') {
     mobileBtnText.textContent = '等待...';
