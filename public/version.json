@@ -1,6 +1,14 @@
 {
-  "version": "1.0.29",
+  "version": "1.0.30",
   "changelog": [
+    {
+      "version": "1.0.30",
+      "date": "2026-05-30",
+      "changes": [
+        "使用 visualViewport 适配浏览器地址栏高度",
+        "补充超短可视区紧凑布局"
+      ]
+    },
     {
       "version": "1.0.29",
       "date": "2026-05-30",

@@ -8,6 +8,34 @@ if (!window.GAME_DATA) {
 const API_BASE = location.hostname === 'fish.wakaka007.cn' ? '' : 'https://fishapi.wakaka007.cn';
 // HITS_BY_RARITY / RARITY_COLOR / RARITY_NAME / BAITS / rollCatch 由 data.js 顶层声明，已在脚本作用域可见
 
+function syncMobileViewportHeight() {
+  const visualViewport = window.visualViewport;
+  const rawHeight = visualViewport?.height || window.innerHeight || document.documentElement.clientHeight;
+  const rawWidth = visualViewport?.width || window.innerWidth || document.documentElement.clientWidth;
+  const height = Math.max(360, Math.floor(rawHeight || 0));
+  const width = Math.max(320, Math.floor(rawWidth || 0));
+
+  document.documentElement.style.setProperty('--app-height', `${height}px`);
+  document.documentElement.style.setProperty('--app-width', `${width}px`);
+  document.body.classList.toggle('vv-short', height <= 720);
+  document.body.classList.toggle('vv-tiny', height <= 640);
+  document.body.classList.toggle('vv-micro', height <= 580);
+}
+
+let viewportSyncRaf = 0;
+function scheduleViewportSync() {
+  cancelAnimationFrame(viewportSyncRaf);
+  viewportSyncRaf = requestAnimationFrame(syncMobileViewportHeight);
+}
+
+syncMobileViewportHeight();
+window.addEventListener('resize', scheduleViewportSync, { passive: true });
+window.addEventListener('orientationchange', scheduleViewportSync, { passive: true });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', scheduleViewportSync, { passive: true });
+  window.visualViewport.addEventListener('scroll', scheduleViewportSync, { passive: true });
+}
+
 function todayCN() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
 
 function escapeHtml(value) {
