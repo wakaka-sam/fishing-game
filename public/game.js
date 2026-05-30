@@ -261,6 +261,20 @@ const castBtn = $('cast-btn');
 const statusEl = $('status');
 const vipAutoBtn = $('vip-auto-btn');
 
+function setupMobileActionIcons() {
+  const iconFallback = {
+    '退出': '退',
+  };
+  document.querySelectorAll('.actions button').forEach((button) => {
+    const label = button.textContent.trim();
+    const iconMatch = label.match(/^\p{Extended_Pictographic}/u);
+    button.dataset.mobileIcon = iconMatch ? iconMatch[0] : (iconFallback[label] || label.slice(0, 1));
+    button.setAttribute('aria-label', label);
+    button.title = label;
+  });
+}
+setupMobileActionIcons();
+
 const DIAMOND_JACKPOT_CHANCE = 0.01;
 const BLACK_SILK_BAIT_ID = 'black_silk';
 const DIVINE_BAIT_ID = 'divine';

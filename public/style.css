@@ -3890,3 +3890,352 @@ select {
     gap: 3px;
   }
 }
+
+/* Mobile single-screen layout: rebuild the main game view instead of squeezing desktop panels. */
+@media (max-width: 700px) {
+  #game-screen {
+    display: grid;
+    grid-template-rows: 64px minmax(0, 1fr) 118px;
+    align-items: stretch;
+    justify-items: stretch;
+    height: var(--app-height, 100dvh);
+    min-height: 0;
+    overflow: hidden;
+    padding: max(3px, env(safe-area-inset-top)) 5px max(5px, env(safe-area-inset-bottom));
+    gap: 4px;
+  }
+
+  .topbar,
+  #game,
+  .gamebar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .topbar {
+    display: grid;
+    grid-template-rows: 30px 22px;
+    height: 64px;
+    max-height: 64px;
+    padding: 3px 5px;
+    gap: 2px;
+    border-width: 2px;
+    overflow: visible !important;
+    box-shadow: 0 0 0 2px var(--brass), 0 3px 0 rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,230,164,0.2);
+  }
+
+  .topbar::before,
+  .topbar::after {
+    display: none;
+  }
+
+  .user-info {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    min-height: 30px;
+    height: 30px;
+    gap: 4px;
+    font-size: 10px;
+  }
+
+  .avatar-entry {
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+    border-width: 2px;
+    box-shadow: 0 0 0 2px #e2b35a, 0 2px 0 rgba(0,0,0,0.4);
+  }
+
+  .avatar-face {
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    border-width: 1px;
+  }
+
+  .player-card {
+    grid-template-columns: minmax(40px, 1fr) max-content max-content;
+    min-height: 28px;
+    height: 28px;
+    padding: 3px 4px;
+    gap: 3px;
+    font-size: 10px;
+    border-width: 1px;
+    overflow: hidden;
+  }
+
+  #player-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #player-money,
+  #player-diamonds {
+    padding: 1px 4px;
+    white-space: nowrap;
+  }
+
+  .version-tag {
+    align-self: center;
+    font-size: 8px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    height: 22px;
+    min-height: 22px;
+    max-height: 22px;
+    gap: 3px;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .actions button,
+  .actions button:nth-child(3n + 1),
+  .actions button:nth-child(3n + 2),
+  .actions button:nth-child(3n) {
+    flex: 0 0 32px;
+    width: 32px;
+    min-width: 32px;
+    height: 22px;
+    min-height: 22px;
+    max-height: 22px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border-width: 2px;
+    border-radius: 5px;
+    box-shadow: none;
+    font-size: 0;
+    line-height: 1;
+    overflow: hidden;
+  }
+
+  .actions button::before {
+    display: none;
+  }
+
+  .actions button::after {
+    content: attr(data-mobile-icon);
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .actions .vip-auto-btn {
+    flex-basis: 40px;
+    width: 40px;
+    min-width: 40px;
+  }
+
+  #game {
+    height: 100% !important;
+    max-height: none;
+    min-height: 0;
+    aspect-ratio: auto;
+    border-width: 3px;
+    box-shadow: 0 0 0 3px #1fb5c8, 0 0 0 6px #2f1d12, 0 0 0 8px #b9823b;
+  }
+
+  .gamebar {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 38px 28px 24px;
+    height: 118px;
+    max-height: 118px;
+    padding: 12px 6px 6px;
+    gap: 3px;
+    border-width: 2px;
+    overflow: visible;
+    box-shadow: 0 0 0 2px var(--brass), 0 3px 0 rgba(0,0,0,0.44), inset 0 1px 0 rgba(255,230,164,0.18);
+  }
+
+  .gamebar::before {
+    top: -10px;
+    min-width: 78px;
+    padding: 2px 9px;
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .gamebar::after {
+    left: 10px;
+    right: 10px;
+    top: 8px;
+    height: 3px;
+  }
+
+  #cast-btn {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    width: min(290px, 92%);
+    min-width: 0;
+    height: 38px;
+    min-height: 38px;
+    padding: 4px 8px;
+    border-width: 2px;
+    font-size: 15px;
+    line-height: 1.1;
+    white-space: nowrap;
+    box-shadow: 0 0 0 2px var(--gold), 0 0 0 4px var(--hot-shadow);
+  }
+
+  .bait-info {
+    grid-column: 1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px;
+    min-height: 28px;
+    height: 28px;
+    font-size: 10px;
+    overflow: hidden;
+  }
+
+  .bait-info select {
+    width: 100%;
+    min-width: 0;
+    min-height: 26px;
+    height: 26px;
+    padding: 2px 22px 2px 6px;
+    font-size: 12px;
+  }
+
+  #bait-count {
+    white-space: nowrap;
+  }
+
+  .rod-info {
+    display: none !important;
+  }
+
+  #status {
+    grid-column: 1;
+    grid-row: 3;
+    min-height: 24px;
+    height: 24px;
+    padding: 3px 6px;
+    font-size: 10px;
+    line-height: 1.25;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  body.vv-tiny #game-screen,
+  body.vv-micro #game-screen {
+    grid-template-rows: 58px minmax(0, 1fr) 108px;
+    padding: max(2px, env(safe-area-inset-top)) 4px max(4px, env(safe-area-inset-bottom));
+    gap: 3px;
+  }
+
+  body.vv-tiny .topbar,
+  body.vv-micro .topbar {
+    grid-template-rows: 28px 20px;
+    height: 58px;
+    max-height: 58px;
+    padding: 2px 4px;
+  }
+
+  body.vv-tiny .user-info,
+  body.vv-micro .user-info {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    min-height: 28px;
+    height: 28px;
+  }
+
+  body.vv-tiny .avatar-entry,
+  body.vv-micro .avatar-entry {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+  }
+
+  body.vv-tiny .avatar-face,
+  body.vv-micro .avatar-face {
+    width: 18px;
+    height: 18px;
+    font-size: 11px;
+  }
+
+  body.vv-tiny .player-card,
+  body.vv-micro .player-card {
+    height: 26px;
+    min-height: 26px;
+    font-size: 9px;
+  }
+
+  body.vv-tiny .actions,
+  body.vv-micro .actions {
+    height: 20px;
+    min-height: 20px;
+    max-height: 20px;
+  }
+
+  body.vv-tiny .actions button,
+  body.vv-micro .actions button {
+    flex-basis: 30px;
+    width: 30px;
+    min-width: 30px;
+    height: 20px;
+    min-height: 20px;
+    max-height: 20px;
+  }
+
+  body.vv-tiny .actions button::after,
+  body.vv-micro .actions button::after {
+    font-size: 13px;
+  }
+
+  body.vv-tiny .gamebar,
+  body.vv-micro .gamebar {
+    grid-template-rows: 34px 26px 22px;
+    height: 108px;
+    max-height: 108px;
+    padding: 10px 5px 5px;
+    gap: 3px;
+  }
+
+  body.vv-tiny #cast-btn,
+  body.vv-micro #cast-btn {
+    height: 34px;
+    min-height: 34px;
+    font-size: 14px;
+  }
+
+  body.vv-tiny .bait-info,
+  body.vv-micro .bait-info {
+    height: 26px;
+    min-height: 26px;
+    font-size: 9px;
+  }
+
+  body.vv-tiny .bait-info select,
+  body.vv-micro .bait-info select {
+    height: 24px;
+    min-height: 24px;
+    font-size: 11px;
+  }
+
+  body.vv-tiny #status,
+  body.vv-micro #status {
+    height: 22px;
+    min-height: 22px;
+    font-size: 9px;
+  }
+}
