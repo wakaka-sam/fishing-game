@@ -3715,3 +3715,178 @@ select {
     max-height: calc(var(--app-height, 100dvh) - 188px);
   }
 }
+
+/* Mobile browser chrome hardening: keep the game viewport non-scrolling and the top bar fully visible. */
+@media (max-width: 700px) {
+  #game-screen {
+    overflow-y: hidden;
+  }
+
+  .topbar {
+    max-height: none;
+    overflow: visible !important;
+    padding: 5px;
+    gap: 5px;
+  }
+
+  .user-info {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 5px;
+    min-height: 38px;
+  }
+
+  .avatar-entry {
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .avatar-face {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+  }
+
+  .player-card {
+    grid-template-columns: minmax(54px, 1fr) max-content max-content;
+    min-height: 32px;
+    padding: 4px 5px;
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  #player-money,
+  #player-diamonds {
+    padding: 2px 5px;
+  }
+
+  .version-tag {
+    font-size: 9px;
+  }
+
+  .actions {
+    min-height: 28px;
+    max-height: 30px;
+    gap: 4px;
+    padding: 0 1px 3px;
+  }
+
+  .actions button {
+    flex: 0 0 66px;
+    min-width: 66px;
+    min-height: 26px;
+    max-height: 28px;
+    padding: 3px 4px;
+    font-size: 10px;
+  }
+
+  .actions .vip-auto-btn {
+    flex-basis: 78px;
+  }
+
+  #game {
+    height: clamp(230px, calc(var(--app-height, 100dvh) - 360px), 430px);
+  }
+
+  .gamebar {
+    padding: 13px 8px 8px;
+    gap: 4px;
+  }
+
+  .gamebar::before {
+    top: -12px;
+    min-width: 84px;
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+
+  #cast-btn {
+    min-height: 40px;
+    padding: 6px 8px;
+    font-size: 16px;
+  }
+
+  .bait-info {
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .bait-info select {
+    min-height: 32px;
+    padding: 4px 26px 4px 7px;
+  }
+
+  .rod-info {
+    min-height: 18px;
+    line-height: 1.15;
+    gap: 5px;
+    font-size: 11px;
+  }
+
+  #status {
+    min-height: 23px;
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+
+  body.vv-short #game {
+    height: clamp(215px, calc(var(--app-height, 100dvh) - 330px), 330px);
+  }
+
+  body.vv-tiny #game {
+    height: clamp(190px, calc(var(--app-height, 100dvh) - 318px), 275px);
+  }
+
+  body.vv-micro .topbar {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  body.vv-micro .user-info {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    min-height: 34px;
+    gap: 4px;
+  }
+
+  body.vv-micro .avatar-entry {
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+  }
+
+  body.vv-micro .avatar-face {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+  }
+
+  body.vv-micro .player-card {
+    min-height: 28px;
+    padding: 3px 4px;
+    font-size: 10px;
+  }
+
+  body.vv-micro .actions {
+    min-height: 25px;
+    max-height: 27px;
+    gap: 3px;
+  }
+
+  body.vv-micro .actions button {
+    flex-basis: 58px;
+    min-width: 58px;
+    min-height: 24px;
+    max-height: 26px;
+    padding: 2px 3px;
+    font-size: 9px;
+  }
+
+  body.vv-micro #game {
+    height: clamp(160px, calc(var(--app-height, 100dvh) - 286px), 230px);
+  }
+
+  body.vv-micro .gamebar {
+    padding: 12px 6px 6px;
+    gap: 3px;
+  }
+}

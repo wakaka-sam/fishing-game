@@ -558,6 +558,13 @@ function enterGame() {
   resetVipAutoForUser();
   loginScreen.classList.remove('active');
   gameScreen.classList.add('active');
+  gameScreen.scrollTop = 0;
+  window.scrollTo?.(0, 0);
+  scheduleViewportSync();
+  requestAnimationFrame(() => {
+    gameScreen.scrollTop = 0;
+    window.scrollTo?.(0, 0);
+  });
   refreshUI();
 }
 
