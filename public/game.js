@@ -5,7 +5,7 @@ if (!window.GAME_DATA) {
   throw new Error('GAME_DATA missing');
 }
 
-const API_BASE = 'https://fishapi.wakaka007.cn';
+const API_BASE = location.hostname === 'fish.wakaka007.cn' ? '' : 'https://fishapi.wakaka007.cn';
 // HITS_BY_RARITY / RARITY_COLOR / RARITY_NAME / BAITS / rollCatch 由 data.js 顶层声明，已在脚本作用域可见
 
 function todayCN() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
