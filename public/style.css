@@ -3237,3 +3237,283 @@ select {
     line-height: 1.35;
   }
 }
+
+/* Mobile viewport fit: prevent flex compression and clipped controls */
+@media (max-width: 700px) {
+  body {
+    overflow: hidden;
+  }
+
+  .screen {
+    height: 100dvh;
+  }
+
+  #game-screen {
+    height: 100dvh;
+    min-height: 0;
+    justify-content: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    padding: max(6px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  #game-screen::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topbar,
+  #game,
+  .gamebar {
+    flex: 0 0 auto;
+  }
+
+  .topbar {
+    width: 100%;
+    min-height: 0;
+    padding: 6px;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .user-info {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .avatar-entry {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .avatar-face {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .player-card {
+    grid-template-columns: minmax(58px, 1fr) max-content max-content;
+    min-height: 38px;
+    padding: 5px;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  #player-money,
+  #player-diamonds {
+    padding: 2px 5px;
+  }
+
+  .actions {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 6px;
+    padding: 0 1px 4px;
+  }
+
+  .actions button {
+    flex: 0 0 74px;
+    min-width: 74px;
+    min-height: 30px;
+    padding: 5px 6px;
+    font-size: 11px;
+  }
+
+  .actions .vip-auto-btn {
+    flex-basis: 90px;
+  }
+
+  #game {
+    width: 100%;
+    height: clamp(260px, calc(100dvh - 330px), 480px);
+    aspect-ratio: auto;
+    max-height: none;
+  }
+
+  .gamebar {
+    width: 100%;
+    padding: 16px 8px 8px;
+    gap: 5px;
+    overflow: visible;
+  }
+
+  .gamebar::before {
+    top: -14px;
+    min-width: 92px;
+    padding: 4px 13px;
+    font-size: 13px;
+  }
+
+  #cast-btn {
+    width: min(315px, 94%);
+    min-height: 44px;
+    padding: 7px 8px;
+    font-size: 18px;
+  }
+
+  .bait-info {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 5px;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .bait-info select {
+    min-height: 36px;
+    padding: 5px 28px 5px 8px;
+  }
+
+  .rod-info {
+    min-height: 20px;
+    line-height: 1.2;
+    gap: 6px;
+  }
+
+  #status {
+    min-height: 26px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 18px);
+    padding: 14px 10px 12px;
+    overflow-y: auto;
+  }
+
+  .modal h2 {
+    min-height: 44px;
+    max-width: calc(100% - 64px);
+    padding: 6px 16px;
+    font-size: 22px;
+  }
+
+  .ad-reward-box {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    min-height: auto;
+    padding: 12px;
+  }
+
+  .ad-reward-info {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .ad-reward-icon {
+    font-size: 24px;
+  }
+
+  .ad-reward-title {
+    font-size: 18px;
+  }
+
+  .ad-reward-desc {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .ad-reward-btn {
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .shop-list,
+  .rod-list,
+  .character-list,
+  .pet-list,
+  .accessory-list {
+    max-height: calc(100dvh - 230px);
+  }
+}
+
+@media (max-width: 700px) and (max-height: 720px) {
+  #game-screen {
+    padding-top: max(5px, env(safe-area-inset-top));
+    gap: 5px;
+  }
+
+  .topbar {
+    padding: 5px;
+    gap: 5px;
+  }
+
+  .user-info {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+  }
+
+  .avatar-entry {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .player-card {
+    min-height: 34px;
+    font-size: 11px;
+  }
+
+  .actions button {
+    flex-basis: 70px;
+    min-width: 70px;
+    min-height: 28px;
+    padding: 4px 5px;
+    font-size: 10px;
+  }
+
+  #game {
+    height: clamp(240px, calc(100dvh - 286px), 360px);
+  }
+
+  .gamebar {
+    padding: 15px 7px 7px;
+    gap: 4px;
+  }
+
+  #cast-btn {
+    min-height: 42px;
+    font-size: 17px;
+  }
+
+  .modal {
+    max-height: calc(100dvh - 14px);
+    padding: 12px 9px;
+  }
+
+  .modal h2 {
+    min-height: 40px;
+    font-size: 20px;
+  }
+
+  .ad-reward-box {
+    padding: 10px;
+  }
+
+  .shop-list,
+  .rod-list,
+  .character-list,
+  .pet-list,
+  .accessory-list {
+    max-height: calc(100dvh - 210px);
+  }
+
+  .shop-item {
+    min-height: 124px;
+  }
+}
+
+@media (max-width: 700px) and (max-height: 640px) {
+  #game {
+    height: clamp(220px, calc(100dvh - 280px), 320px);
+  }
+
+  .rod-info {
+    display: none;
+  }
+}
