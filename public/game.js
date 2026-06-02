@@ -1519,7 +1519,6 @@ function renderDex() {
 // ====== 角色系统 ======
 const characterOverlay = $('character-overlay');
 $('character-btn').onclick = () => { renderCharacters(); characterOverlay.classList.remove('hidden'); };
-$('avatar-btn').onclick = () => { renderCharacters(); characterOverlay.classList.remove('hidden'); };
 
 function renderCharacters() {
   normalizeCharacters();
