@@ -1,12 +1,14 @@
 # 像素钓鱼 🎣
 
-一个像素风第一视角钓鱼小游戏。当前仓库只保留前端静态资源和 API 代理；真实后端逻辑在 `/Volumes/bigger/workspace/fish_backend`，线上服务为 `https://fishapi.wakaka007.cn`。
+一个像素风第一视角钓鱼小游戏，纯前端实现，直接打开 `public/index.html` 即可运行。
 
 线上演示：<https://fish.wakaka007.cn>
 
+> 这是一个纯前端项目，不含任何服务端代码。游戏数据通过外部 API 服务持久化。
+
 ## 玩法
 
-- 输入用户名登录（数据按用户名持久化在服务器）
+- 输入用户名登录（数据持久化在云端）
 - 在商店购买不同档次的鱼饵（蚯蚓 / 鲜虾 / 亮片 / 魔法鱼饵 / 神仙鱼饵）
 - 抛竿钓鱼 → 等待鱼上钩 → 命中条小游戏，连续击中红区即可拉鱼上岸
 - 越稀有的鱼需要的连续命中次数越多、光标越快、红区越窄
@@ -22,43 +24,28 @@
 
 ## 本地运行
 
+直接用浏览器打开 `public/index.html`，或用任意静态文件服务器托管 `public/` 目录：
+
 ```bash
-node server.js          # 默认 3000
-PORT=3456 node server.js # 自定义端口
-FISH_BACKEND_URL=http://localhost:3000 node server.js # 指向本地后端调试
+# 例如用 Python
+python3 -m http.server 3000 --directory public
 ```
 
 访问 `http://localhost:3000`。
-
-`server.js` 只负责两件事：
-
-- 服务 `public/` 静态文件
-- 将 `/api/*` 原样代理到 `FISH_BACKEND_URL`，默认 `https://fishapi.wakaka007.cn`
 
 ## 目录结构
 
 ```
 .
-├── server.js          # 前端静态服务 + API 代理（无业务后端逻辑）
 ├── public/
 │   ├── index.html     # 页面骨架
 │   ├── style.css      # 像素风样式
 │   ├── data.js        # 鱼饵 / 鱼 / 概率配置
-│   └── game.js        # 游戏逻辑
+│   ├── game.js        # 游戏逻辑
+│   └── version.json   # 版本信息
+└── scripts/
+    └── bump-version.sh  # 版本递增工具
 ```
-
-## API
-
-本仓库不实现 API。所有 `/api/*` 请求由 `server.js` 代理到 fish backend。新增或修改登录、保存、排行榜、兑换、抽奖、数据库等逻辑时，请修改 `/Volumes/bigger/workspace/fish_backend`。
-
-## 部署
-
-参考线上部署方式：
-
-1. `rsync` 代码到服务器
-2. `systemd` 跑 `node server.js`（服务名 `fishing-game.service`）
-3. nginx 反代 `127.0.0.1:3456`，Let's Encrypt 上 HTTPS
-
 ## 许可
 
 MIT

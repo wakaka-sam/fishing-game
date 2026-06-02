@@ -4,7 +4,37 @@ if (!window.GAME_DATA) {
     '</div>';
   throw new Error('GAME_DATA missing');
 }
+
+const API_BASE = location.hostname === 'fish.wakaka007.cn' ? '' : 'https://fishapi.wakaka007.cn';
 // HITS_BY_RARITY / RARITY_COLOR / RARITY_NAME / BAITS / rollCatch 由 data.js 顶层声明，已在脚本作用域可见
+
+function syncMobileViewportHeight() {
+  const visualViewport = window.visualViewport;
+  const rawHeight = visualViewport?.height || window.innerHeight || document.documentElement.clientHeight;
+  const rawWidth = visualViewport?.width || window.innerWidth || document.documentElement.clientWidth;
+  const height = Math.max(360, Math.floor(rawHeight || 0));
+  const width = Math.max(320, Math.floor(rawWidth || 0));
+
+  document.documentElement.style.setProperty('--app-height', `${height}px`);
+  document.documentElement.style.setProperty('--app-width', `${width}px`);
+  document.body.classList.toggle('vv-short', height <= 720);
+  document.body.classList.toggle('vv-tiny', height <= 640);
+  document.body.classList.toggle('vv-micro', height <= 580);
+}
+
+let viewportSyncRaf = 0;
+function scheduleViewportSync() {
+  cancelAnimationFrame(viewportSyncRaf);
+  viewportSyncRaf = requestAnimationFrame(syncMobileViewportHeight);
+}
+
+syncMobileViewportHeight();
+window.addEventListener('resize', scheduleViewportSync, { passive: true });
+window.addEventListener('orientationchange', scheduleViewportSync, { passive: true });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', scheduleViewportSync, { passive: true });
+  window.visualViewport.addEventListener('scroll', scheduleViewportSync, { passive: true });
+}
 
 function todayCN() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
 
@@ -159,7 +189,7 @@ function onAdRewardGranted() {
   user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
   user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
   refreshUI();
-  saveUser();
+  saveUser('wallet');
   showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石！`);
   updateAdButtons();
 }
@@ -193,6 +223,22 @@ document.addEventListener('DOMContentLoaded', () => {
 let user = null;
 let saveQueue = Promise.resolve();
 let saveRevision = 0;
+const SAVE_SCOPES = {
+  wallet: { endpoint: '/api/player/wallet', fields: ['money', 'diamonds', 'stats'] },
+  selection: { endpoint: '/api/player/selection', fields: ['currentBait', 'activePet', 'activeCharacter', 'equippedAccessory'] },
+  cast: { endpoint: '/api/player/cast', fields: ['baits', 'currentBait'] },
+  catch: {
+    endpoint: '/api/player/catch',
+    fields: ['money', 'diamonds', 'baits', 'dex', 'stats', 'history', 'dailyStats', 'ownedRods', 'ownedCharacters', 'activeCharacter', 'characterFragments'],
+  },
+  shop: { endpoint: '/api/shop/purchase', fields: ['money', 'diamonds', 'baits', 'currentBait'] },
+  character: { endpoint: '/api/player/characters', fields: ['ownedCharacters', 'activeCharacter', 'characterFragments'] },
+  pet: { endpoint: '/api/player/pets', fields: ['ownedPets', 'activePet'] },
+  accessory: { endpoint: '/api/player/accessories', fields: ['money', 'accessories', 'equippedAccessory'] },
+  rod: { endpoint: '/api/player/rod-skin', fields: ['rodSkin'] },
+  share: { endpoint: '/api/player/share-reward', fields: ['money', 'lastShareDate'] },
+  full: { endpoint: '/api/save', fields: null },
+};
 const state = {
   phase: 'idle', // idle | casting | waiting | hooked | reeling
   castStart: 0,
@@ -214,6 +260,20 @@ const baitCountEl = $('bait-count');
 const castBtn = $('cast-btn');
 const statusEl = $('status');
 const vipAutoBtn = $('vip-auto-btn');
+
+function setupMobileActionIcons() {
+  const iconFallback = {
+    '退出': '退',
+  };
+  document.querySelectorAll('.actions button').forEach((button) => {
+    const label = button.textContent.trim();
+    const iconMatch = label.match(/^\p{Extended_Pictographic}/u);
+    button.dataset.mobileIcon = iconMatch ? iconMatch[0] : (iconFallback[label] || label.slice(0, 1));
+    button.setAttribute('aria-label', label);
+    button.title = label;
+  });
+}
+setupMobileActionIcons();
 
 const DIAMOND_JACKPOT_CHANCE = 0.01;
 const BLACK_SILK_BAIT_ID = 'black_silk';
@@ -416,7 +476,7 @@ async function login() {
     return;
   }
   try {
-    const res = await fetch('/api/login', {
+    const res = await fetch(API_BASE + '/api/session/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: name }),
@@ -450,7 +510,7 @@ $('logout-btn').onclick = () => {
     const saved = localStorage.getItem('fishing_username');
     if (saved && location.protocol !== 'file:') {
       usernameInput.value = saved;
-      const res = await fetch('/api/login', {
+      const res = await fetch(API_BASE + '/api/session/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: saved }),
@@ -467,21 +527,34 @@ $('logout-btn').onclick = () => {
   } catch (_) {}
 })();
 
-async function saveUser() {
+function pickUserFields(fields) {
+  if (!fields) return user;
+  const patch = {};
+  for (const field of fields) patch[field] = user[field];
+  return patch;
+}
+
+async function saveUser(scope = 'full') {
   if (!user) return;
+  const config = SAVE_SCOPES[scope] || SAVE_SCOPES.full;
   const username = user.username;
-  const body = JSON.stringify({ username, state: user });
+  const body = JSON.stringify({ username, patch: pickUserFields(config.fields) });
   const revision = ++saveRevision;
   saveQueue = saveQueue.catch(() => {}).then(async () => {
     try {
-      const res = await fetch('/api/save', {
+      const res = await fetch(API_BASE + config.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
       });
-      const saved = await res.json();
+      const saved = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(saved.error || 'HTTP ' + res.status);
       if (revision === saveRevision && user && user.username === username) {
-        user = saved;
+        if (saved && saved.patch) {
+          Object.assign(user, saved.patch);
+        } else {
+          user = saved;
+        }
         ensureUserDefaults();
       }
       return saved;
@@ -499,6 +572,13 @@ function enterGame() {
   resetVipAutoForUser();
   loginScreen.classList.remove('active');
   gameScreen.classList.add('active');
+  gameScreen.scrollTop = 0;
+  window.scrollTo?.(0, 0);
+  scheduleViewportSync();
+  requestAnimationFrame(() => {
+    gameScreen.scrollTop = 0;
+    window.scrollTo?.(0, 0);
+  });
   refreshUI();
 }
 
@@ -565,7 +645,7 @@ function synthesizeCharacter(characterId) {
   user.activeCharacter = characterId;
   statusEl.textContent = `已合成并解锁 ${character.name}`;
   refreshUI();
-  saveUser();
+  saveUser('character');
   renderCharacters();
 }
 
@@ -678,7 +758,7 @@ baitSelect.onchange = () => {
   user.currentBait = baitSelect.value;
   if (vipAuto.enabled) vipAuto.baitId = getSelectedVipAutoBait();
   updateBaitCount();
-  saveUser();
+  saveUser('selection');
 };
 
 // ====== 画布渲染（第一视角） ======
@@ -698,55 +778,332 @@ let hookX = W / 2;
 let hookY = H * 0.55;
 let lineSlack = 0;
 
+function pixelLabel(text, x, y, size, color = '#ffe9a8', align = 'center') {
+  ctx.font = `900 ${size}px "Microsoft YaHei", sans-serif`;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(6,14,24,0.92)';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawDiveRay(x1, x2, x3, x4, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const ray = ctx.createLinearGradient(0, 0, 0, H * 0.92);
+  ray.addColorStop(0, 'rgba(255,255,220,0.95)');
+  ray.addColorStop(0.66, 'rgba(147,255,237,0.12)');
+  ray.addColorStop(1, 'rgba(255,255,220,0)');
+  ctx.fillStyle = ray;
+  ctx.beginPath();
+  ctx.moveTo(x1, 0);
+  ctx.lineTo(x2, 0);
+  ctx.lineTo(x3, H);
+  ctx.lineTo(x4, H);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCaveWall(side, tint, rim, depth, start, t) {
+  ctx.save();
+  ctx.globalAlpha = depth;
+  ctx.fillStyle = tint;
+  ctx.beginPath();
+  if (side === 'left') {
+    ctx.moveTo(0, start);
+    for (let y = start; y <= H + 28; y += 20) {
+      const x = 22 + Math.sin(y * 0.045 + t * 0.12) * 18 + Math.sin(y * 0.011) * 18;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(0, H + 28);
+  } else {
+    ctx.moveTo(W, start);
+    for (let y = start; y <= H + 28; y += 20) {
+      const x = W - 22 - Math.sin(y * 0.043 + 0.8) * 17 - Math.cos(y * 0.016) * 20;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H + 28);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = rim;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawSeaweed(x, y, h, c1, c2) {
+  px(x, y - h, 5, h, c1);
+  px(x + 8, y - h * 0.82, 5, h * 0.82, c2);
+  px(x - 7, y - h * 0.62, 5, h * 0.62, c2);
+  px(x - 11, y - h * 0.72, 18, 5, c2);
+  px(x + 6, y - h * 0.95, 18, 5, c1);
+}
+
+function drawAnemone(x, y, c1, c2) {
+  for (let i = 0; i < 6; i++) {
+    const dx = (i - 2.5) * 5;
+    px(x + dx, y - 18 - (i % 2) * 6, 4, 18 + (i % 2) * 6, i % 2 ? c1 : c2);
+  }
+  px(x - 17, y - 6, 38, 8, '#0c3a45');
+}
+
+function drawLargeFish(x, y, scale, body, fin, dir = -1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(dir * scale, scale);
+  px(-34, -15, 58, 30, '#04111d');
+  px(-22, -23, 28, 46, '#04111d');
+  px(-28, -12, 48, 24, body);
+  px(-16, -18, 28, 36, body);
+  px(-9, 6, 26, 8, '#bfe8ef');
+  px(-4, -26, 12, 13, fin);
+  px(-8, 12, 15, 12, fin);
+  ctx.fillStyle = '#04111d';
+  ctx.beginPath();
+  ctx.moveTo(-34, 0);
+  ctx.lineTo(-56, -17);
+  ctx.lineTo(-49, 0);
+  ctx.lineTo(-56, 17);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = fin;
+  ctx.beginPath();
+  ctx.moveTo(-32, 0);
+  ctx.lineTo(-51, -13);
+  ctx.lineTo(-44, 0);
+  ctx.lineTo(-51, 13);
+  ctx.closePath();
+  ctx.fill();
+  px(15, -4, 5, 5, '#04111d');
+  ctx.restore();
+}
+
 function render() {
   const t = Date.now() / 1000;
+  const water = ctx.createLinearGradient(0, 0, 0, H);
+  water.addColorStop(0, '#2dd2d2');
+  water.addColorStop(0.18, '#0e91ac');
+  water.addColorStop(0.44, '#086586');
+  water.addColorStop(0.72, '#063c5f');
+  water.addColorStop(1, '#03182d');
+  ctx.fillStyle = water;
+  ctx.fillRect(0, 0, W, H);
 
-  // 天空渐变
-  const skyH = H * 0.4;
-  for (let i = 0; i < skyH; i += 4) {
-    const r = 135 + (255 - 135) * (i / skyH) * 0.1;
-    const g = 206 + (200 - 206) * (i / skyH) * 0.1;
-    const b = 235 - (235 - 180) * (i / skyH) * 0.3;
-    px(0, i, W, 4, `rgb(${r|0},${g|0},${b|0})`);
+  // 水面和光束
+  px(0, 0, W, 42, 'rgba(173, 248, 238, 0.34)');
+  for (let x = -20; x < W + 20; x += 34) {
+    const waveY = 26 + Math.sin(t * 1.8 + x * 0.08) * 3;
+    px(x, waveY, 22, 2, 'rgba(226,255,249,0.62)');
+    px(x + 14, waveY + 8, 18, 2, 'rgba(200,245,243,0.46)');
   }
-
-  // 远山
-  ctx.fillStyle = '#3d5a73';
+  px(0, 38, W, 3, 'rgba(250, 255, 234, 0.26)');
+  drawDiveRay(W * 0.33, W * 0.53, W * 0.33, W * 0.16, 0.24);
+  drawDiveRay(W * 0.62, W * 0.79, W * 0.71, W * 0.55, 0.18);
+  drawDiveRay(W * 0.86, W * 1.02, W * 0.98, W * 0.78, 0.14);
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  const ray = ctx.createLinearGradient(0, 0, 0, H * 0.74);
+  ray.addColorStop(0, 'rgba(255,255,226,0.8)');
+  ray.addColorStop(1, 'rgba(255,255,226,0)');
+  ctx.fillStyle = ray;
   ctx.beginPath();
-  ctx.moveTo(0, skyH);
-  for (let x = 0; x <= W; x += 20) {
-    const h = 30 + Math.sin(x * 0.02) * 15 + Math.sin(x * 0.05) * 8;
-    ctx.lineTo(x, skyH - h);
+  ctx.moveTo(W * 0.42, 0);
+  ctx.lineTo(W * 0.64, 0);
+  ctx.lineTo(W * 0.42, H * 0.92);
+  ctx.lineTo(W * 0.27, H * 0.92);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(W * 0.76, 0);
+  ctx.lineTo(W * 0.93, 0);
+  ctx.lineTo(W * 0.88, H * 0.74);
+  ctx.lineTo(W * 0.68, H * 0.74);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // 远景遗迹和前后层岩壁，拉开蓝洞深度
+  px(48, 118, 82, 9, 'rgba(10,72,92,0.34)');
+  px(232, 132, 104, 8, 'rgba(10,72,92,0.28)');
+  px(264, 102, 9, 88, 'rgba(7,55,79,0.26)');
+  px(282, 112, 8, 70, 'rgba(7,55,79,0.22)');
+  px(246, 188, 52, 8, 'rgba(7,55,79,0.24)');
+  for (let i = 0; i < 7; i++) {
+    px(24 + i * 52, 72 + (i % 2) * 18, 4, 4, 'rgba(181,249,245,0.28)');
   }
-  ctx.lineTo(W, skyH);
+  drawCaveWall('left', '#073956', '#0b6b86', 0.36, H * 0.11, t);
+  drawCaveWall('right', '#06304a', '#0a607b', 0.38, H * 0.08, t);
+
+  // 岩壁和珊瑚礁
+  ctx.fillStyle = '#06304d';
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.18);
+  for (let y = H * 0.18; y <= H + 20; y += 26) {
+    const x = 20 + Math.sin(y * 0.045 + t * 0.2) * 18 + Math.sin(y * 0.018) * 12;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(0, H + 20);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#052a43';
+  ctx.beginPath();
+  ctx.moveTo(W, H * 0.12);
+  for (let y = H * 0.12; y <= H + 20; y += 24) {
+    const x = W - 26 - Math.sin(y * 0.04 + 0.6) * 18 - Math.sin(y * 0.02) * 15;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H + 20);
+  ctx.closePath();
+  ctx.fill();
+  drawCaveWall('left', '#031b2d', 'rgba(15,111,135,0.52)', 0.56, H * 0.38, t);
+  drawCaveWall('right', '#031a2c', 'rgba(15,111,135,0.48)', 0.58, H * 0.31, t);
+
+  const floor = ctx.createLinearGradient(0, H * 0.79, 0, H);
+  floor.addColorStop(0, 'rgba(8, 68, 80, 0)');
+  floor.addColorStop(0.42, '#0d4f55');
+  floor.addColorStop(1, '#08283d');
+  ctx.fillStyle = floor;
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.86);
+  for (let x = 0; x <= W; x += 24) {
+    ctx.lineTo(x, H * 0.84 + Math.sin(x * 0.04) * 12 + Math.sin(x * 0.11) * 5);
+  }
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
   ctx.fill();
 
-  // 水面
-  px(0, skyH, W, H - skyH, '#1e6091');
-  // 波纹
-  for (let y = skyH; y < H; y += 6) {
-    const wave = Math.sin(t * 2 + y * 0.1) * 2;
-    const shade = 30 + (y - skyH) / (H - skyH) * 60;
-    px(0, y + wave, W, 2, `rgb(${20+shade*0.3|0},${60+shade*0.5|0},${120+shade*0.4|0})`);
+  function coral(x, y, c1, c2) {
+    px(x, y - 34, 7, 34, c1);
+    px(x - 10, y - 22, 7, 22, c2);
+    px(x + 10, y - 26, 7, 26, c2);
+    px(x - 15, y - 28, 18, 7, c2);
+    px(x + 8, y - 36, 16, 7, c1);
   }
-  // 高光
-  for (let i = 0; i < 30; i++) {
-    const x = (i * 47 + t * 30) % W;
-    const y = skyH + ((i * 31) % (H - skyH));
-    px(x, y, 3, 1, 'rgba(255,255,255,0.5)');
+  coral(22, H - 14, '#4bcf93', '#ef6d73');
+  coral(W - 30, H - 10, '#54d39a', '#b65cff');
+  coral(W - 72, H - 4, '#f39a4b', '#e65463');
+  drawSeaweed(78, H - 7, 48, '#41d097', '#77f0c2');
+  drawAnemone(W - 92, H - 8, '#fc5f7d', '#b55cff');
+  drawSeaweed(W - 58, H - 5, 56, '#54d39a', '#5ed6ff');
+  px(126, H - 34, 38, 24, '#3f2919');
+  px(128, H - 31, 34, 7, '#aa7436');
+  px(142, H - 33, 6, 23, '#8a592b');
+  px(114, H - 47, 8, 35, '#d58b36');
+  px(109, H - 57, 18, 10, '#ffd269');
+  px(112, H - 70, 12, 13, 'rgba(255,220,112,0.72)');
+
+  function fish(x, y, scale, body, fin, dir = 1) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(dir * scale, scale);
+    px(-19, -8, 31, 16, '#06121e');
+    px(-14, -11, 20, 22, '#06121e');
+    px(-16, -6, 28, 12, body);
+    px(-10, -9, 16, 18, body);
+    ctx.fillStyle = fin;
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.lineTo(-29, -9);
+    ctx.lineTo(-25, 0);
+    ctx.lineTo(-29, 9);
+    ctx.closePath();
+    ctx.fill();
+    px(8, -3, 3, 3, '#08131f');
+    px(-4, -10, 9, 4, 'rgba(255,255,255,0.22)');
+    ctx.restore();
+  }
+  for (let i = 0; i < 10; i++) {
+    const x = (i * 47 + t * 16) % (W + 60) - 30;
+    const y = 82 + (i * 37) % 210 + Math.sin(t * 1.5 + i) * 4;
+    fish(x, y, i % 3 === 0 ? 0.55 : 0.42, i % 2 ? '#ffd65d' : '#5bd6ff', i % 2 ? '#ef7554' : '#3b62db', i % 2 ? -1 : 1);
+  }
+  fish(W - 84, H * 0.37, 1.18, '#2c83bd', '#1c557f', -1);
+  drawLargeFish(W - 70 + Math.sin(t * 0.6) * 5, H * 0.36, 0.82, '#2c83bd', '#174e7a', -1);
+  drawLargeFish(W + 26 - ((t * 18) % (W + 120)), H * 0.23 + Math.sin(t) * 8, 0.48, '#e9d083', '#e15a44', 1);
+
+  for (let i = 0; i < 34; i++) {
+    const x = (i * 37 + Math.sin(t + i) * 18) % W;
+    const y = H + 20 - ((t * (18 + (i % 5) * 4) + i * 53) % (H + 60));
+    const s = 2 + (i % 4);
+    ctx.strokeStyle = i % 5 === 0 ? 'rgba(255,247,204,0.62)' : 'rgba(210,252,255,0.48)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, s, s);
   }
 
-  // 太阳
-  px(W - 80, 40, 24, 24, '#ffeb3b');
-  px(W - 84, 48, 32, 8, '#ffeb3b');
-  px(W - 80, 36, 24, 4, '#ffeb3b');
+  // 画布内信息牌，增加经营游戏的密度
+  px(12, 12, 96, 38, 'rgba(3,20,34,0.82)');
+  px(16, 16, 88, 4, '#d59a43');
+  px(18, 36, 62, 8, 'rgba(94,235,219,0.28)');
+  pixelLabel('BLUE HOLE', 60, 29, 10, '#fff0b4');
+  px(W - 94, 14, 78, 34, 'rgba(3,20,34,0.78)');
+  px(W - 88, 19, 12, 12, '#ffd65d');
+  pixelLabel('18m', W - 50, 31, 13, '#8ff4d4');
 
-  // 钓竿（第一视角，从右下伸出）— 使用当前鱼竿皮肤
+  // 小木屋招牌，呼应补给经营感
+  px(W - 138, H * 0.54, 116, 48, 'rgba(45,30,18,0.82)');
+  px(W - 130, H * 0.555, 100, 8, '#d18a42');
+  px(W - 130, H * 0.608, 100, 6, '#f0c56a');
+  ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#2a160a';
+  ctx.strokeText('蓝洞渔场', W - 80, H * 0.586);
+  ctx.fillStyle = '#ffe6a0';
+  ctx.fillText('蓝洞渔场', W - 80, H * 0.586);
+  ctx.textBaseline = 'alphabetic';
+
+  // 潜水员和鱼竿
   const rodSkin = user ? GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods) : GAME_DATA.ROD_SKINS[0];
-  const rodTipX = W * 0.45 + Math.sin(t * 1.5) * 4;
-  const rodTipY = H * 0.35;
-  const rodBaseX = W * 0.95;
-  const rodBaseY = H + 10;
+  const diverX = W * 0.22;
+  const diverY = H * 0.68 + Math.sin(t * 1.4) * 3;
+  const rodBaseX = diverX + 38;
+  const rodBaseY = diverY - 18;
+  const rodTipX = W * 0.53 + Math.sin(t * 1.5) * 5;
+  const rodTipY = H * 0.47;
+
+  for (let i = 0; i < 5; i++) {
+    px(diverX - 46 + i * 8 + Math.sin(t * 2 + i) * 2, diverY - 62 - i * 15, 4, 4, 'rgba(221,255,249,0.56)');
+  }
+  ctx.save();
+  ctx.translate(diverX, diverY);
+  ctx.rotate(-0.08);
+  px(-38, -20, 17, 60, '#06111d');
+  px(-35, -17, 12, 54, '#ad7138');
+  px(-33, -12, 8, 43, '#d79b4f');
+  px(-24, 0, 41, 42, '#06111d');
+  px(-20, 4, 34, 36, '#17334a');
+  px(-15, 5, 14, 35, '#0b2033');
+  px(-27, -38, 41, 33, '#06111d');
+  px(-23, -34, 34, 28, '#f0c28f');
+  px(-25, -34, 38, 16, '#06273e');
+  px(-20, -31, 28, 10, 'rgba(181,246,255,0.96)');
+  px(-16, -29, 9, 6, '#5fd0e8');
+  px(-4, -29, 9, 6, '#5fd0e8');
+  px(9, -25, 9, 6, '#06111d');
+  px(17, -23, 12, 4, '#8fd8e7');
+  px(-32, -6, 16, 9, '#f4be72');
+  px(4, -12, 41, 11, '#06111d');
+  px(7, -9, 37, 8, '#f4be72');
+  px(34, -13, 9, 16, '#f0c28f');
+  px(-22, 35, 12, 42, '#06111d');
+  px(-17, 38, 12, 35, '#142b42');
+  px(0, 35, 12, 40, '#06111d');
+  px(4, 38, 12, 33, '#142b42');
+  px(-34, 72, 28, 9, '#06111d');
+  px(-31, 70, 27, 8, '#ffd15d');
+  px(0, 72, 30, 9, '#06111d');
+  px(2, 70, 28, 8, '#ffd15d');
+  px(-41, -2, 7, 22, '#06111d');
+  px(-43, 16, 11, 8, '#ffd166');
+  ctx.restore();
+
   // 暗夜竿特效：发光光晕
   if (rodSkin.fx === 'night') {
     ctx.save();
@@ -794,26 +1151,22 @@ function render() {
     ctx.quadraticCurveTo(midX, midY, hookX, hookY);
     ctx.stroke();
 
-    // 浮标
+    // 鱼钩
     const bobX = hookX;
     const bobY = hookY + Math.sin(t * 4) * (state.phase === 'hooked' ? 5 : 1);
-    px(bobX - 4, bobY - 8, 8, 8, '#ff5722');
-    px(bobX - 2, bobY - 8, 4, 4, '#fff');
-    px(bobX - 1, bobY, 2, 6, '#3e2723');
+    px(bobX - 2, bobY - 8, 4, 10, '#f7e2aa');
+    px(bobX + 2, bobY - 2, 6, 3, '#f7e2aa');
+    px(bobX + 5, bobY - 6, 3, 7, '#f7e2aa');
+    px(bobX - 4, bobY - 13, 8, 6, '#ef6a4d');
   }
 
-  // 第一视角的手（角落）
-  px(W * 0.78, H - 30, 30, 30, '#fdbcb4');
-  px(W * 0.78, H - 30, 30, 6, '#d99086');
-  px(W * 0.85, H - 24, 18, 18, '#fdbcb4');
-
-  // 宠物渲染（像素风格带手脚）
+  // 宠物渲染（潜水伙伴）
   if (user && user.activePet) {
     const pet = GAME_DATA.PETS.find(p => p.id === user.activePet);
     if (pet) {
-      const bx = pet.canvasX * W;
-      const by = pet.canvasY * H + Math.sin(t * 2) * 2;
-      const s = 4;
+      const bx = Math.max(W * 0.13, pet.canvasX * W);
+      const by = Math.min(H * 0.78, pet.canvasY * H) + Math.sin(t * 2) * 2;
+      const s = 3;
       const c = pet.colors;
       const legSwing = Math.sin(t * 4) * 2;
       // 耳朵
@@ -852,9 +1205,9 @@ function render() {
 
   // 状态消息
   if (state.phase === 'waiting') {
-    drawText('等待鱼上钩...', W / 2, H - 24, '#fff', 12);
+    drawText('等待鱼群靠近...', W / 2, H - 20, '#fff6c8', 13);
   } else if (state.phase === 'hooked') {
-    drawText('!!! 鱼上钩了 !!!', W / 2, H - 24, '#ff5722', 16);
+    drawText('!!! 目标咬钩 !!!', W / 2, H - 20, '#ffd35a', 16);
   }
 }
 
@@ -916,15 +1269,15 @@ function startCast(preferredBaitId = null, options = {}) {
   state.phase = 'waiting';
   hookX = W / 2 + (Math.random() - 0.5) * 100;
   hookY = H * 0.55 + Math.random() * 30;
-  statusEl.textContent = '已抛竿，等待鱼上钩...';
+  statusEl.textContent = '已下潜，等待鱼群靠近...';
   refreshUI();
-  saveUser();
+  saveUser('cast');
 
   // 随机 2-7 秒后上钩
   const wait = 2000 + Math.random() * 5000;
   waitTimer = setTimeout(() => {
     state.phase = 'hooked';
-    statusEl.textContent = '鱼上钩了！点击响应';
+    statusEl.textContent = '目标咬钩！点击响应';
     if (typeof updateMobileBtn === 'function') updateMobileBtn();
     // 玩家有 3 秒响应时间，否则跑掉
     waitTimer = setTimeout(() => {
@@ -1020,7 +1373,7 @@ function startHitbar() {
 
   hitbarMsg.textContent = result.kind === 'character_shard'
     ? `角色碎片上钩了！连续命中红区 ${hb.hitsNeeded} 次！`
-    : `${RARITY_NAME[rarity]}级鱼上钩了！连续命中红区 ${hb.hitsNeeded} 次！`;
+    : `${RARITY_NAME[rarity]}级目标咬钩！连续命中高亮区 ${hb.hitsNeeded} 次！`;
   hitbarMsg.style.color = RARITY_COLOR[rarity];
   hitsNeededEl.textContent = hb.hitsNeeded;
   hitsCurrentEl.textContent = 0;
@@ -1172,7 +1525,7 @@ function applyCatch(c) {
   c.unlockedRod = unlockedBlackSilkRod ? BLACK_SILK_ROD_ID : null;
   if (user.history.length > 50) user.history.shift();
   refreshUI();
-  saveUser();
+  saveUser('catch');
 }
 
 function rollDiamondReward() {
@@ -1328,7 +1681,7 @@ function showMiss(msg) {
         user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
         user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
         refreshUI();
-        saveUser();
+        saveUser('wallet');
         resultOverlay.classList.add('hidden');
         showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石，再来一次！`);
         startCast();
@@ -1338,7 +1691,7 @@ function showMiss(msg) {
         user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
         user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
         refreshUI();
-        saveUser();
+        saveUser('wallet');
         resultOverlay.classList.add('hidden');
         startCast();
       });
@@ -1395,7 +1748,7 @@ function renderShop() {
     user.baits[id] = (user.baits[id] || 0) + n;
     refreshUI();
     renderShop();
-    saveUser();
+    saveUser('shop');
     maybeResumeVipAutoAfterInventoryChange();
   };
 }
@@ -1488,6 +1841,7 @@ function renderDex() {
 // ====== 角色系统 ======
 const characterOverlay = $('character-overlay');
 $('character-btn').onclick = () => { renderCharacters(); characterOverlay.classList.remove('hidden'); };
+$('avatar-btn').onclick = () => { renderCharacters(); characterOverlay.classList.remove('hidden'); };
 
 function renderCharacters() {
   normalizeCharacters();
@@ -1520,7 +1874,7 @@ function renderCharacters() {
       div.onclick = () => {
         user.activeCharacter = character.id;
         refreshUI();
-        saveUser();
+        saveUser('selection');
         renderCharacters();
       };
     } else if (canSynthesize) {
@@ -1562,7 +1916,7 @@ function renderPets() {
     if (isOwned) {
       div.onclick = () => {
         user.activePet = isActive ? null : pet.id;
-        refreshUI(); saveUser(); renderPets();
+        refreshUI(); saveUser('pet'); renderPets();
       };
     }
     list.appendChild(div);
@@ -1658,7 +2012,7 @@ function renderAccessories(message = '') {
     list.querySelectorAll('[data-equip]').forEach((btn) => {
       btn.onclick = () => {
         user.equippedAccessory = user.equippedAccessory === btn.dataset.equip ? null : btn.dataset.equip;
-        saveUser();
+        saveUser('selection');
         refreshUI();
         renderAccessories(user.equippedAccessory ? '已装备首饰' : '已卸下首饰');
       };
@@ -1700,7 +2054,7 @@ function upgradeAccessory(uid) {
   user.money -= cost;
   if (success) target.star = GAME_DATA.clampAccessoryStar(target.star + 1);
   user.accessories = user.accessories.filter(item => item.uid !== material.uid);
-  saveUser();
+  saveUser('accessory');
   refreshUI();
   renderAccessories(success
     ? `${def.name} 强化成功，消耗 ${cost} 金币，升至 ${target.star} 星`
@@ -1746,7 +2100,7 @@ async function loadLeaderboard() {
   loading.classList.remove('hidden');
   list.innerHTML = '';
   try {
-    const [lbRes, histRes] = await Promise.all([fetch('/api/leaderboard'), fetch('/api/rank-history')]);
+    const [lbRes, histRes] = await Promise.all([fetch(API_BASE + '/api/leaderboard'), fetch(API_BASE + '/api/rank-history')]);
     rankData = await lbRes.json();
     rankHistory = (await histRes.json()).history || [];
     renderLeaderboard();
@@ -1839,7 +2193,7 @@ function renderRodSkins() {
     if (unlocked && !isActive) {
       div.onclick = () => {
         user.rodSkin = skin.id;
-        saveUser();
+        saveUser('rod');
         refreshUI();
         renderRodSkins();
       };
@@ -1905,18 +2259,20 @@ async function redeemCode() {
   const status = $('redeem-status');
   if (!code) { status.textContent = '请输入兑换码'; status.className = 'redeem-status error'; return; }
   try {
-    const res = await fetch('/api/redeem', {
+    const res = await fetch(API_BASE + '/api/redeem/claim', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user.username, code }),
     });
     const data = await res.json();
     if (data.success) {
-      user = data.user;
+      Object.assign(user, data.patch || {});
+      ensureUserDefaults();
       refreshUI();
+      const rewardData = data.reward || {};
       let reward = '';
-      if (data.coins) reward += `+${data.coins} 金币 `;
-      if (data.diamonds) reward += `+${data.diamonds} 钻石 `;
+      if (rewardData.coins) reward += `+${rewardData.coins} 金币 `;
+      if (rewardData.diamonds) reward += `+${rewardData.diamonds} 钻石 `;
       status.innerHTML = `兑换成功！<br>${data.desc} ${reward}🎉`;
       status.className = 'redeem-status success';
       $('redeem-input').value = '';
@@ -1957,7 +2313,7 @@ $('copy-link-btn').onclick = () => {
       user.money += 10;
       user.lastShareDate = todayKey;
       refreshUI();
-      saveUser();
+      saveUser('share');
       status.textContent = '链接已复制！获得 10 金币奖励 🎉';
       status.className = 'share-status success';
     } else {
@@ -1972,7 +2328,7 @@ $('copy-link-btn').onclick = () => {
       user.money += 10;
       user.lastShareDate = todayKey;
       refreshUI();
-      saveUser();
+      saveUser('share');
       status.textContent = '链接已复制！获得 10 金币奖励 🎉';
       status.className = 'share-status success';
     } else {
@@ -1988,7 +2344,7 @@ const mobileBtnText = $('mobile-btn-text');
 
 function updateMobileBtn() {
   if (state.phase === 'idle') {
-    mobileBtnText.textContent = '抛竿';
+    mobileBtnText.textContent = '下潜';
     mobileBtn.style.background = 'linear-gradient(135deg, #d35400, #ff6f00)';
   } else if (state.phase === 'waiting') {
     mobileBtnText.textContent = '等待...';
@@ -2092,14 +2448,14 @@ async function doGacha(count, currency = activeGachaCurrency, season) {
     return;
   }
   try {
-    const res = await fetch('/api/gacha', {
+    const res = await fetch(API_BASE + '/api/gacha/draw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user.username, count, currency, season }),
     });
     const data = await res.json();
     if (data.error) { alert(data.error); return; }
-    user = data.user;
+    Object.assign(user, data.patch || {});
     ensureUserDefaults();
     refreshUI();
     showGachaResult(data.results);
