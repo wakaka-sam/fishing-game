@@ -278,7 +278,9 @@
       this.pixel.strokeRect(0, 0, WIDTH, 74);
       this.pixel.strokeRect(0, HEIGHT - 76, WIDTH, 76);
 
-      this.drawLabel(hud.username || '玩家', 48, 23, '#4ec9b0', 13);
+      const username = String(hud.username || '玩家');
+      const usernameLabel = username.length > 10 ? `${username.slice(0, 9)}...` : username;
+      this.drawLabel(usernameLabel, 70, 23, '#4ec9b0', 13);
       this.drawLabel(`金币 ${hud.money || 0}`, 142, 23, '#ffd700', 13);
       this.drawLabel(`钻石 ${hud.diamonds || 0}`, 238, 23, '#66e6ff', 13);
       this.drawButton('version', `v${hud.version || ''}`, WIDTH - 70, 9, 58, 22, false);

@@ -1,6 +1,15 @@
 {
-  "version": "1.0.54",
+  "version": "1.0.55",
   "changelog": [
+    {
+      "version": "1.0.55",
+      "date": "2026-06-03",
+      "changes": [
+        "清理 Phaser 模式残留 DOM 控件",
+        "避免旧手机按钮、弹窗提示和缺饵 alert 出现在 Phaser 路径",
+        "修正 Phaser HUD 长用户名显示"
+      ]
+    },
     {
       "version": "1.0.54",
       "date": "2026-06-03",

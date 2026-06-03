@@ -143,6 +143,10 @@ function showRewardedAd(callback) {
 }
 
 function showAdToast(msg) {
+  if (phaserRenderer && phaserUi.modal) {
+    phaserUi.status = msg;
+    return;
+  }
   let toast = document.getElementById('ad-toast');
   if (!toast) {
     toast = document.createElement('div');
@@ -165,7 +169,7 @@ function onAdRewardGranted() {
   if (typeof phaserUi !== 'undefined' && phaserUi.modal === 'shop') {
     phaserUi.status = `获得 ${AD_REWARD_DIAMONDS} 钻石`;
   }
-  showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石！`);
+  if (!phaserRenderer || phaserUi.modal !== 'shop') showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石！`);
   updateAdButtons();
 }
 
@@ -387,7 +391,7 @@ function runVipAutoTick() {
 
 function updateVipAutoUI() {
   if (!vipAutoBtn) return;
-  vipAutoBtn.hidden = !user;
+  vipAutoBtn.hidden = !user || !canUseVipAuto();
   vipAutoBtn.classList.toggle('is-enabled', vipAuto.enabled);
   vipAutoBtn.classList.toggle('is-running', vipAuto.running);
   vipAutoBtn.classList.toggle('is-paused', vipAuto.enabled && !vipAuto.running);
@@ -1061,7 +1065,7 @@ function getPhaserHudSnapshot() {
     rodName: `鱼竿：${rod ? rod.name : '新手竿'}`,
     status: statusEl.textContent,
     castLabel: state.phase === 'idle' ? '抛竿钓鱼' : (state.phase === 'hooked' ? '拉鱼' : state.phase === 'reeling' ? '击中' : '等待中'),
-    vipVisible: !!user,
+    vipVisible: canUseVipAuto(),
     vipLabel: vipAutoBtn ? vipAutoBtn.textContent : 'VIP自动',
     vipActive: vipAuto.enabled || vipAuto.running,
   };
@@ -1210,7 +1214,7 @@ function handlePhaserAction(action, payload = null) {
     return;
   }
   if (action === 'cast') {
-    if (state.phase === 'idle') startCast();
+    if (state.phase === 'idle') startCast(null, { source: 'phaser' });
     else if (state.phase === 'hooked') startHitbar();
     else if (state.phase === 'reeling') hitbarClick();
     return;
@@ -1253,7 +1257,9 @@ function startCast(preferredBaitId = null, options = {}) {
   if (!user || state.phase !== 'idle') return false;
   const baitId = BAITS[preferredBaitId] ? preferredBaitId : (baitSelect.value || user.currentBait);
   if (!user.baits[baitId] || user.baits[baitId] <= 0) {
-    if (!options.silent) alert('没有鱼饵了，去商店买点吧！');
+    const msg = '没有鱼饵了，去商店买点吧！';
+    if (options.source === 'phaser') statusEl.textContent = msg;
+    else if (!options.silent) alert(msg);
     return false;
   }
   user.currentBait = baitId;
@@ -1622,6 +1628,7 @@ function unlockBlackSilkRodIfComplete() {
 }
 
 function playCatchRodEffect() {
+  if (phaserRenderer) return;
   const skin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
   if (!skin.catchEmoji) return;
 
@@ -1718,8 +1725,8 @@ function retryAfterMissWithAd(options = {}) {
     saveUser('wallet');
     resultOverlay.classList.add('hidden');
     closePhaserModal();
-    if (showToast) showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石，再来一次！`);
-    startCast();
+    if (showToast && source !== 'phaser') showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石，再来一次！`);
+    startCast(null, source === 'phaser' ? { source: 'phaser' } : {});
   };
   if (typeof window.H5Union === 'undefined') {
     adLastWatchTime = Date.now();
