@@ -1038,6 +1038,7 @@ function getPhaserModalSnapshot() {
   if (phaserUi.modal === 'dex') return getPhaserDexSnapshot();
   if (phaserUi.modal === 'rod') return getPhaserRodSnapshot();
   if (phaserUi.modal === 'character') return getPhaserCharacterSnapshot();
+  if (phaserUi.modal === 'pet') return getPhaserPetSnapshot();
   return null;
 }
 
@@ -1051,6 +1052,7 @@ function openPhaserModal(type, data = null) {
   dexOverlay?.classList.add('hidden');
   rodOverlay?.classList.add('hidden');
   characterOverlay?.classList.add('hidden');
+  petOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1095,6 +1097,7 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'rod-page') return setPhaserRodPage(payload?.delta || 0);
     if (action === 'character-equip') return equipCharacter(payload?.id, { source: 'phaser' });
     if (action === 'character-compose') return composeCharacter(payload?.id, { source: 'phaser' });
+    if (action === 'pet-toggle') return togglePet(payload?.id, { source: 'phaser' });
     return;
   }
   if (action === 'cast') {
@@ -1114,9 +1117,9 @@ function handlePhaserAction(action, payload = null) {
   if (action === 'dex') return openPhaserDex();
   if (action === 'rod') return openPhaserRod();
   if (action === 'character') return openPhaserCharacter();
+  if (action === 'pet') return openPhaserPet();
   const domButtons = {
     accessory: 'accessory-btn',
-    pet: 'pet-btn',
     rank: 'rank-btn',
     gacha: 'gacha-btn',
     redeem: 'redeem-btn',
@@ -2055,7 +2058,62 @@ function renderCharacters() {
 
 // ====== 宠物系统 ======
 const petOverlay = $('pet-overlay');
-$('pet-btn').onclick = () => { renderPets(); petOverlay.classList.remove('hidden'); };
+$('pet-btn').onclick = () => {
+  if (openPhaserPet()) return;
+  renderPets();
+  petOverlay.classList.remove('hidden');
+};
+
+function getPetAbilityText(petId) {
+  const bonus = PET_BONUS[petId];
+  if (!bonus) return '';
+  return bonus.coins ? `钓鱼金币+${bonus.coins}` : `钓鱼钻石+${bonus.diamonds}`;
+}
+
+function getPhaserPetSnapshot() {
+  if (!phaserRenderer || !user) return null;
+  const owned = user.ownedPets || [];
+  return {
+    type: 'pet',
+    title: '宠物',
+    status: phaserUi.status,
+    activePet: user.activePet || null,
+    ownedCount: owned.length,
+    totalCount: GAME_DATA.PETS.length,
+    items: GAME_DATA.PETS.map((pet) => {
+      const isOwned = owned.includes(pet.id);
+      const isActive = user.activePet === pet.id;
+      return {
+        id: pet.id,
+        name: pet.name,
+        icon: pet.icon,
+        desc: pet.desc,
+        obtain: pet.obtain || '活动获取',
+        colors: pet.colors || {},
+        owned: isOwned,
+        active: isActive,
+        abilityText: getPetAbilityText(pet.id),
+      };
+    }),
+  };
+}
+
+function openPhaserPet() {
+  return openPhaserModal('pet');
+}
+
+function togglePet(id, options = {}) {
+  if (!user || !id) return false;
+  const pet = GAME_DATA.PETS.find(item => item.id === id);
+  if (!pet || !(user.ownedPets || []).includes(id)) return false;
+  const isActive = user.activePet === id;
+  user.activePet = isActive ? null : id;
+  phaserUi.status = isActive ? `已卸下 ${pet.name}` : `已装备 ${pet.name}`;
+  refreshUI();
+  saveUser('pet');
+  if (!petOverlay.classList.contains('hidden')) renderPets();
+  return true;
+}
 
 function renderPets() {
   const list = $('pet-list');
@@ -2066,10 +2124,7 @@ function renderPets() {
     const isActive = user.activePet === pet.id;
     const div = document.createElement('div');
     div.className = 'pet-item' + (isActive ? ' active' : '') + (!isOwned ? ' locked' : '');
-    const bonus = PET_BONUS[pet.id];
-    const abilityText = bonus
-      ? (bonus.coins ? `钓鱼金币+${bonus.coins}` : `钓鱼钻石+${bonus.diamonds}`)
-      : '';
+    const abilityText = getPetAbilityText(pet.id);
     div.innerHTML = `
       <span class="pet-icon">${pet.icon}</span>
       <div class="pet-name">${pet.name}</div>
@@ -2081,8 +2136,7 @@ function renderPets() {
     `;
     if (isOwned) {
       div.onclick = () => {
-        user.activePet = isActive ? null : pet.id;
-        refreshUI(); saveUser('pet'); renderPets();
+        togglePet(pet.id, { source: 'dom' });
       };
     }
     list.appendChild(div);

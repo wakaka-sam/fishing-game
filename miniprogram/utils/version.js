@@ -1,6 +1,14 @@
 module.exports = {
-  "version": "1.0.47",
+  "version": "1.0.48",
   "changelog": [
+    {
+      "version": "1.0.48",
+      "date": "2026-06-03",
+      "changes": [
+        "宠物弹窗迁移到 Phaser 渲染",
+        "Phaser 宠物弹窗支持装备和卸下"
+      ]
+    },
     {
       "version": "1.0.47",
       "date": "2026-06-03",

@@ -259,6 +259,7 @@
       if (modal.type === 'dex') this.drawDexModal(modal);
       if (modal.type === 'rod') this.drawRodModal(modal);
       if (modal.type === 'character') this.drawCharacterModal(modal);
+      if (modal.type === 'pet') this.drawPetModal(modal);
     }
 
     drawShopModal(modal) {
@@ -549,6 +550,96 @@
           buttonLabel = `${item.shardCount || 0}/${item.required || 10}`;
         }
         this.drawButton(action, buttonLabel, cardX + cardW - 58, cardY + 45, 48, 22, item.active, payload, disabled);
+      });
+    }
+
+    drawPetPreview(pet, x, y, scale = 3, t = 0, alpha = 1) {
+      const c = pet.colors || {};
+      const bob = Math.sin(t * 4) * 1.2;
+      const bx = x;
+      const by = y + bob;
+      const color = (value, fallback) => Phaser.Display.Color.ValueToColor(value || fallback).color;
+      const body = color(c.body, '#f4a460');
+      const belly = color(c.belly, c.body || '#f4a460');
+      const ear = c.ear ? color(c.ear, c.body) : null;
+      const eye = color(c.eye, '#111111');
+      const nose = color(c.nose, '#333333');
+      const limb = color(c.limb, c.body || '#f4a460');
+      const tail = c.tail ? color(c.tail, c.body) : null;
+      this.pixel.fillStyle(0x000000, 0.22 * alpha);
+      this.pixel.fillRect(bx - scale * 3, by + scale * 4.8, scale * 7, scale);
+      if (ear) {
+        this.pixel.fillStyle(ear, alpha);
+        this.pixel.fillRect(bx - scale * 2, by - scale * 6, scale, scale * 2);
+        this.pixel.fillRect(bx + scale * 2, by - scale * 6, scale, scale * 2);
+      }
+      this.pixel.fillStyle(body, alpha);
+      this.pixel.fillRect(bx - scale * 2, by - scale * 4.6, scale * 5, scale * 4);
+      this.pixel.fillStyle(eye, alpha);
+      this.pixel.fillRect(bx - scale, by - scale * 3.4, scale, scale);
+      this.pixel.fillRect(bx + scale, by - scale * 3.4, scale, scale);
+      this.pixel.fillStyle(nose, alpha);
+      this.pixel.fillRect(bx, by - scale * 2, scale, Math.max(1, scale * 0.6));
+      this.pixel.fillStyle(body, alpha);
+      this.pixel.fillRect(bx - scale * 1.5, by - scale * 0.6, scale * 4, scale * 4);
+      this.pixel.fillStyle(belly, alpha);
+      this.pixel.fillRect(bx - scale * 0.4, by + scale * 0.5, scale * 2, scale * 2);
+      this.pixel.fillStyle(limb, alpha);
+      this.pixel.fillRect(bx - scale * 3, by, scale, scale * 3);
+      this.pixel.fillRect(bx + scale * 2.5, by, scale, scale * 3);
+      this.pixel.fillRect(bx - scale, by + scale * 3, scale, scale * 2);
+      this.pixel.fillRect(bx + scale, by + scale * 3, scale, scale * 2);
+      if (tail) {
+        this.pixel.fillStyle(tail, alpha);
+        this.pixel.fillRect(bx + scale * 2.6, by + scale, scale * 2, scale);
+        this.pixel.fillRect(bx + scale * 3.6, by + scale * 0.4 + Math.sin(t * 7) * scale * 0.4, scale, scale);
+      }
+      if (pet.id === 'unicorn') {
+        this.pixel.fillStyle(0xffd700, alpha);
+        this.pixel.fillRect(bx, by - scale * 7.6, scale, scale * 3);
+      }
+    }
+
+    drawPetModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 34;
+      const y = 22;
+      const w = WIDTH - 68;
+      const h = HEIGHT - 44;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '宠物', WIDTH / 2, y + 28, '#ffd700', 18);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+      this.drawLabel(`已拥有：${modal.ownedCount || 0} / ${modal.totalCount || 0}`, x + 120, y + 52, '#4ec9b0', 12);
+      const active = (modal.items || []).find(item => item.active);
+      this.drawLabel(`出战：${active ? active.name : '未装备'}`, x + 286, y + 52, '#e8e8e8', 12);
+      if (modal.status) this.drawLabel(modal.status, x + w - 142, y + 52, '#4ec9b0', 12);
+
+      const items = modal.items || [];
+      const gap = 10;
+      const cardW = Math.floor((w - 36 - gap * 3) / 4);
+      const cardH = 98;
+      const startY = y + 72;
+      items.forEach((item, index) => {
+        const col = index % 4;
+        const row = Math.floor(index / 4);
+        const cardX = x + 18 + col * (cardW + gap);
+        const cardY = startY + row * (cardH + gap);
+        const border = item.active ? 0x4caf50 : (item.owned ? 0xffd700 : 0x475569);
+        this.pixel.fillStyle(item.owned ? 0x0d1421 : 0x121827, item.owned ? 0.98 : 0.7);
+        this.pixel.fillRect(cardX, cardY, cardW, cardH);
+        this.pixel.lineStyle(item.active ? 3 : 2, border, item.owned ? 1 : 0.55);
+        this.pixel.strokeRect(cardX, cardY, cardW, cardH);
+        this.pixel.fillStyle(0x080c14, 0.88);
+        this.pixel.fillRect(cardX + 8, cardY + 8, cardW - 16, 32);
+        this.drawPetPreview(item, cardX + cardW / 2, cardY + 30, 3, Date.now() / 1000, item.owned ? 1 : 0.45);
+        this.drawLabel(item.name, cardX + cardW / 2, cardY + 53, item.owned ? '#ffd700' : '#94a3b8', 11);
+        this.drawLabel((item.abilityText || item.desc || '').slice(0, 10), cardX + cardW / 2, cardY + 69, item.owned ? '#4ec9b0' : '#94a3b8', 9);
+        const label = item.owned ? (item.active ? '卸下' : '装备') : (item.obtain || '活动获取');
+        this.drawButton('pet-toggle', label.slice(0, 5), cardX + cardW / 2 - 25, cardY + 76, 50, 20, item.active, { id: item.id }, !item.owned);
       });
     }
 
