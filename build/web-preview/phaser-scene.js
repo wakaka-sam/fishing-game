@@ -4,8 +4,13 @@
     return;
   }
 
-  const WIDTH = 640;
-  const HEIGHT = 360;
+  const WORLD_WIDTH = 640;
+  const WORLD_HEIGHT = 360;
+  const WIDTH = 700;
+  const HEIGHT = 716;
+  const SCENE = { x: 30, y: 172, w: WORLD_WIDTH, h: WORLD_HEIGHT };
+  const TOPBAR = { x: 0, y: 0, w: WIDTH, h: 164 };
+  const GAMEBAR = { x: 0, y: 542, w: WIDTH, h: 174 };
   let sceneInstance = null;
   let pendingActionHandler = null;
 
@@ -14,8 +19,14 @@
       super('FishingScene');
       this.snapshot = null;
       this.pixel = null;
+      this.overlayPixel = null;
       this.actionHandler = null;
       this.hitZones = [];
+      this.overlayMode = false;
+      this.drawOffsetX = 0;
+      this.drawOffsetY = 0;
+      this.drawScaleX = 1;
+      this.drawScaleY = 1;
     }
 
     preload() {
@@ -29,6 +40,9 @@
     create() {
       sceneInstance = this;
       this.pixel = this.add.graphics();
+      this.pixel.setDepth(0);
+      this.overlayPixel = this.add.graphics();
+      this.overlayPixel.setDepth(20);
       this.sceneGraphics = this.add.graphics();
       this.spriteLayer = this.add.group();
       this.textLayer = this.add.group();
@@ -45,16 +59,46 @@
       this.draw(this.snapshot || {});
     }
 
+    setDrawTransform(x = 0, y = 0, scaleX = 1, scaleY = 1) {
+      this.drawOffsetX = x;
+      this.drawOffsetY = y;
+      this.drawScaleX = scaleX;
+      this.drawScaleY = scaleY;
+    }
+
+    drawOverlay(drawFn) {
+      const basePixel = this.pixel;
+      const baseOverlayMode = this.overlayMode;
+      this.pixel = this.overlayPixel;
+      this.overlayMode = true;
+      drawFn();
+      this.pixel = basePixel;
+      this.overlayMode = baseOverlayMode;
+    }
+
+    mapX(x) {
+      return this.drawOffsetX + x * this.drawScaleX;
+    }
+
+    mapY(y) {
+      return this.drawOffsetY + y * this.drawScaleY;
+    }
+
     px(x, y, w, h, color) {
       this.pixel.fillStyle(Phaser.Display.Color.ValueToColor(color).color, Phaser.Display.Color.ValueToColor(color).alphaGL);
-      this.pixel.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+      this.pixel.fillRect(
+        Math.floor(this.mapX(x)),
+        Math.floor(this.mapY(y)),
+        Math.floor(w * this.drawScaleX),
+        Math.floor(h * this.drawScaleY)
+      );
     }
 
     line(points, color, width = 1) {
       this.pixel.lineStyle(width, Phaser.Display.Color.ValueToColor(color).color, Phaser.Display.Color.ValueToColor(color).alphaGL);
       this.pixel.beginPath();
-      this.pixel.moveTo(points[0][0], points[0][1]);
-      for (let i = 1; i < points.length; i += 1) this.pixel.lineTo(points[i][0], points[i][1]);
+      this.pixel.moveTo(this.mapX(points[0][0]), this.mapY(points[0][1]));
+      for (let i = 1; i < points.length; i += 1) this.pixel.lineTo(this.mapX(points[i][0]), this.mapY(points[i][1]));
       this.pixel.strokePath();
     }
 
@@ -72,9 +116,9 @@
     }
 
     drawLabel(value, x, y, color, size) {
-      const label = this.add.text(x, y - size, value, {
+      const label = this.add.text(this.mapX(x), this.mapY(y - size), value, {
         fontFamily: 'Courier New, monospace',
-        fontSize: `${size}px`,
+        fontSize: `${Math.max(8, Math.round(size * Math.min(this.drawScaleX, this.drawScaleY)))}px`,
         fontStyle: 'bold',
         color,
         backgroundColor: 'rgba(0,0,0,0.6)',
@@ -82,6 +126,7 @@
         padding: { x: 6, y: 2 },
       });
       label.setOrigin(0.5, 0);
+      label.setDepth(this.overlayMode ? 30 : 10);
       this.textLayer.add(label);
     }
 
@@ -116,15 +161,22 @@
     }
 
     addHitZone(action, x, y, w, h, payload) {
-      this.hitZones.push({ action, x, y, w, h, payload });
+      this.hitZones.push({
+        action,
+        x: this.mapX(x),
+        y: this.mapY(y),
+        w: w * this.drawScaleX,
+        h: h * this.drawScaleY,
+        payload,
+      });
     }
 
     draw(snapshot) {
       const now = Date.now() / 1000;
       const t = snapshot.time || now;
       const phase = snapshot.phase || 'idle';
-      const hookX = snapshot.hookX || WIDTH / 2;
-      const hookY = snapshot.hookY || HEIGHT * 0.55;
+      const hookX = snapshot.hookX || WORLD_WIDTH / 2;
+      const hookY = snapshot.hookY || WORLD_HEIGHT * 0.55;
       const hasOverlay = !!snapshot.modal || !!(snapshot.hitbar && snapshot.hitbar.active);
       const rodSkin = snapshot.rodSkin || {
         rodColor: '#8b4513',
@@ -133,49 +185,58 @@
       };
 
       this.pixel.clear();
+      if (this.overlayPixel) this.overlayPixel.clear();
       this.clearLabels();
       this.clearSprites();
       this.hitZones = [];
+      this.setDrawTransform();
+      this.px(0, 0, WIDTH, HEIGHT, '#0d1421');
 
-      const skyH = HEIGHT * 0.4;
+      if (snapshot.login) {
+        this.drawLogin(snapshot.login, t);
+        return;
+      }
+
+      this.setDrawTransform(SCENE.x, SCENE.y);
+      const skyH = WORLD_HEIGHT * 0.4;
       for (let y = 0; y < skyH; y += 4) {
         const r = 135 + (255 - 135) * (y / skyH) * 0.1;
         const g = 206 + (200 - 206) * (y / skyH) * 0.1;
         const b = 235 - (235 - 180) * (y / skyH) * 0.3;
-        this.px(0, y, WIDTH, 4, `rgb(${r | 0},${g | 0},${b | 0})`);
+        this.px(0, y, WORLD_WIDTH, 4, `rgb(${r | 0},${g | 0},${b | 0})`);
       }
 
       this.pixel.fillStyle(Phaser.Display.Color.ValueToColor('#3d5a73').color);
       this.pixel.beginPath();
-      this.pixel.moveTo(0, skyH);
-      for (let x = 0; x <= WIDTH; x += 20) {
+      this.pixel.moveTo(this.mapX(0), this.mapY(skyH));
+      for (let x = 0; x <= WORLD_WIDTH; x += 20) {
         const mountainH = 30 + Math.sin(x * 0.02) * 15 + Math.sin(x * 0.05) * 8;
-        this.pixel.lineTo(x, skyH - mountainH);
+        this.pixel.lineTo(this.mapX(x), this.mapY(skyH - mountainH));
       }
-      this.pixel.lineTo(WIDTH, skyH);
+      this.pixel.lineTo(this.mapX(WORLD_WIDTH), this.mapY(skyH));
       this.pixel.closePath();
       this.pixel.fillPath();
 
-      this.px(0, skyH, WIDTH, HEIGHT - skyH, '#1e6091');
-      for (let y = skyH; y < HEIGHT; y += 6) {
+      this.px(0, skyH, WORLD_WIDTH, WORLD_HEIGHT - skyH, '#1e6091');
+      for (let y = skyH; y < WORLD_HEIGHT; y += 6) {
         const wave = Math.sin(t * 2 + y * 0.1) * 2;
-        const shade = 30 + ((y - skyH) / (HEIGHT - skyH)) * 60;
-        this.px(0, y + wave, WIDTH, 2, `rgb(${20 + shade * 0.3 | 0},${60 + shade * 0.5 | 0},${120 + shade * 0.4 | 0})`);
+        const shade = 30 + ((y - skyH) / (WORLD_HEIGHT - skyH)) * 60;
+        this.px(0, y + wave, WORLD_WIDTH, 2, `rgb(${20 + shade * 0.3 | 0},${60 + shade * 0.5 | 0},${120 + shade * 0.4 | 0})`);
       }
       for (let i = 0; i < 30; i += 1) {
-        const x = (i * 47 + t * 30) % WIDTH;
-        const y = skyH + ((i * 31) % (HEIGHT - skyH));
+        const x = (i * 47 + t * 30) % WORLD_WIDTH;
+        const y = skyH + ((i * 31) % (WORLD_HEIGHT - skyH));
         this.px(x, y, 3, 1, 'rgba(255,255,255,0.5)');
       }
 
-      this.px(WIDTH - 80, 40, 24, 24, '#ffeb3b');
-      this.px(WIDTH - 84, 48, 32, 8, '#ffeb3b');
-      this.px(WIDTH - 80, 36, 24, 4, '#ffeb3b');
+      this.px(WORLD_WIDTH - 80, 40, 24, 24, '#ffeb3b');
+      this.px(WORLD_WIDTH - 84, 48, 32, 8, '#ffeb3b');
+      this.px(WORLD_WIDTH - 80, 36, 24, 4, '#ffeb3b');
 
-      const rodTipX = WIDTH * 0.45 + Math.sin(t * 1.5) * 4;
-      const rodTipY = HEIGHT * 0.35;
-      const rodBaseX = WIDTH * 0.95;
-      const rodBaseY = HEIGHT + 10;
+      const rodTipX = WORLD_WIDTH * 0.45 + Math.sin(t * 1.5) * 4;
+      const rodTipY = WORLD_HEIGHT * 0.35;
+      const rodBaseX = WORLD_WIDTH * 0.95;
+      const rodBaseY = WORLD_HEIGHT + 10;
 
       if (rodSkin.fx === 'night') {
         this.line([[rodBaseX, rodBaseY], [rodTipX, rodTipY]], 'rgba(139,92,246,0.75)', 8);
@@ -202,40 +263,45 @@
         this.px(hookX - 1, bobY, 2, 6, '#3e2723');
       }
 
-      this.px(WIDTH * 0.78, HEIGHT - 30, 30, 30, '#fdbcb4');
-      this.px(WIDTH * 0.78, HEIGHT - 30, 30, 6, '#d99086');
-      this.px(WIDTH * 0.85, HEIGHT - 24, 18, 18, '#fdbcb4');
+      this.px(WORLD_WIDTH * 0.78, WORLD_HEIGHT - 30, 30, 30, '#fdbcb4');
+      this.px(WORLD_WIDTH * 0.78, WORLD_HEIGHT - 30, 30, 6, '#d99086');
+      this.px(WORLD_WIDTH * 0.85, WORLD_HEIGHT - 24, 18, 18, '#fdbcb4');
 
       if (snapshot.pet) this.drawPet(snapshot.pet, t);
 
-      if (snapshot.login) {
-        this.drawLogin(snapshot.login, t);
-        return;
-      }
-
-      if (!hasOverlay && phase === 'waiting') this.drawLabel('等待鱼上钩...', WIDTH / 2, HEIGHT - 24, '#ffffff', 12);
-      if (!hasOverlay && phase === 'hooked') this.drawLabel('!!! 鱼上钩了 !!!', WIDTH / 2, HEIGHT - 24, '#ff5722', 16);
-      if (!hasOverlay && snapshot.hud) this.drawHud(snapshot.hud);
-      if (snapshot.modal) this.drawModal(snapshot.modal);
-      if (snapshot.hitbar && snapshot.hitbar.active) this.drawHitbar(snapshot.hitbar);
+      if (!hasOverlay && phase === 'waiting') this.drawLabel('等待鱼上钩...', WORLD_WIDTH / 2, WORLD_HEIGHT - 24, '#ffffff', 12);
+      if (!hasOverlay && phase === 'hooked') this.drawLabel('!!! 鱼上钩了 !!!', WORLD_WIDTH / 2, WORLD_HEIGHT - 24, '#ff5722', 16);
+      this.setDrawTransform();
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(SCENE.x, SCENE.y, SCENE.w, SCENE.h);
+      if (snapshot.hud) this.drawHud(snapshot.hud);
+      if (snapshot.modal) this.drawOverlay(() => this.drawModal(snapshot.modal));
+      if (snapshot.hitbar && snapshot.hitbar.active) this.drawOverlay(() => this.drawHitbar(snapshot.hitbar));
     }
 
-    drawButton(action, label, x, y, w, h, active = false, payload = null, disabled = false) {
+    drawButton(action, label, x, y, w, h, active = false, payload = null, disabled = false, variant = 'default') {
       if (!disabled) this.addHitZone(action, x, y, w, h, payload);
-      this.pixel.fillStyle(disabled ? 0x303642 : (active ? 0xd35400 : 0x1a1a2e), 0.95);
+      const isPrimary = variant === 'primary' || variant === 'primary-large';
+      this.pixel.fillStyle(disabled ? 0x303642 : (active || isPrimary ? 0xd35400 : 0x1a1a2e), 0.95);
       this.pixel.fillRect(x, y, w, h);
-      this.pixel.lineStyle(2, disabled ? 0x64748b : (active ? 0xffae42 : 0xffd700), 1);
+      this.pixel.lineStyle(2, disabled ? 0x64748b : (active || isPrimary ? 0xffae42 : 0xffd700), 1);
       this.pixel.strokeRect(x, y, w, h);
-      this.drawLabel(label, x + w / 2, y + h / 2 + 6, disabled ? '#94a3b8' : (active ? '#ffffff' : '#ffd700'), 11);
+      const labelSize = variant === 'primary-large' ? 18 : (isPrimary ? 13 : 11);
+      this.drawLabel(label, x + w / 2, y + h / 2 + 6, disabled ? '#94a3b8' : (active || isPrimary ? '#ffffff' : '#ffd700'), labelSize);
     }
 
     drawLogin(login, t) {
-      this.pixel.fillStyle(0x000000, 0.2);
-      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
-      const x = 148;
-      const y = 72;
-      const w = WIDTH - 296;
-      const h = HEIGHT - 144;
+      for (let y = 0; y < HEIGHT; y += 4) {
+        const mix = y / HEIGHT;
+        const r = Math.round(26 + (13 - 26) * mix);
+        const g = Math.round(58 + (20 - 58) * mix);
+        const b = Math.round(92 + (33 - 92) * mix);
+        this.px(0, y, WIDTH, 4, `rgb(${r},${g},${b})`);
+      }
+      const w = 380;
+      const h = 360;
+      const x = Math.floor((WIDTH - w) / 2);
+      const y = Math.floor((HEIGHT - h) / 2);
       this.pixel.fillStyle(0x1a1a2e, 0.98);
       this.pixel.fillRect(x, y, w, h);
       this.pixel.lineStyle(4, 0xffd700, 1);
@@ -245,12 +311,12 @@
       this.pixel.lineStyle(2, 0xffd700, 1);
       this.pixel.strokeRect(x - 12, y - 12, w + 24, h + 24);
 
-      this.drawLabel(login.title || '像素钓鱼', WIDTH / 2, y + 38, '#ffd700', 23);
-      this.drawLabel('输入用户名开始游戏', WIDTH / 2, y + 72, '#cbd5e1', 12);
+      this.drawLabel(`🎣 ${login.title || '像素钓鱼'}`, WIDTH / 2, y + 82, '#ffd700', 31);
+      this.drawLabel('输入用户名开始游戏', WIDTH / 2, y + 122, '#cbd5e1', 14);
 
-      const inputX = x + 42;
-      const inputY = y + 92;
-      const inputW = w - 84;
+      const inputX = x + 70;
+      const inputY = y + 140;
+      const inputW = 240;
       this.pixel.fillStyle(0x0b1220, 0.98);
       this.pixel.fillRect(inputX, inputY, inputW, 34);
       this.pixel.lineStyle(2, 0xffd700, 1);
@@ -259,48 +325,76 @@
       const cursor = Math.floor(t * 2) % 2 === 0 && !login.loading ? '_' : '';
       this.drawLabel(username ? username + cursor : '用户名', WIDTH / 2, inputY + 25, username ? '#f0e68c' : '#64748b', 14);
 
-      this.drawButton('login-clear', '清空', inputX, inputY + 48, 66, 28, false, null, !username || login.loading);
-      this.drawButton('login-submit', login.loading ? '登录中' : '开始钓鱼', WIDTH / 2 - 58, inputY + 48, 116, 28, false, null, login.loading);
-      this.drawLabel('数据将以用户名为键保存到服务器', WIDTH / 2, y + h - 35, '#94a3b8', 10);
+      if (username) this.drawButton('login-clear', '清空', inputX, inputY + 52, 78, 38, false, null, login.loading);
+      this.drawButton('login-submit', login.loading ? '登录中' : '开始钓鱼', WIDTH / 2 - 46, inputY + 52, 92, 38, false, null, login.loading);
+      this.drawLabel('数据将以用户名为键保存到服务器', WIDTH / 2, y + h - 86, '#94a3b8', 11);
       if (login.status) {
         const isError = login.status.includes('失败') || login.status.includes('请输入') || login.status.includes('检测到');
-        this.drawLabel(login.status.slice(0, 44), WIDTH / 2, y + h - 12, isError ? '#ffae42' : '#4ec9b0', 11);
+        this.drawLabel(login.status.slice(0, 44), WIDTH / 2, y + h - 52, isError ? '#ffae42' : '#4ec9b0', 11);
       } else if (login.version) {
-        this.drawLabel(`v${login.version}`, x + w - 34, y + h - 12, '#64748b', 10);
+        this.drawLabel(`v${login.version}`, x + w - 34, y + h - 18, '#64748b', 10);
       }
     }
 
     drawHud(hud) {
-      this.pixel.fillStyle(0x0d1421, 0.86);
-      this.pixel.fillRect(0, 0, WIDTH, 74);
-      this.pixel.fillRect(0, HEIGHT - 76, WIDTH, 76);
-      this.pixel.lineStyle(2, 0xffd700, 0.9);
-      this.pixel.strokeRect(0, 0, WIDTH, 74);
-      this.pixel.strokeRect(0, HEIGHT - 76, WIDTH, 76);
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(TOPBAR.x, TOPBAR.y, TOPBAR.w, TOPBAR.h);
+      this.pixel.fillRect(GAMEBAR.x, GAMEBAR.y, GAMEBAR.w, GAMEBAR.h);
+      this.pixel.lineStyle(2, 0xffd700, 1);
+      this.pixel.strokeRect(TOPBAR.x, TOPBAR.y, TOPBAR.w, TOPBAR.h);
+      this.pixel.strokeRect(GAMEBAR.x, GAMEBAR.y, GAMEBAR.w, GAMEBAR.h);
 
+      const actionIcons = {
+        shop: '🎁',
+        dex: '📖',
+        rod: '🎣',
+        character: '🧍',
+        accessory: '💍',
+        pet: '🐾',
+        rank: '🏆',
+        gacha: '🎰',
+        redeem: '🎫',
+        share: '📤',
+      };
       const username = String(hud.username || '玩家');
-      const usernameLabel = username.length > 10 ? `${username.slice(0, 9)}...` : username;
-      this.drawLabel(usernameLabel, 70, 23, '#4ec9b0', 13);
-      this.drawLabel(`金币 ${hud.money || 0}`, 142, 23, '#ffd700', 13);
-      this.drawLabel(`钻石 ${hud.diamonds || 0}`, 238, 23, '#66e6ff', 13);
-      this.drawButton('version', `v${hud.version || ''}`, WIDTH - 70, 9, 58, 22, false);
+      const usernameLabel = username.length > 18 ? `${username.slice(0, 17)}...` : username;
+      this.drawLabel(usernameLabel, 88, 48, '#4ec9b0', 14);
+      this.drawLabel(`💰 ${Math.floor(hud.money || 0)}`, 74, 94, '#ffd700', 15);
+      this.drawLabel(`💎 ${Math.floor(hud.diamonds || 0)}`, 154, 94, '#66e6ff', 15);
+      this.drawButton('version', `v${hud.version || ''}`, 18, 120, 56, 22, false);
 
-      const actions = hud.actions || [];
-      const gap = 4;
-      const buttonW = Math.floor((WIDTH - 20 - gap * (actions.length - 1)) / Math.max(1, actions.length));
-      actions.forEach((item, index) => {
-        this.drawButton(item.action, item.label, 10 + index * (buttonW + gap), 42, buttonW, 23, item.active);
+      const actions = (hud.actions || []).filter(item => item.action !== 'logout');
+      const actionLayout = [
+        ['shop', 'dex', 'rod', 'character', 'accessory'],
+        ['pet', 'rank', 'gacha', 'vip-auto'],
+        ['redeem', 'share', 'logout'],
+      ];
+      const actionMap = new Map(actions.map(item => [item.action, item]));
+      actionMap.set('logout', { action: 'logout', label: '退出' });
+      if (hud.vipVisible) actionMap.set('vip-auto', { action: 'vip-auto', label: hud.vipLabel || 'VIP自动', active: hud.vipActive });
+      const rowY = [24, 74, 124];
+      const rowX = [198, 264, 424];
+      const buttonW = [90, 90, 90];
+      actionLayout.forEach((row, rowIndex) => {
+        let x = rowX[rowIndex];
+        row.forEach((action) => {
+          const item = actionMap.get(action);
+          if (!item) return;
+          const label = actionIcons[action] ? `${actionIcons[action]} ${item.label}` : item.label;
+          const width = action === 'vip-auto' ? 124 : buttonW[rowIndex];
+          this.drawButton(item.action, label, x, rowY[rowIndex], width, 42, !!item.active);
+          x += width + 10;
+        });
       });
 
-      this.drawLabel(`当前鱼饵：${hud.baitName || ''} x${hud.baitCount || 0}`, 126, HEIGHT - 51, hud.baitColor || '#ffd700', 14);
-      this.drawButton('bait-prev', '<', 12, HEIGHT - 63, 34, 28, false);
-      this.drawButton('bait-next', '>', 52, HEIGHT - 63, 34, 28, false);
-      this.drawLabel(hud.rodName || '', 332, HEIGHT - 51, '#cbd5e1', 12);
-      this.drawLabel(hud.status || '', 214, HEIGHT - 20, '#4ec9b0', 12);
-      this.drawButton('cast', hud.castLabel || '抛竿', WIDTH - 110, HEIGHT - 61, 96, 34, hud.phase !== 'idle');
-      if (hud.vipVisible) {
-        this.drawButton('vip-auto', hud.vipLabel || 'VIP自动', WIDTH - 110, HEIGHT - 25, 96, 20, hud.vipActive);
-      }
+      const baitY = GAMEBAR.y + 44;
+      this.drawLabel('当前鱼饵:', 250, baitY, '#e8e8e8', 14);
+      this.drawButton('bait-next', `${hud.baitName || ''} (×${hud.baitCount || 0}) ▾`, 316, GAMEBAR.y + 26, 132, 38, false);
+      this.drawLabel(`剩余 ${hud.baitCount || 0} 个`, 510, baitY, '#e8e8e8', 13);
+      this.drawLabel(`🎣 ${String(hud.rodName || '').replace(/^鱼竿：/, '')}`, 282, GAMEBAR.y + 92, '#ffae42', 12);
+      this.drawLabel('钓鱼高手', 370, GAMEBAR.y + 92, '#ffd700', 12);
+      this.drawButton('cast', `${hud.castLabel || '抛竿钓鱼'} ${hud.phase === 'idle' ? '(空格)' : ''}`.trim(), 285, GAMEBAR.y + 104, 150, 40, hud.phase !== 'idle', null, false, 'primary');
+      this.drawLabel(hud.status || '', WIDTH / 2, GAMEBAR.y + 158, '#4ec9b0', 13);
     }
 
     drawModal(modal) {
@@ -376,32 +470,53 @@
     drawShopModal(modal) {
       this.pixel.fillStyle(0x000000, 0.76);
       this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
-      const x = 42;
-      const y = 32;
-      const w = WIDTH - 84;
-      const h = HEIGHT - 64;
+      const x = 38;
+      const y = 86;
+      const w = WIDTH - 76;
+      const h = HEIGHT - 100;
       this.pixel.fillStyle(0x1a1a2e, 1);
       this.pixel.fillRect(x, y, w, h);
       this.pixel.lineStyle(4, 0xffd700, 1);
       this.pixel.strokeRect(x, y, w, h);
-      this.drawLabel('鱼饵商店', WIDTH / 2, y + 32, '#ffd700', 20);
+      this.drawLabel('鱼饵商店', WIDTH / 2, y + 52, '#ffd700', 24);
       this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
-      this.drawButton('shop-ad-reward', modal.adLabel || '看广告领 50 钻石', x + 18, y + 52, 150, 26, false, null, modal.adDisabled);
-      this.drawLabel(`金币 ${modal.money || 0}   钻石 ${modal.diamonds || 0}`, x + w - 128, y + 72, '#e8e8e8', 13);
+
+      const adX = x + 28;
+      const adY = y + 76;
+      const adW = w - 56;
+      const adH = 70;
+      this.pixel.fillStyle(0x123d19, 1);
+      this.pixel.fillRect(adX, adY, adW, adH);
+      this.pixel.lineStyle(1, 0x22c55e, 1);
+      this.pixel.strokeRect(adX, adY, adW, adH);
+      this.drawLabel('📺', adX + 34, adY + 44, '#e8e8e8', 27);
+      this.drawLabel('看广告领钻石', adX + 126, adY + 32, '#4ade80', 17);
+      this.drawLabel('观看一段视频广告，免费获得 50 钻石', adX + 204, adY + 58, '#cbd5e1', 12);
+      this.pixel.fillStyle(modal.adDisabled ? 0x303642 : 0x4caf50, 1);
+      this.pixel.fillRect(adX + adW - 94, adY + 16, 78, 40);
+      this.pixel.lineStyle(0, 0x4caf50, 0);
+      if (!modal.adDisabled) this.addHitZone('shop-ad-reward', adX + adW - 94, adY + 16, 78, 40);
+      this.drawLabel('免费领取', adX + adW - 55, adY + 43, modal.adDisabled ? '#94a3b8' : '#ffffff', 13);
       if (modal.status) this.drawLabel(modal.status, WIDTH / 2, y + h - 10, '#4ec9b0', 12);
 
       const items = modal.items || [];
       items.forEach((item, index) => {
-        const rowY = y + 88 + index * 35;
+        const cardW = Math.floor((w - 68) / 2);
+        const cardH = 128;
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const cardX = x + 28 + col * (cardW + 12);
+        const rowY = y + 166 + row * (cardH + 12);
         this.pixel.fillStyle(0x0d1421, 0.96);
-        this.pixel.fillRect(x + 18, rowY, w - 36, 29);
-        this.pixel.lineStyle(1, Phaser.Display.Color.ValueToColor(item.color || '#555').color, 1);
-        this.pixel.strokeRect(x + 18, rowY, w - 36, 29);
-        this.drawLabel(`${item.name} x${item.owned}`, x + 82, rowY + 20, item.color || '#ffd700', 12);
-        this.drawLabel(`${item.currencyIcon} ${item.price}/个`, x + 226, rowY + 20, '#ffd700', 12);
-        this.drawLabel((item.desc || '').slice(0, 12), x + 330, rowY + 20, '#94a3b8', 11);
-        this.drawButton('shop-buy', '买1', x + w - 110, rowY + 4, 42, 21, false, { id: item.id, count: 1 });
-        this.drawButton('shop-buy', '买10', x + w - 62, rowY + 4, 48, 21, false, { id: item.id, count: 10 });
+        this.pixel.fillRect(cardX, rowY, cardW, cardH);
+        this.pixel.lineStyle(2, 0x555555, 1);
+        this.pixel.strokeRect(cardX, rowY, cardW, cardH);
+        this.drawLabel(item.name || '', cardX + 52, rowY + 30, item.color || '#ffd700', 18);
+        this.drawLabel((item.desc || '').slice(0, 18), cardX + 92, rowY + 58, '#cbd5e1', 12);
+        this.drawLabel(`${item.currencyIcon || '💰'} ${item.price || 0}/个`, cardX + 62, rowY + 88, '#ffd700', 14);
+        this.drawLabel(`已有 ${item.owned || 0}`, cardX + cardW - 45, rowY + 88, '#cbd5e1', 12);
+        this.drawButton('shop-buy', '买 ×1', cardX + 14, rowY + 102, 74, 34, false, { id: item.id, count: 1 });
+        this.drawButton('shop-buy', '买 ×10', cardX + cardW - 100, rowY + 102, 84, 34, false, { id: item.id, count: 10 });
       });
     }
 
@@ -560,6 +675,7 @@
         const scale = Math.min((w * 0.75) / frameW, (h * 0.9) / texture.height);
         image.setDisplaySize(frameW * scale, texture.height * scale);
         image.setAlpha(item.owned || item.canSynthesize ? 1 : 0.45);
+        image.setDepth(this.overlayMode ? 30 : 10);
         this.spriteLayer.add(image);
         return;
       }
@@ -1084,6 +1200,7 @@
         const image = this.add.image(qrX + 48, qrY + 46, 'group-qr');
         image.setOrigin(0.5);
         image.setDisplaySize(102, 102);
+        image.setDepth(this.overlayMode ? 30 : 10);
         this.spriteLayer.add(image);
       } else {
         this.drawLabel('微信群二维码', qrX + 48, qrY + 48, '#94a3b8', 10);
@@ -1093,26 +1210,18 @@
     }
 
     drawHitbar(hitbar) {
+      this.addHitZone('cast', 0, 0, WIDTH, HEIGHT);
       this.pixel.fillStyle(0x000000, 0.82);
       this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
-      const panelX = 56;
-      const panelY = 70;
-      const panelW = WIDTH - panelX * 2;
-      const panelH = 220;
-      this.pixel.fillStyle(0x1a1a2e, 1);
-      this.pixel.fillRect(panelX, panelY, panelW, panelH);
-      this.pixel.lineStyle(4, 0xffd700, 1);
-      this.pixel.strokeRect(panelX, panelY, panelW, panelH);
-
       const color = hitbar.color || '#ffae42';
-      this.drawLabel(hitbar.message || '鱼上钩了！', WIDTH / 2, panelY + 54, color, 22);
-      this.drawLabel(`${hitbar.hits || 0} / ${hitbar.hitsNeeded || 0} 命中`, WIDTH / 2, panelY + 90, '#4ec9b0', 16);
-      this.drawLabel(`${Math.max(0, hitbar.timeLeft || 0).toFixed(1)}s`, WIDTH / 2, panelY + 118, '#ff5722', 15);
+      this.drawLabel(hitbar.message || '鱼上钩了！', WIDTH / 2, 350, color, 22);
+      this.drawLabel(`${hitbar.hits || 0} / ${hitbar.hitsNeeded || 0} 命中`, WIDTH / 2, 392, '#4ec9b0', 16);
+      this.drawLabel(`${Math.max(0, hitbar.timeLeft || 0).toFixed(1)}s`, WIDTH / 2, 420, '#ff5722', 15);
 
-      const barX = panelX + 42;
-      const barY = panelY + 142;
-      const barW = panelW - 84;
-      const barH = 34;
+      const barX = 100;
+      const barY = 446;
+      const barW = WIDTH - 200;
+      const barH = 40;
       this.pixel.fillStyle(0x2c3e50, 1);
       this.pixel.fillRect(barX, barY, barW, barH);
       this.pixel.lineStyle(3, 0xffd700, 1);
@@ -1130,7 +1239,7 @@
 
       this.pixel.fillStyle(0xffffff, 1);
       this.pixel.fillRect(barX + barW * hitbar.cursorPos - 2, barY - 4, 4, barH + 8);
-      this.drawLabel('空格 / 点击画面 / 手机按钮：击中', WIDTH / 2, panelY + 198, '#ffd700', 13);
+      this.drawButton('cast', '击 中! (空格)', WIDTH / 2 - 100, 520, 200, 44, false, null, false, 'primary-large');
     }
 
     drawAccessoryParticles(def, star, rodBaseX, rodBaseY, rodTipX, rodTipY, t) {
@@ -1155,8 +1264,8 @@
     }
 
     drawPet(pet, t) {
-      const bx = pet.canvasX * WIDTH;
-      const by = pet.canvasY * HEIGHT + Math.sin(t * 2) * 2;
+      const bx = pet.canvasX * WORLD_WIDTH;
+      const by = pet.canvasY * WORLD_HEIGHT + Math.sin(t * 2) * 2;
       const s = 4;
       const c = pet.colors || {};
       const legSwing = Math.sin(t * 4) * 2;
