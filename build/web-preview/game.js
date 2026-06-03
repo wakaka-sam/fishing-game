@@ -600,8 +600,8 @@ function synthesizeCharacter(characterId) {
   const target = getCharacterShardTarget(characterId);
   const character = GAME_DATA.CHARACTERS.find(c => c.id === characterId);
   const required = GAME_DATA.CHARACTER_SHARDS_REQUIRED || 10;
-  if (!target || !character || user.ownedCharacters.includes(characterId)) return;
-  if ((user.characterFragments[characterId] || 0) < required) return;
+  if (!target || !character || user.ownedCharacters.includes(characterId)) return false;
+  if ((user.characterFragments[characterId] || 0) < required) return false;
   user.characterFragments[characterId] -= required;
   user.ownedCharacters.push(characterId);
   user.activeCharacter = characterId;
@@ -609,6 +609,7 @@ function synthesizeCharacter(characterId) {
   refreshUI();
   saveUser('character');
   renderCharacters();
+  return true;
 }
 
 function makeAccessoryUid() {
@@ -1036,6 +1037,7 @@ function getPhaserModalSnapshot() {
   }
   if (phaserUi.modal === 'dex') return getPhaserDexSnapshot();
   if (phaserUi.modal === 'rod') return getPhaserRodSnapshot();
+  if (phaserUi.modal === 'character') return getPhaserCharacterSnapshot();
   return null;
 }
 
@@ -1048,6 +1050,7 @@ function openPhaserModal(type, data = null) {
   resultOverlay?.classList.add('hidden');
   dexOverlay?.classList.add('hidden');
   rodOverlay?.classList.add('hidden');
+  characterOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1090,6 +1093,8 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'dex-page') return setPhaserDexPage(payload?.delta || 0);
     if (action === 'rod-equip') return equipRodSkin(payload?.id, { source: 'phaser' });
     if (action === 'rod-page') return setPhaserRodPage(payload?.delta || 0);
+    if (action === 'character-equip') return equipCharacter(payload?.id, { source: 'phaser' });
+    if (action === 'character-compose') return composeCharacter(payload?.id, { source: 'phaser' });
     return;
   }
   if (action === 'cast') {
@@ -1108,8 +1113,8 @@ function handlePhaserAction(action, payload = null) {
   if (action === 'shop') return openPhaserModal('shop');
   if (action === 'dex') return openPhaserDex();
   if (action === 'rod') return openPhaserRod();
+  if (action === 'character') return openPhaserCharacter();
   const domButtons = {
-    character: 'character-btn',
     accessory: 'accessory-btn',
     pet: 'pet-btn',
     rank: 'rank-btn',
@@ -1932,7 +1937,80 @@ function renderDex() {
 
 // ====== 角色系统 ======
 const characterOverlay = $('character-overlay');
-$('character-btn').onclick = () => { renderCharacters(); characterOverlay.classList.remove('hidden'); };
+$('character-btn').onclick = () => {
+  if (openPhaserCharacter()) return;
+  renderCharacters();
+  characterOverlay.classList.remove('hidden');
+};
+
+function getPhaserCharacterSnapshot() {
+  if (!phaserRenderer || !user) return null;
+  normalizeCharacters();
+  normalizeCharacterFragments();
+  const owned = user.ownedCharacters || [];
+  const required = GAME_DATA.CHARACTER_SHARDS_REQUIRED || 10;
+  return {
+    type: 'character',
+    title: '角色',
+    status: phaserUi.status,
+    activeCharacter: user.activeCharacter,
+    ownedCount: owned.length,
+    totalCount: GAME_DATA.CHARACTERS.length,
+    required,
+    items: GAME_DATA.CHARACTERS.map((character) => {
+      const isOwned = owned.includes(character.id);
+      const isActive = user.activeCharacter === character.id;
+      const shardTarget = getCharacterShardTarget(character.id);
+      const shardCount = shardTarget ? getCharacterShardCount(character.id) : 0;
+      const canSynthesize = !!shardTarget && !isOwned && shardCount >= required;
+      return {
+        id: character.id,
+        name: character.name,
+        title: character.title,
+        bio: character.bio,
+        obtain: character.obtain || '暂未开放',
+        sprite: character.sprite,
+        spriteImage: character.spriteImage || '',
+        colors: character.colors || {},
+        owned: isOwned,
+        active: isActive,
+        shardCount,
+        required,
+        hasShardTarget: !!shardTarget,
+        canSynthesize,
+      };
+    }),
+  };
+}
+
+function openPhaserCharacter() {
+  return openPhaserModal('character');
+}
+
+function equipCharacter(id, options = {}) {
+  if (!user || !id) return false;
+  normalizeCharacters();
+  const character = GAME_DATA.CHARACTERS.find(item => item.id === id);
+  if (!character || !(user.ownedCharacters || []).includes(id)) return false;
+  user.activeCharacter = id;
+  phaserUi.status = `已装备 ${character.name}`;
+  refreshUI();
+  saveUser('selection');
+  if (!characterOverlay.classList.contains('hidden')) renderCharacters();
+  return true;
+}
+
+function composeCharacter(id, options = {}) {
+  if (!user || !id) return false;
+  const character = GAME_DATA.CHARACTERS.find(item => item.id === id);
+  const ok = synthesizeCharacter(id);
+  if (!ok) {
+    if (options.source === 'phaser') phaserUi.status = '碎片不足，暂时无法合成';
+    return false;
+  }
+  phaserUi.status = character ? `已合成并装备 ${character.name}` : statusEl.textContent;
+  return true;
+}
 
 function renderCharacters() {
   normalizeCharacters();
@@ -1963,15 +2041,12 @@ function renderCharacters() {
     `;
     if (isOwned) {
       div.onclick = () => {
-        user.activeCharacter = character.id;
-        refreshUI();
-        saveUser('selection');
-        renderCharacters();
+        equipCharacter(character.id, { source: 'dom' });
       };
     } else if (canSynthesize) {
       div.querySelector('[data-compose]').onclick = (e) => {
         e.stopPropagation();
-        synthesizeCharacter(character.id);
+        composeCharacter(character.id, { source: 'dom' });
       };
     }
     list.appendChild(div);

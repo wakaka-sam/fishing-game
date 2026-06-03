@@ -10,4 +10,4 @@ npm run serve:web-preview
 
 访问 <http://localhost:4173>。
 
-当前版本：v1.0.46
+当前版本：v1.0.47

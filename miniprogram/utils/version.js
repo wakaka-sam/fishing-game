@@ -1,6 +1,14 @@
 module.exports = {
-  "version": "1.0.46",
+  "version": "1.0.47",
   "changelog": [
+    {
+      "version": "1.0.47",
+      "date": "2026-06-03",
+      "changes": [
+        "角色弹窗迁移到 Phaser 渲染",
+        "Phaser 角色弹窗支持装备和碎片合成"
+      ]
+    },
     {
       "version": "1.0.46",
       "date": "2026-06-03",

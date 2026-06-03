@@ -18,10 +18,18 @@
       this.hitZones = [];
     }
 
+    preload() {
+      const characters = window.GAME_DATA?.CHARACTERS || [];
+      characters.forEach((character) => {
+        if (character.spriteImage) this.load.image(`character:${character.id}`, character.spriteImage);
+      });
+    }
+
     create() {
       sceneInstance = this;
       this.pixel = this.add.graphics();
       this.sceneGraphics = this.add.graphics();
+      this.spriteLayer = this.add.group();
       this.textLayer = this.add.group();
       this.actionHandler = pendingActionHandler;
       this.game.canvas.addEventListener('pointerdown', (event) => this.handlePointer({ event }));
@@ -79,6 +87,10 @@
       this.textLayer.clear(true, true);
     }
 
+    clearSprites() {
+      if (this.spriteLayer) this.spriteLayer.clear(true, true);
+    }
+
     setActionHandler(handler) {
       this.actionHandler = handler;
     }
@@ -111,6 +123,7 @@
       const phase = snapshot.phase || 'idle';
       const hookX = snapshot.hookX || WIDTH / 2;
       const hookY = snapshot.hookY || HEIGHT * 0.55;
+      const hasOverlay = !!snapshot.modal || !!(snapshot.hitbar && snapshot.hitbar.active);
       const rodSkin = snapshot.rodSkin || {
         rodColor: '#8b4513',
         rodHighlight: '#d7a15d',
@@ -119,6 +132,7 @@
 
       this.pixel.clear();
       this.clearLabels();
+      this.clearSprites();
       this.hitZones = [];
 
       const skyH = HEIGHT * 0.4;
@@ -192,9 +206,9 @@
 
       if (snapshot.pet) this.drawPet(snapshot.pet, t);
 
-      if (phase === 'waiting') this.drawLabel('等待鱼上钩...', WIDTH / 2, HEIGHT - 24, '#ffffff', 12);
-      if (phase === 'hooked') this.drawLabel('!!! 鱼上钩了 !!!', WIDTH / 2, HEIGHT - 24, '#ff5722', 16);
-      if (snapshot.hud) this.drawHud(snapshot.hud);
+      if (!hasOverlay && phase === 'waiting') this.drawLabel('等待鱼上钩...', WIDTH / 2, HEIGHT - 24, '#ffffff', 12);
+      if (!hasOverlay && phase === 'hooked') this.drawLabel('!!! 鱼上钩了 !!!', WIDTH / 2, HEIGHT - 24, '#ff5722', 16);
+      if (!hasOverlay && snapshot.hud) this.drawHud(snapshot.hud);
       if (snapshot.modal) this.drawModal(snapshot.modal);
       if (snapshot.hitbar && snapshot.hitbar.active) this.drawHitbar(snapshot.hitbar);
     }
@@ -244,6 +258,7 @@
       if (modal.type === 'result' || modal.type === 'miss') this.drawResultModal(modal);
       if (modal.type === 'dex') this.drawDexModal(modal);
       if (modal.type === 'rod') this.drawRodModal(modal);
+      if (modal.type === 'character') this.drawCharacterModal(modal);
     }
 
     drawShopModal(modal) {
@@ -419,6 +434,122 @@
       this.drawButton('rod-page', '<', x + 18, y + h - 44, 34, 28, false, { delta: -1 }, modal.page <= 0);
       this.drawLabel(`${(modal.page || 0) + 1} / ${modal.pageCount || 1}`, x + 92, y + h - 36, '#ffd700', 12);
       this.drawButton('rod-page', '>', x + 128, y + h - 44, 34, 28, false, { delta: 1 }, modal.page >= (modal.pageCount || 1) - 1);
+    }
+
+    drawCharacterPortrait(item, x, y, w, h, t) {
+      const key = `character:${item.id}`;
+      if (item.spriteImage && this.textures.exists(key)) {
+        const texture = this.textures.get(key).getSourceImage();
+        const frameW = Math.floor(texture.width / 3);
+        const frame = Math.floor((t * 3) % 3);
+        const image = this.add.image(x + w / 2, y + h / 2, key);
+        image.setOrigin(0.5);
+        image.setCrop(frame * frameW, 0, frameW, texture.height);
+        const scale = Math.min((w * 0.75) / frameW, (h * 0.9) / texture.height);
+        image.setDisplaySize(frameW * scale, texture.height * scale);
+        image.setAlpha(item.owned || item.canSynthesize ? 1 : 0.45);
+        this.spriteLayer.add(image);
+        return;
+      }
+
+      const coat = item.colors?.coat || '#2563eb';
+      const trim = item.colors?.trim || '#facc15';
+      const skin = item.sprite === 'teemo' ? '#f1c27d' : '#f2b48b';
+      const hair = item.sprite === 'justin-bieber' ? '#fbbf24' : (item.sprite === 'teemo' ? '#5b3a1f' : '#4b2a1a');
+      const alphaColor = item.owned || item.canSynthesize ? 1 : 0.45;
+      const bodyColor = Phaser.Display.Color.ValueToColor(coat).color;
+      const trimColor = Phaser.Display.Color.ValueToColor(trim).color;
+      const skinColor = Phaser.Display.Color.ValueToColor(skin).color;
+      const hairColor = Phaser.Display.Color.ValueToColor(hair).color;
+      const baseX = x + w / 2 - 18;
+      const baseY = y + h / 2 - 28 + Math.sin(t * 6) * 1.5;
+      this.pixel.fillStyle(0x000000, 0.22 * alphaColor);
+      this.pixel.fillRect(baseX + 2, baseY + 58, 38, 5);
+      this.pixel.fillStyle(bodyColor, alphaColor);
+      this.pixel.fillRect(baseX + 12, baseY + 30, 24, 28);
+      this.pixel.fillStyle(trimColor, alphaColor);
+      this.pixel.fillRect(baseX + 20, baseY + 32, 8, 24);
+      this.pixel.fillStyle(0x1f2937, alphaColor);
+      this.pixel.fillRect(baseX + 14, baseY + 56, 9, 15);
+      this.pixel.fillRect(baseX + 27, baseY + 56, 9, 15);
+      this.pixel.fillStyle(skinColor, alphaColor);
+      this.pixel.fillRect(baseX + 14, baseY + 34, 8, 22);
+      this.pixel.fillRect(baseX + 36, baseY + 34, 8, 22);
+      this.pixel.fillRect(baseX + 16, baseY + 12, 20, 20);
+      this.pixel.fillStyle(hairColor, alphaColor);
+      this.pixel.fillRect(baseX + 14, baseY + 8, 24, 10);
+      this.pixel.fillStyle(0x111111, alphaColor);
+      this.pixel.fillRect(baseX + 22, baseY + 21, 4, 4);
+      this.pixel.fillRect(baseX + 30, baseY + 21, 4, 4);
+      if (item.sprite === 'fishing-master') {
+        this.pixel.fillStyle(0xfacc15, alphaColor);
+        this.pixel.fillRect(baseX + 8, baseY + 5, 32, 5);
+        this.line([[baseX + 42, baseY + 18], [baseX + 48, baseY + 62]], '#8b5a2b', 3);
+      }
+      if (item.sprite === 'teemo') {
+        this.pixel.fillStyle(0x16a34a, alphaColor);
+        this.pixel.fillRect(baseX + 7, baseY + 4, 36, 8);
+        this.pixel.fillStyle(0xdc2626, alphaColor);
+        this.pixel.fillRect(baseX + 34, baseY - 1, 6, 5);
+      }
+    }
+
+    drawCharacterModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 34;
+      const y = 22;
+      const w = WIDTH - 68;
+      const h = HEIGHT - 44;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '角色', WIDTH / 2, y + 28, '#ffd700', 18);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+      this.drawLabel(`已解锁：${modal.ownedCount || 0} / ${modal.totalCount || 0}`, x + 118, y + 52, '#4ec9b0', 12);
+      this.drawLabel(`碎片合成：${modal.required || 10} 个`, x + 286, y + 52, '#e8e8e8', 12);
+      if (modal.status) this.drawLabel(modal.status, x + w - 146, y + 52, '#4ec9b0', 12);
+
+      const items = modal.items || [];
+      const cardW = Math.floor((w - 48) / 2);
+      const cardH = 76;
+      const startY = y + 70;
+      items.forEach((item, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const cardX = x + 18 + col * (cardW + 12);
+        const cardY = startY + row * (cardH + 8);
+        const border = item.active ? 0x4ec9b0 : (item.owned ? 0xffd700 : (item.canSynthesize ? 0xf59e0b : 0x475569));
+        this.pixel.fillStyle(item.owned || item.canSynthesize ? 0x0d1421 : 0x121827, item.owned || item.canSynthesize ? 0.98 : 0.76);
+        this.pixel.fillRect(cardX, cardY, cardW, cardH);
+        this.pixel.lineStyle(item.active ? 3 : 2, border, item.owned || item.canSynthesize ? 1 : 0.55);
+        this.pixel.strokeRect(cardX, cardY, cardW, cardH);
+        this.pixel.fillStyle(0x080c14, 0.9);
+        this.pixel.fillRect(cardX + 8, cardY + 8, 58, 60);
+        this.drawCharacterPortrait(item, cardX + 8, cardY + 8, 58, 60, Date.now() / 1000);
+        this.drawLabel(item.name, cardX + 128, cardY + 19, item.owned ? '#ffd700' : '#94a3b8', 12);
+        this.drawLabel((item.title || '').slice(0, 12), cardX + 136, cardY + 36, '#4ec9b0', 10);
+        const stateText = item.owned
+          ? (item.active ? '当前出战' : '已解锁')
+          : (item.hasShardTarget ? `碎片 ${item.shardCount || 0}/${item.required || 10}` : item.obtain);
+        this.drawLabel(stateText.slice(0, 12), cardX + 132, cardY + 55, item.owned || item.canSynthesize ? '#cbd5e1' : '#94a3b8', 9);
+        let buttonLabel = '锁定';
+        let action = 'character-equip';
+        let payload = { id: item.id };
+        let disabled = true;
+        if (item.owned) {
+          buttonLabel = item.active ? '装备中' : '装备';
+          disabled = item.active;
+        } else if (item.canSynthesize) {
+          buttonLabel = '合成';
+          action = 'character-compose';
+          disabled = false;
+        } else if (item.hasShardTarget) {
+          buttonLabel = `${item.shardCount || 0}/${item.required || 10}`;
+        }
+        this.drawButton(action, buttonLabel, cardX + cardW - 58, cardY + 45, 48, 22, item.active, payload, disabled);
+      });
     }
 
     drawHitbar(hitbar) {
