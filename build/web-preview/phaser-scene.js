@@ -260,6 +260,7 @@
       if (modal.type === 'rod') this.drawRodModal(modal);
       if (modal.type === 'character') this.drawCharacterModal(modal);
       if (modal.type === 'pet') this.drawPetModal(modal);
+      if (modal.type === 'accessory') this.drawAccessoryModal(modal);
     }
 
     drawShopModal(modal) {
@@ -641,6 +642,74 @@
         const label = item.owned ? (item.active ? '卸下' : '装备') : (item.obtain || '活动获取');
         this.drawButton('pet-toggle', label.slice(0, 5), cardX + cardW / 2 - 25, cardY + 76, 50, 20, item.active, { id: item.id }, !item.owned);
       });
+    }
+
+    drawAccessoryModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 34;
+      const y = 22;
+      const w = WIDTH - 68;
+      const h = HEIGHT - 44;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '首饰', WIDTH / 2, y + 28, '#ffd700', 18);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+      this.drawLabel(`金币：${modal.money || 0}`, x + 102, y + 52, '#ffd700', 12);
+      this.drawLabel(`拥有：${modal.totalCount || 0}`, x + 220, y + 52, '#4ec9b0', 12);
+      const equipped = modal.equipped;
+      const equipText = equipped ? `${equipped.icon} ${equipped.name} ${equipped.star}★` : '未装备首饰';
+      this.drawLabel(`装备：${equipText}`, x + 386, y + 52, equipped?.color || '#e8e8e8', 12);
+      if (modal.status) this.drawLabel(modal.status, WIDTH / 2, y + h - 12, modal.status.includes('失败') ? '#ffae42' : '#4ec9b0', 11);
+
+      const items = modal.items || [];
+      if (items.length === 0) {
+        this.pixel.fillStyle(0x0d1421, 0.95);
+        this.pixel.fillRect(x + 48, y + 88, w - 96, 68);
+        this.pixel.lineStyle(2, 0x334155, 1);
+        this.pixel.strokeRect(x + 48, y + 88, w - 96, 68);
+        this.drawLabel('暂无首饰', WIDTH / 2, y + 116, '#ffd700', 16);
+        this.drawLabel('可在钻石抽奖第三期获得首饰', WIDTH / 2, y + 142, '#94a3b8', 12);
+      }
+
+      const cardW = Math.floor((w - 48) / 2);
+      const cardH = 74;
+      const startY = y + 74;
+      items.forEach((item, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const cardX = x + 18 + col * (cardW + 12);
+        const cardY = startY + row * (cardH + 10);
+        const border = Phaser.Display.Color.ValueToColor(item.color || '#ffd700').color;
+        this.pixel.fillStyle(0x0d1421, 0.98);
+        this.pixel.fillRect(cardX, cardY, cardW, cardH);
+        this.pixel.lineStyle(item.equipped ? 3 : 2, border, item.equipped ? 1 : 0.75);
+        this.pixel.strokeRect(cardX, cardY, cardW, cardH);
+        this.drawLabel(item.icon || '💍', cardX + 24, cardY + 31, '#ffffff', 20);
+        this.drawLabel(item.name || '首饰', cardX + 92, cardY + 18, item.color || '#ffd700', 11);
+        this.drawLabel(item.starsText || '', cardX + 174, cardY + 18, '#ffd700', 10);
+        this.drawLabel((item.effectText || '').slice(0, 18), cardX + 116, cardY + 37, '#4ec9b0', 9);
+        const materialLine = item.atMax
+          ? '已满星'
+          : (item.canUpgrade ? `${item.cost}金+材料` : (!item.hasMaterial ? '缺同款材料' : `金币不足${item.cost}`));
+        this.drawLabel(materialLine, cardX + 112, cardY + 58, item.canUpgrade ? '#ffd700' : '#94a3b8', 8);
+        this.drawButton('accessory-toggle', item.equipped ? '卸下' : '装备', cardX + cardW - 102, cardY + 43, 44, 20, item.equipped, { uid: item.uid });
+        this.drawButton('accessory-upgrade', item.atMax ? '满星' : '强化', cardX + cardW - 52, cardY + 43, 44, 20, false, { uid: item.uid }, !item.canUpgrade);
+      });
+
+      const catalog = modal.catalog || [];
+      if (catalog.length > 0) {
+        const catalogY = y + h - 42;
+        this.drawLabel('来源：钻石抽奖第三期', x + 250, catalogY, '#94a3b8', 10);
+        catalog.slice(0, 3).forEach((item, index) => {
+          this.drawLabel(`${item.icon} ${item.name}`, x + 400 + index * 74, catalogY, item.color || '#ffd700', 10);
+        });
+      }
+      this.drawButton('accessory-page', '<', x + 18, y + h - 44, 34, 28, false, { delta: -1 }, modal.page <= 0);
+      this.drawLabel(`${(modal.page || 0) + 1} / ${modal.pageCount || 1}`, x + 92, y + h - 36, '#ffd700', 12);
+      this.drawButton('accessory-page', '>', x + 128, y + h - 44, 34, 28, false, { delta: 1 }, modal.page >= (modal.pageCount || 1) - 1);
     }
 
     drawHitbar(hitbar) {

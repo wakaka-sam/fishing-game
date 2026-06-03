@@ -1039,6 +1039,7 @@ function getPhaserModalSnapshot() {
   if (phaserUi.modal === 'rod') return getPhaserRodSnapshot();
   if (phaserUi.modal === 'character') return getPhaserCharacterSnapshot();
   if (phaserUi.modal === 'pet') return getPhaserPetSnapshot();
+  if (phaserUi.modal === 'accessory') return getPhaserAccessorySnapshot();
   return null;
 }
 
@@ -1053,6 +1054,7 @@ function openPhaserModal(type, data = null) {
   rodOverlay?.classList.add('hidden');
   characterOverlay?.classList.add('hidden');
   petOverlay?.classList.add('hidden');
+  accessoryOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1098,6 +1100,9 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'character-equip') return equipCharacter(payload?.id, { source: 'phaser' });
     if (action === 'character-compose') return composeCharacter(payload?.id, { source: 'phaser' });
     if (action === 'pet-toggle') return togglePet(payload?.id, { source: 'phaser' });
+    if (action === 'accessory-toggle') return toggleAccessory(payload?.uid, { source: 'phaser' });
+    if (action === 'accessory-upgrade') return upgradeAccessory(payload?.uid, { source: 'phaser' });
+    if (action === 'accessory-page') return setPhaserAccessoryPage(payload?.delta || 0);
     return;
   }
   if (action === 'cast') {
@@ -1118,8 +1123,8 @@ function handlePhaserAction(action, payload = null) {
   if (action === 'rod') return openPhaserRod();
   if (action === 'character') return openPhaserCharacter();
   if (action === 'pet') return openPhaserPet();
+  if (action === 'accessory') return openPhaserAccessory();
   const domButtons = {
-    accessory: 'accessory-btn',
     rank: 'rank-btn',
     gacha: 'gacha-btn',
     redeem: 'redeem-btn',
@@ -2145,7 +2150,23 @@ function renderPets() {
 
 // ====== 首饰系统 ======
 const accessoryOverlay = $('accessory-overlay');
-$('accessory-btn').onclick = () => { renderAccessories(); accessoryOverlay.classList.remove('hidden'); };
+$('accessory-btn').onclick = () => {
+  if (openPhaserAccessory()) return;
+  renderAccessories();
+  accessoryOverlay.classList.remove('hidden');
+};
+
+let activeAccessoryPage = 0;
+const ACCESSORY_ITEMS_PER_PAGE = 4;
+
+function getSortedAccessories() {
+  normalizeAccessories();
+  return [...user.accessories].sort((a, b) => {
+    if (a.uid === user.equippedAccessory) return -1;
+    if (b.uid === user.equippedAccessory) return 1;
+    return b.star - a.star || a.type.localeCompare(b.type);
+  });
+}
 
 function findAccessoryUpgradeMaterial(target) {
   return (user.accessories || []).find(item =>
@@ -2153,6 +2174,110 @@ function findAccessoryUpgradeMaterial(target) {
     item.type === target.type &&
     GAME_DATA.clampAccessoryStar(item.star) === GAME_DATA.clampAccessoryStar(target.star)
   );
+}
+
+function getAccessoryItemSnapshot(item) {
+  const def = GAME_DATA.getAccessoryDef(item.type);
+  if (!def) return null;
+  const star = GAME_DATA.clampAccessoryStar(item.star);
+  const isEquipped = item.uid === user.equippedAccessory;
+  const material = findAccessoryUpgradeMaterial(item);
+  const chance = GAME_DATA.getAccessoryUpgradeChance(star);
+  const cost = GAME_DATA.getAccessoryUpgradeCost(star);
+  const lacksMoney = user.money < cost;
+  const atMax = star >= 20;
+  const canUpgrade = !!material && !atMax && !lacksMoney;
+  let matText;
+  if (atMax) matText = '已达到最高星级';
+  else matText = `${cost} 金币 + 同款同星 ×1${!material ? '（缺材料）' : (lacksMoney ? '（金币不足）' : '')}`;
+  return {
+    uid: item.uid,
+    type: item.type,
+    name: def.name,
+    icon: def.icon,
+    color: def.color,
+    desc: def.desc,
+    star,
+    starsText: `${star}★`,
+    effectText: formatAccessoryEffect(item),
+    equipped: isEquipped,
+    chance,
+    chanceText: atMax ? '已满星' : `强化 ${Math.round(chance * 100)}%`,
+    cost,
+    hasMaterial: !!material,
+    lacksMoney,
+    atMax,
+    canUpgrade,
+    matText,
+  };
+}
+
+function getPhaserAccessorySnapshot() {
+  if (!phaserRenderer || !user) return null;
+  const sorted = getSortedAccessories();
+  const equipped = getEquippedAccessory();
+  const equippedDef = equipped ? GAME_DATA.getAccessoryDef(equipped.type) : null;
+  const pageCount = Math.max(1, Math.ceil(sorted.length / ACCESSORY_ITEMS_PER_PAGE));
+  activeAccessoryPage = Math.max(0, Math.min(activeAccessoryPage, pageCount - 1));
+  const pageItems = sorted
+    .slice(activeAccessoryPage * ACCESSORY_ITEMS_PER_PAGE, (activeAccessoryPage + 1) * ACCESSORY_ITEMS_PER_PAGE)
+    .map(getAccessoryItemSnapshot)
+    .filter(Boolean);
+  return {
+    type: 'accessory',
+    title: '首饰',
+    money: user.money || 0,
+    status: phaserUi.status,
+    page: activeAccessoryPage,
+    pageCount,
+    totalCount: sorted.length,
+    equipped: equipped && equippedDef ? {
+      icon: equippedDef.icon,
+      name: equippedDef.name,
+      color: equippedDef.color,
+      star: GAME_DATA.clampAccessoryStar(equipped.star),
+      effectText: formatAccessoryEffect(equipped),
+    } : null,
+    items: pageItems,
+    catalog: (GAME_DATA.ACCESSORIES || []).map(def => ({
+      icon: def.icon,
+      name: def.name,
+      color: def.color,
+      desc: def.desc,
+    })),
+  };
+}
+
+function openPhaserAccessory() {
+  activeAccessoryPage = 0;
+  return openPhaserModal('accessory');
+}
+
+function setPhaserAccessoryPage(delta) {
+  const snapshot = getPhaserAccessorySnapshot();
+  if (!snapshot) return;
+  activeAccessoryPage = Math.max(0, Math.min(activeAccessoryPage + delta, snapshot.pageCount - 1));
+}
+
+function setAccessoryStatus(message) {
+  phaserUi.status = message || '';
+  if (!accessoryOverlay.classList.contains('hidden')) renderAccessories(message);
+}
+
+function toggleAccessory(uid, options = {}) {
+  if (!user || !uid) return false;
+  normalizeAccessories();
+  const item = user.accessories.find(acc => acc.uid === uid);
+  if (!item) return false;
+  const isEquipped = user.equippedAccessory === uid;
+  user.equippedAccessory = isEquipped ? null : uid;
+  const def = GAME_DATA.getAccessoryDef(item.type);
+  const message = isEquipped ? '已卸下首饰' : `已装备 ${def ? def.name : '首饰'}`;
+  phaserUi.status = message;
+  saveUser('selection');
+  refreshUI();
+  if (!accessoryOverlay.classList.contains('hidden')) renderAccessories(message);
+  return true;
 }
 
 function renderAccessories(message = '') {
@@ -2186,11 +2311,7 @@ function renderAccessories(message = '') {
     list.appendChild(empty);
   }
 
-  const sorted = [...user.accessories].sort((a, b) => {
-    if (a.uid === user.equippedAccessory) return -1;
-    if (b.uid === user.equippedAccessory) return 1;
-    return b.star - a.star || a.type.localeCompare(b.type);
-  });
+  const sorted = getSortedAccessories();
 
   for (const item of sorted) {
     const def = GAME_DATA.getAccessoryDef(item.type);
@@ -2231,10 +2352,7 @@ function renderAccessories(message = '') {
   if (user.accessories.length > 0) {
     list.querySelectorAll('[data-equip]').forEach((btn) => {
       btn.onclick = () => {
-        user.equippedAccessory = user.equippedAccessory === btn.dataset.equip ? null : btn.dataset.equip;
-        saveUser('selection');
-        refreshUI();
-        renderAccessories(user.equippedAccessory ? '已装备首饰' : '已卸下首饰');
+        toggleAccessory(btn.dataset.equip, { source: 'dom' });
       };
     });
     list.querySelectorAll('[data-upgrade]').forEach((btn) => {
@@ -2254,20 +2372,20 @@ function renderAccessories(message = '') {
   list.appendChild(catalog);
 }
 
-function upgradeAccessory(uid) {
+function upgradeAccessory(uid, options = {}) {
   normalizeAccessories();
   const target = user.accessories.find(item => item.uid === uid);
-  if (!target || target.star >= 20) return;
+  if (!target || target.star >= 20) return false;
   const material = findAccessoryUpgradeMaterial(target);
   if (!material) {
-    renderAccessories('缺少同款同星首饰');
-    return;
+    setAccessoryStatus('缺少同款同星首饰');
+    return false;
   }
   const def = GAME_DATA.getAccessoryDef(target.type);
   const cost = GAME_DATA.getAccessoryUpgradeCost(target.star);
   if (user.money < cost) {
-    renderAccessories(`金币不足，需要 ${cost} 金币`);
-    return;
+    setAccessoryStatus(`金币不足，需要 ${cost} 金币`);
+    return false;
   }
   const chance = GAME_DATA.getAccessoryUpgradeChance(target.star);
   const success = Math.random() < chance;
@@ -2276,9 +2394,10 @@ function upgradeAccessory(uid) {
   user.accessories = user.accessories.filter(item => item.uid !== material.uid);
   saveUser('accessory');
   refreshUI();
-  renderAccessories(success
+  setAccessoryStatus(success
     ? `${def.name} 强化成功，消耗 ${cost} 金币，升至 ${target.star} 星`
     : `${def.name} 强化失败，消耗 ${cost} 金币和材料`);
+  return true;
 }
 
 // ====== 排行榜 ======
