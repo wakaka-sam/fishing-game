@@ -255,6 +255,8 @@
     }
 
     drawModal(modal) {
+      if (modal.type === 'announcement') this.drawAnnouncementModal(modal);
+      if (modal.type === 'rank-reward') this.drawRankRewardModal(modal);
       if (modal.type === 'shop') this.drawShopModal(modal);
       if (modal.type === 'result' || modal.type === 'miss') this.drawResultModal(modal);
       if (modal.type === 'dex') this.drawDexModal(modal);
@@ -266,6 +268,60 @@
       if (modal.type === 'gacha') this.drawGachaModal(modal);
       if (modal.type === 'redeem') this.drawRedeemModal(modal);
       if (modal.type === 'share') this.drawShareModal(modal);
+    }
+
+    drawAnnouncementModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 44;
+      const y = 28;
+      const w = WIDTH - 88;
+      const h = HEIGHT - 56;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '更新公告', WIDTH / 2, y + 30, '#ffd700', 19);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+
+      const entries = modal.entries || [];
+      let rowY = y + 58;
+      entries.forEach((entry) => {
+        this.drawLabel(`v${entry.version || ''}`, x + 58, rowY, '#ffd700', 13);
+        this.drawLabel(entry.date || '', x + 142, rowY, '#94a3b8', 10);
+        rowY += 18;
+        (entry.changes || []).slice(0, 4).forEach((change) => {
+          this.drawLabel(`• ${String(change).slice(0, 34)}`, x + 214, rowY, '#cbd5e1', 11);
+          rowY += 16;
+        });
+        rowY += 7;
+      });
+
+      const page = modal.page || 0;
+      const totalPages = modal.totalPages || 1;
+      this.drawButton('announcement-page', '<', x + 18, y + h - 36, 34, 24, false, { delta: -1 }, page <= 0);
+      this.drawLabel(`${page + 1} / ${totalPages}`, WIDTH / 2, y + h - 18, '#94a3b8', 11);
+      this.drawButton('announcement-page', '>', x + w - 52, y + h - 36, 34, 24, false, { delta: 1 }, page >= totalPages - 1);
+    }
+
+    drawRankRewardModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 116;
+      const y = 66;
+      const w = WIDTH - 232;
+      const h = HEIGHT - 132;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '排名奖励', WIDTH / 2, y + 32, '#ffd700', 20);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+      this.drawLabel(`恭喜你在 ${modal.date || ''} 获得`, WIDTH / 2, y + 74, '#ffd700', 14);
+      this.drawLabel('今日钓鱼数第一名', WIDTH / 2, y + 108, '#ffffff', 18);
+      this.drawLabel(`钓鱼 ${modal.catches || 0} 次`, WIDTH / 2, y + 140, '#cbd5e1', 13);
+      this.drawLabel(`钻石 +${modal.diamonds || 0}`, WIDTH / 2, y + 174, '#66e6ff', 18);
+      this.drawButton('modal-close', '关闭', WIDTH / 2 - 44, y + h - 36, 88, 26, false);
     }
 
     drawShopModal(modal) {

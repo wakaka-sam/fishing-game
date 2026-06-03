@@ -466,6 +466,8 @@ $('logout-btn').onclick = () => {
   saveRevision++;
   resetVipAutoForUser();
   user = null;
+  phaserModalQueue.length = 0;
+  closePhaserModal();
   try { localStorage.removeItem('fishing_username'); } catch (_) {}
   loginScreen.classList.add('active');
   gameScreen.classList.remove('phaser-hud-active');
@@ -735,6 +737,7 @@ const phaserUi = {
   status: '',
   data: null,
 };
+const phaserModalQueue = [];
 if (phaserRenderer?.setActionHandler) {
   phaserRenderer.setActionHandler(handlePhaserAction);
 }
@@ -1011,6 +1014,8 @@ function getPhaserAdLabel() {
 
 function getPhaserModalSnapshot() {
   if (!phaserRenderer || !user || !phaserUi.modal) return null;
+  if (phaserUi.modal === 'announcement') return getPhaserAnnouncementSnapshot();
+  if (phaserUi.modal === 'rank-reward') return getPhaserRankRewardSnapshot();
   if (phaserUi.modal === 'shop') {
     return {
       type: 'shop',
@@ -1052,6 +1057,7 @@ function openPhaserModal(type, data = null) {
   phaserUi.modal = type;
   phaserUi.status = '';
   phaserUi.data = data;
+  announceOverlay?.classList.add('hidden');
   shopOverlay?.classList.add('hidden');
   resultOverlay?.classList.add('hidden');
   dexOverlay?.classList.add('hidden');
@@ -1067,10 +1073,21 @@ function openPhaserModal(type, data = null) {
   return true;
 }
 
+function openOrQueuePhaserModal(type, data = null) {
+  if (!phaserRenderer) return false;
+  if (phaserUi.modal) {
+    phaserModalQueue.push({ type, data });
+    return true;
+  }
+  return openPhaserModal(type, data);
+}
+
 function closePhaserModal() {
   phaserUi.modal = null;
   phaserUi.status = '';
   phaserUi.data = null;
+  const next = phaserModalQueue.shift();
+  if (next) setTimeout(() => openPhaserModal(next.type, next.data), 0);
 }
 
 function triggerDomButton(id) {
@@ -1121,6 +1138,7 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'redeem-clear') return clearPhaserRedeemCode();
     if (action === 'redeem-paste') return pastePhaserRedeemCode();
     if (action === 'share-copy') return copyShareLink({ source: 'phaser' });
+    if (action === 'announcement-page') return setPhaserAnnouncementPage(payload?.delta || 0);
     return;
   }
   if (action === 'cast') {
@@ -2434,15 +2452,38 @@ const RANK_TABS = [
 
 function showPendingRankRewards(rewards) {
   if (!rewards || rewards.length === 0) return;
-  for (const r of rewards) {
-    setTimeout(() => {
+  setTimeout(() => {
+    if (phaserRenderer) {
+      rewards.forEach((r) => {
+        openOrQueuePhaserModal('rank-reward', {
+          reward: {
+            date: r.date,
+            catches: r.catches,
+            diamonds: r.diamonds,
+          },
+        });
+      });
+      return;
+    }
+    for (const r of rewards) {
       const overlay = document.createElement('div');
       overlay.className = 'overlay';
       overlay.innerHTML = `<div class="modal"><button class="close-x top-close" onclick="this.parentElement.parentElement.remove()">✕</button><h2>🏆 排名奖励</h2><div style="text-align:center;padding:20px"><p style="font-size:1.2em;color:#ffd700">恭喜你在 <strong>${r.date}</strong> 获得</p><p style="font-size:1.5em;margin:16px 0">🎣 今日钓鱼数第一名</p><p style="font-size:1.1em;color:#aaa">钓鱼 <strong style="color:#fff">${r.catches}</strong> 次</p><p style="font-size:1.4em;margin-top:16px;color:#ffd700">💎 +${r.diamonds} 钻石</p></div></div>`;
       document.getElementById('game-screen').appendChild(overlay);
-    }, 500);
-  }
+    }
+  }, 500);
   refreshUI();
+}
+
+function getPhaserRankRewardSnapshot() {
+  const reward = phaserUi.data?.reward || {};
+  return {
+    type: 'rank-reward',
+    title: '排名奖励',
+    date: reward.date || '',
+    catches: reward.catches || 0,
+    diamonds: reward.diamonds || 0,
+  };
 }
 
 $('rank-btn').onclick = () => {
@@ -3303,6 +3344,8 @@ function showGachaResult(results) {
 
 // ====== 版本与公告 ======
 let versionData = null;
+const ANNOUNCEMENT_PAGE_SIZE = 3;
+const announceOverlay = $('announce-overlay');
 let versionReady = fetch('/version.json?t=' + Date.now()).then(r => r.json()).then(d => {
   versionData = d;
   $('version-tag').textContent = 'v' + d.version;
@@ -3329,23 +3372,61 @@ function compareVersions(a, b) {
   return 0;
 }
 
+function getAnnouncementEntries(sinceVersion) {
+  if (!versionData) return [];
+  return versionData.changelog
+    .filter((entry) => !(sinceVersion && compareVersions(entry.version, sinceVersion) <= 0))
+    .map((entry) => ({
+      version: entry.version,
+      date: entry.date,
+      changes: Array.isArray(entry.changes) ? entry.changes : [],
+    }));
+}
+
+function getPhaserAnnouncementSnapshot() {
+  const data = phaserUi.data || {};
+  const entries = data.entries || [];
+  const totalPages = Math.max(1, Math.ceil(entries.length / ANNOUNCEMENT_PAGE_SIZE));
+  const page = Math.max(0, Math.min(data.page || 0, totalPages - 1));
+  data.page = page;
+  return {
+    type: 'announcement',
+    title: '更新公告',
+    entries: entries.slice(page * ANNOUNCEMENT_PAGE_SIZE, (page + 1) * ANNOUNCEMENT_PAGE_SIZE),
+    page,
+    totalPages,
+  };
+}
+
+function setPhaserAnnouncementPage(delta) {
+  if (phaserUi.modal !== 'announcement' || !phaserUi.data) return;
+  const entries = phaserUi.data.entries || [];
+  const totalPages = Math.max(1, Math.ceil(entries.length / ANNOUNCEMENT_PAGE_SIZE));
+  const nextPage = Math.max(0, Math.min((phaserUi.data.page || 0) + delta, totalPages - 1));
+  phaserUi.data.page = nextPage;
+}
+
 function showAnnouncement(sinceVersion) {
+  const entries = getAnnouncementEntries(sinceVersion);
+  if (!entries.length) return false;
+  if (openOrQueuePhaserModal('announcement', { entries, page: 0 })) {
+    announceOverlay?.classList.add('hidden');
+    return true;
+  }
   const el = $('announce-content');
   let html = '';
-  for (const entry of versionData.changelog) {
-    if (sinceVersion && compareVersions(entry.version, sinceVersion) <= 0) continue;
+  for (const entry of entries) {
     html += `<div class="announce-version">v${entry.version}<span class="announce-date">${entry.date}</span></div>`;
     html += '<ul class="announce-list">';
     for (const c of entry.changes) html += `<li>${c}</li>`;
     html += '</ul>';
   }
-  if (!html) return false;
   el.innerHTML = html;
-  $('announce-overlay').classList.remove('hidden');
+  announceOverlay.classList.remove('hidden');
   return true;
 }
 
-$('announce-close').onclick = () => $('announce-overlay').classList.add('hidden');
+$('announce-close').onclick = () => announceOverlay.classList.add('hidden');
 $('version-tag').onclick = () => { if (versionData) { showAnnouncement(''); } };
 
 // 在 enterGame 中触发公告检查和广告初始化
