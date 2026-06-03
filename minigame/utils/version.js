@@ -1,6 +1,14 @@
 module.exports = {
-  "version": "1.0.39",
+  "version": "1.0.40",
   "changelog": [
+    {
+      "version": "1.0.40",
+      "date": "2026-06-03",
+      "changes": [
+        "Web 主钓鱼场景接入 Phaser 3",
+        "保留原 DOM 业务层和玩法状态机"
+      ]
+    },
     {
       "version": "1.0.39",
       "date": "2026-06-03",

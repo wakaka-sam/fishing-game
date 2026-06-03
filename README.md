@@ -33,6 +33,10 @@ python3 -m http.server 3000 --directory public
 
 访问 `http://localhost:3000`。
 
+## Phaser 迁移
+
+Web 版已开始迁移到 Phaser 3：主钓鱼场景由 `public/phaser-scene.js` 中的 Phaser Scene 渲染，商店、图鉴、排行、抽奖等业务 UI 暂时继续沿用原 DOM 结构，玩法状态机和存档接口保持不变。
+
 ## 微信小程序
 
 小程序工程位于 `miniprogram/`：

@@ -713,14 +713,16 @@ baitSelect.onchange = () => {
 };
 
 // ====== 画布渲染（第一视角） ======
-const canvas = $('game');
-const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
+const phaserRenderer = window.FishingPhaser || null;
+const canvas = phaserRenderer?.getCanvas?.() || $('game');
+const ctx = canvas && typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
+if (ctx) ctx.imageSmoothingEnabled = false;
 
-const W = canvas.width;
-const H = canvas.height;
+const W = 640;
+const H = 360;
 
 function px(x, y, w, h, color) {
+  if (!ctx) return;
   ctx.fillStyle = color;
   ctx.fillRect(x | 0, y | 0, w, h);
 }
@@ -731,6 +733,24 @@ let lineSlack = 0;
 
 function render() {
   const t = Date.now() / 1000;
+  if (phaserRenderer) {
+    const activePet = user && user.activePet ? GAME_DATA.PETS.find(p => p.id === user.activePet) : null;
+    const rodSkin = user ? GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods) : GAME_DATA.ROD_SKINS[0];
+    const accessory = getEquippedAccessory();
+    const accessoryDef = accessory ? GAME_DATA.getAccessoryDef(accessory.type) : null;
+    phaserRenderer.render({
+      time: t,
+      phase: state.phase,
+      hookX,
+      hookY,
+      rodSkin,
+      pet: activePet,
+      accessoryDef,
+      accessoryStar: accessory ? GAME_DATA.clampAccessoryStar(accessory.star) : 1,
+    });
+    return;
+  }
+  if (!ctx) return;
 
   // 天空渐变
   const skyH = H * 0.4;

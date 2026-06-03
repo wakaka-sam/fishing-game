@@ -115,6 +115,14 @@ input, select {
   height: 360px;
   background: #87ceeb;
   border: 4px solid #ffd700;
+  overflow: hidden;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+#game canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
