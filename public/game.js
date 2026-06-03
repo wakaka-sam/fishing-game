@@ -162,30 +162,39 @@ function onAdRewardGranted() {
   user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
   refreshUI();
   saveUser('wallet');
+  if (typeof phaserUi !== 'undefined' && phaserUi.modal === 'shop') {
+    phaserUi.status = `获得 ${AD_REWARD_DIAMONDS} 钻石`;
+  }
   showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石！`);
   updateAdButtons();
+}
+
+function claimAdReward() {
+  if (isAdOnCooldown()) {
+    const msg = `广告冷却中，请${getAdCooldownRemain()}秒后再试`;
+    if (typeof phaserUi !== 'undefined' && phaserUi.modal === 'shop') phaserUi.status = msg;
+    showAdToast(msg);
+    return;
+  }
+  if (!adInstance || !adReady) {
+    if (typeof window.H5Union === 'undefined') {
+      adLastWatchTime = Date.now();
+      onAdRewardGranted();
+      return;
+    }
+    if (typeof phaserUi !== 'undefined' && phaserUi.modal === 'shop') phaserUi.status = '广告尚未加载完成';
+    showAdToast('广告尚未加载完成，请稍后再试');
+    return;
+  }
+  if (typeof phaserUi !== 'undefined' && phaserUi.modal === 'shop') phaserUi.status = '广告播放中...';
+  showRewardedAd(() => { onAdRewardGranted(); });
 }
 
 // 商店广告按钮
 document.addEventListener('DOMContentLoaded', () => {
   const rewardBtn = $('ad-reward-btn');
   if (rewardBtn) {
-    rewardBtn.onclick = () => {
-      if (isAdOnCooldown()) {
-        showAdToast(`广告冷却中，请${getAdCooldownRemain()}秒后再试`);
-        return;
-      }
-      if (!adInstance || !adReady) {
-        if (typeof window.H5Union === 'undefined') {
-          adLastWatchTime = Date.now();
-          onAdRewardGranted();
-          return;
-        }
-        showAdToast('广告尚未加载完成，请稍后再试');
-        return;
-      }
-      showRewardedAd(() => { onAdRewardGranted(); });
-    };
+    rewardBtn.onclick = claimAdReward;
   }
   // 冷却倒计时刷新
   setInterval(updateAdButtons, 1000);
@@ -720,6 +729,10 @@ const canvas = phaserRenderer?.getCanvas?.() || $('game');
 const ctx = canvas && typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
 if (ctx) ctx.imageSmoothingEnabled = false;
 let lastPhaserUiActionAt = 0;
+const phaserUi = {
+  modal: null,
+  status: '',
+};
 if (phaserRenderer?.setActionHandler) {
   phaserRenderer.setActionHandler(handlePhaserAction);
 }
@@ -754,6 +767,7 @@ function render() {
       accessoryDef,
       accessoryStar: accessory ? GAME_DATA.clampAccessoryStar(accessory.star) : 1,
       hud: getPhaserHudSnapshot(),
+      modal: getPhaserModalSnapshot(),
       hitbar: getPhaserHitbarSnapshot(),
     });
     return;
@@ -987,6 +1001,52 @@ function getPhaserHudSnapshot() {
   };
 }
 
+function getPhaserAdLabel() {
+  if (isAdOnCooldown()) return `冷却中 ${getAdCooldownRemain()}s`;
+  if (!adReady && typeof window.H5Union !== 'undefined') return '广告加载中';
+  return `看广告领 ${AD_REWARD_DIAMONDS} 钻石`;
+}
+
+function getPhaserModalSnapshot() {
+  if (!phaserRenderer || !user || !phaserUi.modal) return null;
+  if (phaserUi.modal === 'shop') {
+    return {
+      type: 'shop',
+      money: user.money,
+      diamonds: user.diamonds,
+      status: phaserUi.status,
+      adLabel: getPhaserAdLabel(),
+      adDisabled: isAdOnCooldown() || (!adReady && typeof window.H5Union !== 'undefined'),
+      items: Object.entries(BAITS)
+        .filter(([, bait]) => bait.purchasable !== false)
+        .map(([id, bait]) => ({
+          id,
+          name: bait.name,
+          desc: bait.desc,
+          color: bait.color,
+          price: bait.price,
+          currencyIcon: bait.currency === 'diamonds' ? '💎' : '💰',
+          owned: user.baits[id] || 0,
+        })),
+    };
+  }
+  return null;
+}
+
+function openPhaserModal(type) {
+  if (!phaserRenderer) return false;
+  phaserUi.modal = type;
+  phaserUi.status = '';
+  shopOverlay?.classList.add('hidden');
+  updateAdButtons();
+  return true;
+}
+
+function closePhaserModal() {
+  phaserUi.modal = null;
+  phaserUi.status = '';
+}
+
 function triggerDomButton(id) {
   const target = $(id);
   if (target && typeof target.click === 'function') target.click();
@@ -1007,9 +1067,15 @@ function selectAdjacentBait(offset) {
   saveUser('selection');
 }
 
-function handlePhaserAction(action) {
+function handlePhaserAction(action, payload = null) {
   lastPhaserUiActionAt = Date.now();
   if (!user && action !== 'logout') return;
+  if (phaserUi.modal) {
+    if (action === 'modal-close') return closePhaserModal();
+    if (action === 'shop-buy') return purchaseBait(payload?.id, payload?.count || 1, { source: 'phaser' });
+    if (action === 'shop-ad-reward') return claimAdReward();
+    return;
+  }
   if (action === 'cast') {
     if (state.phase === 'idle') startCast();
     else if (state.phase === 'hooked') startHitbar();
@@ -1023,8 +1089,8 @@ function handlePhaserAction(action) {
     if (versionData) showAnnouncement('');
     return;
   }
+  if (action === 'shop') return openPhaserModal('shop');
   const domButtons = {
-    shop: 'shop-btn',
     dex: 'dex-btn',
     rod: 'rod-btn',
     character: 'character-btn',
@@ -1521,7 +1587,39 @@ function showMiss(msg) {
 
 // ====== 商店 ======
 const shopOverlay = $('shop-overlay');
-$('shop-btn').onclick = () => { renderShop(); shopOverlay.classList.remove('hidden'); };
+$('shop-btn').onclick = () => {
+  if (openPhaserModal('shop')) return;
+  renderShop();
+  shopOverlay.classList.remove('hidden');
+};
+
+function purchaseBait(id, n, options = {}) {
+  if (!user || !BAITS[id]) return false;
+  const count = Math.max(1, Math.floor(n || 1));
+  const bait = BAITS[id];
+  const cost = bait.price * count;
+  const isDiamond = bait.currency === 'diamonds';
+  const source = options.source || 'dom';
+  const fail = (msg) => {
+    if (source === 'phaser') phaserUi.status = msg;
+    else alert(msg);
+    return false;
+  };
+  if (isDiamond) {
+    if ((user.diamonds || 0) < cost) return fail('钻石不足');
+    user.diamonds -= cost;
+  } else {
+    if (user.money < cost) return fail('金币不足');
+    user.money -= cost;
+  }
+  user.baits[id] = (user.baits[id] || 0) + count;
+  phaserUi.status = `已购买 ${bait.name} x${count}`;
+  refreshUI();
+  if (!shopOverlay.classList.contains('hidden')) renderShop();
+  saveUser('shop');
+  maybeResumeVipAutoAfterInventoryChange();
+  return true;
+}
 
 function renderShop() {
   const list = $('shop-list');
@@ -1551,21 +1649,7 @@ function renderShop() {
     if (!btn) return;
     const id = btn.dataset.buy;
     const n = parseInt(btn.dataset.n, 10);
-    const bait = BAITS[id];
-    const cost = bait.price * n;
-    const isDiamond = bait.currency === 'diamonds';
-    if (isDiamond) {
-      if ((user.diamonds || 0) < cost) { alert('钻石不足'); return; }
-      user.diamonds -= cost;
-    } else {
-      if (user.money < cost) { alert('金币不足'); return; }
-      user.money -= cost;
-    }
-    user.baits[id] = (user.baits[id] || 0) + n;
-    refreshUI();
-    renderShop();
-    saveUser('shop');
-    maybeResumeVipAutoAfterInventoryChange();
+    purchaseBait(id, n, { source: 'dom' });
   };
 }
 
