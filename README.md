@@ -35,7 +35,7 @@ python3 -m http.server 3000 --directory public
 
 ## Phaser 迁移
 
-Web 版已开始迁移到 Phaser 3：主钓鱼场景由 `public/phaser-scene.js` 中的 Phaser Scene 渲染，商店、图鉴、排行、抽奖等业务 UI 暂时继续沿用原 DOM 结构，玩法状态机和存档接口保持不变。
+Web 版已开始迁移到 Phaser 3：主钓鱼场景、命中条和主游戏 HUD 由 `public/phaser-scene.js` 中的 Phaser Scene 渲染，商店、图鉴、排行、抽奖等业务弹窗暂时继续沿用原 DOM 结构，玩法状态机和存档接口保持不变。
 
 ## 微信小程序
 

@@ -459,6 +459,7 @@ $('logout-btn').onclick = () => {
   user = null;
   try { localStorage.removeItem('fishing_username'); } catch (_) {}
   loginScreen.classList.add('active');
+  gameScreen.classList.remove('phaser-hud-active');
   gameScreen.classList.remove('active');
 };
 
@@ -530,6 +531,7 @@ function enterGame() {
   resetVipAutoForUser();
   loginScreen.classList.remove('active');
   gameScreen.classList.add('active');
+  gameScreen.classList.toggle('phaser-hud-active', !!phaserRenderer);
   refreshUI();
 }
 
@@ -717,6 +719,10 @@ const phaserRenderer = window.FishingPhaser || null;
 const canvas = phaserRenderer?.getCanvas?.() || $('game');
 const ctx = canvas && typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
 if (ctx) ctx.imageSmoothingEnabled = false;
+let lastPhaserUiActionAt = 0;
+if (phaserRenderer?.setActionHandler) {
+  phaserRenderer.setActionHandler(handlePhaserAction);
+}
 
 const W = 640;
 const H = 360;
@@ -747,6 +753,7 @@ function render() {
       pet: activePet,
       accessoryDef,
       accessoryStar: accessory ? GAME_DATA.clampAccessoryStar(accessory.star) : 1,
+      hud: getPhaserHudSnapshot(),
       hitbar: getPhaserHitbarSnapshot(),
     });
     return;
@@ -943,6 +950,95 @@ function drawText(txt, x, y, color, size) {
   ctx.fillText(txt, x, y);
 }
 
+function getPhaserHudSnapshot() {
+  if (!phaserRenderer || !user) return null;
+  const baitId = state.castBait || baitSelect.value || user.currentBait || 'worm';
+  const bait = BAITS[baitId] || BAITS.worm;
+  const rod = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
+  const actions = [
+    ['shop', '商店'],
+    ['dex', '图鉴'],
+    ['rod', '鱼竿'],
+    ['character', '角色'],
+    ['accessory', '首饰'],
+    ['pet', '宠物'],
+    ['rank', '排行'],
+    ['gacha', '抽奖'],
+    ['redeem', '兑换'],
+    ['share', '分享'],
+    ['logout', '退出'],
+  ].map(([action, label]) => ({ action, label }));
+  return {
+    username: user.username,
+    money: user.money,
+    diamonds: user.diamonds,
+    version: versionData?.version || '',
+    phase: state.phase,
+    actions,
+    baitName: bait.name,
+    baitCount: user.baits[baitId] || 0,
+    baitColor: bait.color || '#ffd700',
+    rodName: `鱼竿：${rod ? rod.name : '新手竿'}`,
+    status: statusEl.textContent,
+    castLabel: state.phase === 'idle' ? '抛竿钓鱼' : (state.phase === 'hooked' ? '拉鱼' : state.phase === 'reeling' ? '击中' : '等待中'),
+    vipVisible: !!user,
+    vipLabel: vipAutoBtn ? vipAutoBtn.textContent : 'VIP自动',
+    vipActive: vipAuto.enabled || vipAuto.running,
+  };
+}
+
+function triggerDomButton(id) {
+  const target = $(id);
+  if (target && typeof target.click === 'function') target.click();
+}
+
+function selectAdjacentBait(offset) {
+  if (!user || state.phase !== 'idle') return;
+  const ids = Object.keys(BAITS).filter((id) => (user.baits[id] || 0) > 0);
+  if (ids.length === 0) return;
+  const current = baitSelect.value || user.currentBait || ids[0];
+  const currentIndex = Math.max(0, ids.indexOf(current));
+  const next = ids[(currentIndex + offset + ids.length) % ids.length];
+  user.currentBait = next;
+  baitSelect.value = next;
+  if (vipAuto.enabled) vipAuto.baitId = getSelectedVipAutoBait();
+  updateBaitCount();
+  refreshUI();
+  saveUser('selection');
+}
+
+function handlePhaserAction(action) {
+  lastPhaserUiActionAt = Date.now();
+  if (!user && action !== 'logout') return;
+  if (action === 'cast') {
+    if (state.phase === 'idle') startCast();
+    else if (state.phase === 'hooked') startHitbar();
+    else if (state.phase === 'reeling') hitbarClick();
+    return;
+  }
+  if (action === 'bait-prev') return selectAdjacentBait(-1);
+  if (action === 'bait-next') return selectAdjacentBait(1);
+  if (action === 'vip-auto') return triggerDomButton('vip-auto-btn');
+  if (action === 'version') {
+    if (versionData) showAnnouncement('');
+    return;
+  }
+  const domButtons = {
+    shop: 'shop-btn',
+    dex: 'dex-btn',
+    rod: 'rod-btn',
+    character: 'character-btn',
+    accessory: 'accessory-btn',
+    pet: 'pet-btn',
+    rank: 'rank-btn',
+    gacha: 'gacha-btn',
+    redeem: 'redeem-btn',
+    share: 'share-btn',
+    logout: 'logout-btn',
+  };
+  if (domButtons[action]) triggerDomButton(domButtons[action]);
+}
+
 function loop() {
   if (user) render();
   requestAnimationFrame(loop);
@@ -1002,6 +1098,7 @@ window.addEventListener('keydown', (e) => {
   }
 });
 canvas.addEventListener('click', () => {
+  if (Date.now() - lastPhaserUiActionAt < 120) return;
   if (state.phase === 'hooked') startHitbar();
   else if (state.phase === 'reeling') hitbarClick();
 });

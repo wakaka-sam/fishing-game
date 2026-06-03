@@ -1,6 +1,14 @@
 module.exports = {
-  "version": "1.0.41",
+  "version": "1.0.42",
   "changelog": [
+    {
+      "version": "1.0.42",
+      "date": "2026-06-03",
+      "changes": [
+        "主游戏 HUD 迁移到 Phaser 渲染",
+        "Phaser HUD 按钮转发原功能入口"
+      ]
+    },
     {
       "version": "1.0.41",
       "date": "2026-06-03",

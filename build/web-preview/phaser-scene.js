@@ -6,12 +6,16 @@
 
   const WIDTH = 640;
   const HEIGHT = 360;
+  let sceneInstance = null;
+  let pendingActionHandler = null;
 
   class FishingScene extends Phaser.Scene {
     constructor() {
       super('FishingScene');
       this.snapshot = null;
       this.pixel = null;
+      this.actionHandler = null;
+      this.hitZones = [];
     }
 
     create() {
@@ -19,6 +23,8 @@
       this.pixel = this.add.graphics();
       this.sceneGraphics = this.add.graphics();
       this.textLayer = this.add.group();
+      this.actionHandler = pendingActionHandler;
+      this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
     }
 
     setSnapshot(snapshot) {
@@ -60,6 +66,25 @@
       this.textLayer.clear(true, true);
     }
 
+    setActionHandler(handler) {
+      this.actionHandler = handler;
+    }
+
+    handlePointer(pointer) {
+      const x = pointer.x;
+      const y = pointer.y;
+      const zone = this.hitZones.find((item) =>
+        x >= item.x && x <= item.x + item.w && y >= item.y && y <= item.y + item.h
+      );
+      if (zone && this.actionHandler) {
+        this.actionHandler(zone.action, zone.payload || null);
+      }
+    }
+
+    addHitZone(action, x, y, w, h, payload) {
+      this.hitZones.push({ action, x, y, w, h, payload });
+    }
+
     draw(snapshot) {
       const now = Date.now() / 1000;
       const t = snapshot.time || now;
@@ -74,6 +99,7 @@
 
       this.pixel.clear();
       this.clearLabels();
+      this.hitZones = [];
 
       const skyH = HEIGHT * 0.4;
       for (let y = 0; y < skyH; y += 4) {
@@ -152,7 +178,48 @@
 
       if (phase === 'waiting') this.drawLabel('等待鱼上钩...', WIDTH / 2, HEIGHT - 24, '#ffffff', 12);
       if (phase === 'hooked') this.drawLabel('!!! 鱼上钩了 !!!', WIDTH / 2, HEIGHT - 24, '#ff5722', 16);
+      if (snapshot.hud) this.drawHud(snapshot.hud);
       if (snapshot.hitbar && snapshot.hitbar.active) this.drawHitbar(snapshot.hitbar);
+    }
+
+    drawButton(action, label, x, y, w, h, active = false, payload = null) {
+      this.addHitZone(action, x, y, w, h, payload);
+      this.pixel.fillStyle(active ? 0xd35400 : 0x1a1a2e, 0.95);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(2, active ? 0xffae42 : 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(label, x + w / 2, y + h / 2 + 6, active ? '#ffffff' : '#ffd700', 11);
+    }
+
+    drawHud(hud) {
+      this.pixel.fillStyle(0x0d1421, 0.86);
+      this.pixel.fillRect(0, 0, WIDTH, 74);
+      this.pixel.fillRect(0, HEIGHT - 76, WIDTH, 76);
+      this.pixel.lineStyle(2, 0xffd700, 0.9);
+      this.pixel.strokeRect(0, 0, WIDTH, 74);
+      this.pixel.strokeRect(0, HEIGHT - 76, WIDTH, 76);
+
+      this.drawLabel(hud.username || '玩家', 48, 23, '#4ec9b0', 13);
+      this.drawLabel(`金币 ${hud.money || 0}`, 142, 23, '#ffd700', 13);
+      this.drawLabel(`钻石 ${hud.diamonds || 0}`, 238, 23, '#66e6ff', 13);
+      this.drawButton('version', `v${hud.version || ''}`, WIDTH - 70, 9, 58, 22, false);
+
+      const actions = hud.actions || [];
+      const gap = 4;
+      const buttonW = Math.floor((WIDTH - 20 - gap * (actions.length - 1)) / Math.max(1, actions.length));
+      actions.forEach((item, index) => {
+        this.drawButton(item.action, item.label, 10 + index * (buttonW + gap), 42, buttonW, 23, item.active);
+      });
+
+      this.drawLabel(`当前鱼饵：${hud.baitName || ''} x${hud.baitCount || 0}`, 126, HEIGHT - 51, hud.baitColor || '#ffd700', 14);
+      this.drawButton('bait-prev', '<', 12, HEIGHT - 63, 34, 28, false);
+      this.drawButton('bait-next', '>', 52, HEIGHT - 63, 34, 28, false);
+      this.drawLabel(hud.rodName || '', 332, HEIGHT - 51, '#cbd5e1', 12);
+      this.drawLabel(hud.status || '', 214, HEIGHT - 20, '#4ec9b0', 12);
+      this.drawButton('cast', hud.castLabel || '抛竿', WIDTH - 110, HEIGHT - 61, 96, 34, hud.phase !== 'idle');
+      if (hud.vipVisible) {
+        this.drawButton('vip-auto', hud.vipLabel || 'VIP自动', WIDTH - 110, HEIGHT - 25, 96, 20, hud.vipActive);
+      }
     }
 
     drawHitbar(hitbar) {
@@ -246,7 +313,6 @@
     }
   }
 
-  let sceneInstance = null;
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
@@ -264,6 +330,10 @@
     game,
     render(snapshot) {
       if (sceneInstance) sceneInstance.setSnapshot(snapshot);
+    },
+    setActionHandler(handler) {
+      pendingActionHandler = handler;
+      if (sceneInstance) sceneInstance.setActionHandler(handler);
     },
     getCanvas() {
       return game.canvas;

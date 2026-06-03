@@ -139,6 +139,13 @@ input, select {
   gap: 8px;
   align-items: center;
 }
+#game-screen.phaser-hud-active .topbar,
+#game-screen.phaser-hud-active .gamebar {
+  display: none;
+}
+#game-screen.phaser-hud-active #game {
+  margin-top: 0;
+}
 .bait-info { display: flex; gap: 12px; align-items: center; font-size: 14px; }
 #status { font-size: 13px; color: #4ec9b0; min-height: 18px; }
 
