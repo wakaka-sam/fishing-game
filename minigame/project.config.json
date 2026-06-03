@@ -1,0 +1,14 @@
+{
+  "description": "像素钓鱼微信小游戏版",
+  "appid": "wx2a39ee06c886607a",
+  "projectname": "fishing-game-minigame",
+  "miniprogramRoot": "./",
+  "compileType": "game",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": false
+  }
+}

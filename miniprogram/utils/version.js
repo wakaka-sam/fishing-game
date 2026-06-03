@@ -1,6 +1,14 @@
 module.exports = {
-  "version": "1.0.37",
+  "version": "1.0.38",
   "changelog": [
+    {
+      "version": "1.0.38",
+      "date": "2026-06-03",
+      "changes": [
+        "新增微信小游戏工程",
+        "接入微信小游戏 CI 预览二维码生成"
+      ]
+    },
     {
       "version": "1.0.37",
       "date": "2026-06-03",

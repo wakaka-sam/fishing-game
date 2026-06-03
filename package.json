@@ -4,6 +4,7 @@
   "description": "Pixel fishing game with bestiary — frontend only",
   "scripts": {
     "build:web-preview": "node scripts/build-web-preview.js",
-    "serve:web-preview": "python3 -m http.server 4173 --directory build/web-preview"
+    "serve:web-preview": "python3 -m http.server 4173 --directory build/web-preview",
+    "wechat:preview": "npx --yes miniprogram-ci preview --appid wx2a39ee06c886607a --project-path minigame --private-key-path wx2a39ee06c886607a.key --project-type miniGame --upload-version $(node -p \"require('./public/version.json').version\") --upload-description 微信小游戏预览版 --use-project-config --enable-qrcode --qrcode-format image --qrcode-output-dest build/minigame-preview-qrcode.png"
   }
 }
