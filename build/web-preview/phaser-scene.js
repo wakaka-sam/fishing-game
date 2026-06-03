@@ -243,6 +243,7 @@
       if (modal.type === 'shop') this.drawShopModal(modal);
       if (modal.type === 'result' || modal.type === 'miss') this.drawResultModal(modal);
       if (modal.type === 'dex') this.drawDexModal(modal);
+      if (modal.type === 'rod') this.drawRodModal(modal);
     }
 
     drawShopModal(modal) {
@@ -367,6 +368,57 @@
       this.drawButton('dex-page', '<', x + 18, y + h - 44, 34, 28, false, { delta: -1 }, modal.page <= 0);
       this.drawLabel(`${(modal.page || 0) + 1} / ${modal.pageCount || 1}`, x + 92, y + h - 36, '#ffd700', 12);
       this.drawButton('dex-page', '>', x + 128, y + h - 44, 34, 28, false, { delta: 1 }, modal.page >= (modal.pageCount || 1) - 1);
+    }
+
+    drawRodPreviewLine(item, x, y, w, h) {
+      const baseX = x + w - 12;
+      const baseY = y + h - 7;
+      const tipX = x + 18;
+      const tipY = y + 10;
+      this.line([[baseX, baseY], [tipX, tipY]], item.rodColor || '#5d4037', 5);
+      this.line([[baseX, baseY], [tipX, tipY]], item.rodHighlight || '#ffd700', 2);
+      this.quadraticLine(tipX, tipY, tipX - 10, tipY + 20, tipX - 2, y + h - 6, item.lineColor || 'rgba(255,255,255,0.8)', 1);
+    }
+
+    drawRodModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 42;
+      const y = 26;
+      const w = WIDTH - 84;
+      const h = HEIGHT - 52;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '鱼竿收藏', WIDTH / 2, y + 28, '#ffd700', 18);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+      this.drawLabel(`当前：${modal.currentName || '木竿'}`, x + 114, y + 54, '#4ec9b0', 12);
+      this.drawLabel(`已收集鱼种：${modal.dexCount || 0}`, x + 270, y + 54, '#e8e8e8', 12);
+      this.drawLabel(modal.nextText || '', x + w - 162, y + 54, '#94a3b8', 11);
+      if (modal.status) this.drawLabel(modal.status, WIDTH / 2, y + h - 12, '#4ec9b0', 12);
+
+      const items = modal.items || [];
+      const startY = y + 72;
+      const rowH = 45;
+      items.forEach((item, index) => {
+        const rowY = startY + index * (rowH + 8);
+        const border = Phaser.Display.Color.ValueToColor(item.rodHighlight || '#ffd700').color;
+        this.pixel.fillStyle(item.unlocked ? 0x0d1421 : 0x121827, item.unlocked ? 0.98 : 0.78);
+        this.pixel.fillRect(x + 18, rowY, w - 36, rowH);
+        this.pixel.lineStyle(item.active ? 3 : 2, item.active ? 0x4ec9b0 : border, item.unlocked ? 1 : 0.45);
+        this.pixel.strokeRect(x + 18, rowY, w - 36, rowH);
+        this.drawRodPreviewLine(item, x + 24, rowY + 3, 92, rowH - 6);
+        this.drawLabel(`${item.emoji || '🎣'} ${item.name}`, x + 190, rowY + 17, item.rodHighlight || '#ffd700', 12);
+        this.drawLabel((item.desc || '').slice(0, 22), x + 214, rowY + 32, item.unlocked ? '#cbd5e1' : '#94a3b8', 10);
+        this.drawLabel(item.reqText || '', x + 380, rowY + 31, item.active ? '#4ec9b0' : (item.unlocked ? '#ffd700' : '#94a3b8'), 10);
+        const label = item.active ? '装备中' : (item.unlocked ? '装备' : '锁定');
+        this.drawButton('rod-equip', label, x + w - 78, rowY + 9, 54, 25, item.active, { id: item.id }, !item.unlocked || item.active);
+      });
+
+      this.drawButton('rod-page', '<', x + 18, y + h - 44, 34, 28, false, { delta: -1 }, modal.page <= 0);
+      this.drawLabel(`${(modal.page || 0) + 1} / ${modal.pageCount || 1}`, x + 92, y + h - 36, '#ffd700', 12);
+      this.drawButton('rod-page', '>', x + 128, y + h - 44, 34, 28, false, { delta: 1 }, modal.page >= (modal.pageCount || 1) - 1);
     }
 
     drawHitbar(hitbar) {

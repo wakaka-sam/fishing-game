@@ -1035,6 +1035,7 @@ function getPhaserModalSnapshot() {
     return phaserUi.data ? { ...phaserUi.data, status: phaserUi.status } : null;
   }
   if (phaserUi.modal === 'dex') return getPhaserDexSnapshot();
+  if (phaserUi.modal === 'rod') return getPhaserRodSnapshot();
   return null;
 }
 
@@ -1046,6 +1047,7 @@ function openPhaserModal(type, data = null) {
   shopOverlay?.classList.add('hidden');
   resultOverlay?.classList.add('hidden');
   dexOverlay?.classList.add('hidden');
+  rodOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1086,6 +1088,8 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'result-retry') return retryAfterMissWithAd({ source: 'phaser' });
     if (action === 'dex-tab') return setPhaserDexTab(payload?.id);
     if (action === 'dex-page') return setPhaserDexPage(payload?.delta || 0);
+    if (action === 'rod-equip') return equipRodSkin(payload?.id, { source: 'phaser' });
+    if (action === 'rod-page') return setPhaserRodPage(payload?.delta || 0);
     return;
   }
   if (action === 'cast') {
@@ -1103,8 +1107,8 @@ function handlePhaserAction(action, payload = null) {
   }
   if (action === 'shop') return openPhaserModal('shop');
   if (action === 'dex') return openPhaserDex();
+  if (action === 'rod') return openPhaserRod();
   const domButtons = {
-    rod: 'rod-btn',
     character: 'character-btn',
     accessory: 'accessory-btn',
     pet: 'pet-btn',
@@ -2242,18 +2246,99 @@ function renderLeaderboard() {
 
 // ====== 鱼竿皮肤 ======
 const rodOverlay = $('rod-overlay');
-$('rod-btn').onclick = () => { renderRodSkins(); rodOverlay.classList.remove('hidden'); };
+$('rod-btn').onclick = () => {
+  if (openPhaserRod()) return;
+  renderRodSkins();
+  rodOverlay.classList.remove('hidden');
+};
+
+let activeRodPage = 0;
+const ROD_ITEMS_PER_PAGE = 4;
+
+function getRodUnlockInfo(skin, dexCount, current) {
+  const owned = user.ownedRods || [];
+  const isGacha = GAME_DATA.GACHA_RODS.some(g => g.id === skin.id);
+  const isSpecial = (GAME_DATA.SPECIAL_RODS || []).some(s => s.id === skin.id);
+  const unlocked = (isGacha || isSpecial) ? owned.includes(skin.id) : dexCount >= skin.threshold;
+  let reqText;
+  if (unlocked) reqText = skin.id === current.id ? '装备中' : '点击装备';
+  else if (isGacha) reqText = '抽奖限定';
+  else if (skin.unlock === 'black_silk_dex') reqText = `集齐黑丝图鉴 (${countUnlockedBaitDex(BLACK_SILK_BAIT_ID)}/${BAITS[BLACK_SILK_BAIT_ID].fishes.length})`;
+  else reqText = `收集 ${skin.threshold} 种鱼解锁 (${dexCount}/${skin.threshold})`;
+  return { unlocked, isGacha, isSpecial, reqText };
+}
+
+function getPhaserRodSnapshot() {
+  if (!phaserRenderer || !user) return null;
+  const dexCount = Object.keys(user.dex).length;
+  const current = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
+  const rods = GAME_DATA.ALL_RODS.map((skin) => {
+    const info = getRodUnlockInfo(skin, dexCount, current);
+    return {
+      id: skin.id,
+      name: skin.name,
+      desc: skin.desc,
+      rodColor: skin.rodColor,
+      rodHighlight: skin.rodHighlight,
+      lineColor: skin.lineColor,
+      emoji: skin.emoji || '🎣',
+      active: skin.id === current.id,
+      unlocked: info.unlocked,
+      isGacha: info.isGacha,
+      isSpecial: info.isSpecial,
+      reqText: info.reqText,
+    };
+  });
+  const pageCount = Math.max(1, Math.ceil(rods.length / ROD_ITEMS_PER_PAGE));
+  activeRodPage = Math.max(0, Math.min(activeRodPage, pageCount - 1));
+  const next = GAME_DATA.getNextRodSkin(user.dex);
+  return {
+    type: 'rod',
+    title: '鱼竿收藏',
+    status: phaserUi.status,
+    currentName: current.name,
+    dexCount,
+    nextText: next ? `下一把：${next.name} (${dexCount}/${next.threshold})` : '图鉴进度已解锁全部普通鱼竿',
+    page: activeRodPage,
+    pageCount,
+    items: rods.slice(activeRodPage * ROD_ITEMS_PER_PAGE, (activeRodPage + 1) * ROD_ITEMS_PER_PAGE),
+  };
+}
+
+function openPhaserRod() {
+  activeRodPage = 0;
+  return openPhaserModal('rod');
+}
+
+function setPhaserRodPage(delta) {
+  const snapshot = getPhaserRodSnapshot();
+  if (!snapshot) return;
+  activeRodPage = Math.max(0, Math.min(activeRodPage + delta, snapshot.pageCount - 1));
+}
+
+function equipRodSkin(id, options = {}) {
+  if (!user || !id) return false;
+  const skin = GAME_DATA.ALL_RODS.find(item => item.id === id);
+  if (!skin) return false;
+  const dexCount = Object.keys(user.dex).length;
+  const current = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
+  const { unlocked } = getRodUnlockInfo(skin, dexCount, current);
+  if (!unlocked || skin.id === current.id) return false;
+  user.rodSkin = skin.id;
+  phaserUi.status = `已装备 ${skin.name}`;
+  saveUser('rod');
+  refreshUI();
+  if (!rodOverlay.classList.contains('hidden')) renderRodSkins();
+  return true;
+}
 
 function renderRodSkins() {
   const list = $('rod-list');
   list.innerHTML = '';
   const dexCount = Object.keys(user.dex).length;
   const current = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
-  const owned = user.ownedRods || [];
   for (const skin of GAME_DATA.ALL_RODS) {
-    const isGacha = GAME_DATA.GACHA_RODS.some(g => g.id === skin.id);
-    const isSpecial = (GAME_DATA.SPECIAL_RODS || []).some(s => s.id === skin.id);
-    const unlocked = (isGacha || isSpecial) ? owned.includes(skin.id) : dexCount >= skin.threshold;
+    const { unlocked, isGacha, isSpecial, reqText } = getRodUnlockInfo(skin, dexCount, current);
     const isActive = skin.id === current.id;
     const div = document.createElement('div');
     div.className = 'rod-item' + (unlocked ? ' unlocked' : ' locked') + (isActive ? ' active' : '') + (isGacha ? ' gacha' : '');
@@ -2262,16 +2347,11 @@ function renderRodSkins() {
     canvas.width = 200;
     canvas.height = 60;
     drawRodPreview(canvas, skin);
-    let reqText;
-    if (unlocked) reqText = isActive ? '✅ 装备中' : '点击装备';
-    else if (isGacha) reqText = '🎰 抽奖限定';
-    else if (skin.unlock === 'black_silk_dex') reqText = `🔒 集齐黑丝图鉴解锁 (${countUnlockedBaitDex(BLACK_SILK_BAIT_ID)}/${BAITS[BLACK_SILK_BAIT_ID].fishes.length})`;
-    else reqText = `🔒 收集 ${skin.threshold} 种鱼解锁 (${dexCount}/${skin.threshold})`;
     div.innerHTML = `
       <div class="rod-preview"></div>
       <div class="rod-name" style="color:${skin.rodHighlight}">${skin.name}</div>
       <div class="rod-desc">${skin.desc}</div>
-      <div class="rod-req">${reqText}</div>
+      <div class="rod-req">${unlocked && isActive ? '✅ ' : (!unlocked ? '🔒 ' : '')}${reqText}</div>
       ${isActive ? '<div class="rod-badge">装备中</div>' : ''}
       ${isGacha && !unlocked ? '<div class="rod-badge" style="background:#c586c0">限定</div>' : ''}
       ${isSpecial && !unlocked ? '<div class="rod-badge" style="background:#ff7ac8">图鉴</div>' : ''}
@@ -2279,10 +2359,7 @@ function renderRodSkins() {
     div.querySelector('.rod-preview').appendChild(canvas);
     if (unlocked && !isActive) {
       div.onclick = () => {
-        user.rodSkin = skin.id;
-        saveUser('rod');
-        refreshUI();
-        renderRodSkins();
+        equipRodSkin(skin.id, { source: 'dom' });
       };
     }
     list.appendChild(div);

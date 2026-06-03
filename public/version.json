@@ -1,6 +1,14 @@
 {
-  "version": "1.0.45",
+  "version": "1.0.46",
   "changelog": [
+    {
+      "version": "1.0.46",
+      "date": "2026-06-03",
+      "changes": [
+        "鱼竿收藏弹窗迁移到 Phaser 渲染",
+        "Phaser 鱼竿收藏支持分页和装备切换"
+      ]
+    },
     {
       "version": "1.0.45",
       "date": "2026-06-03",
