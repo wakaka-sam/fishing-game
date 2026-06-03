@@ -44,6 +44,17 @@ python3 -m http.server 3000 --directory public
 
 小程序版使用 `https://fish.wakaka007.cn/api/*` 同步登录、存档、兑换码和排行榜；网络不可用时会使用本地缓存兜底。
 
+### 浏览器预览版
+
+按小程序页面生成浏览器预览包：
+
+```bash
+npm run build:miniprogram-web
+npm run serve:miniprogram-web
+```
+
+访问 `http://localhost:4173`。生成内容位于 `build/miniprogram-web/`，用于快速查看小程序版界面和主要交互；正式发布仍以 `miniprogram/` 导入微信开发者工具为准。
+
 ## 目录结构
 
 ```
@@ -55,8 +66,11 @@ python3 -m http.server 3000 --directory public
 │   ├── game.js        # 游戏逻辑
 │   └── version.json   # 版本信息
 ├── miniprogram/        # 微信小程序工程
+├── build/
+│   └── miniprogram-web/ # 小程序浏览器预览版
 └── scripts/
-    └── bump-version.sh  # 版本递增工具
+    ├── bump-version.sh          # 版本递增工具
+    └── build-miniprogram-web.js # 小程序浏览版生成工具
 ```
 ## 许可
 

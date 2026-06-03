@@ -16,3 +16,14 @@
 - 小程序版默认通过 `https://fish.wakaka007.cn/api/*` 登录、保存、兑换和读取排行榜。
 - 网络不可用时会回退到本地缓存，恢复网络后继续同步用户状态。
 - H5 穿山甲广告 SDK 已移除，小程序版广告奖励按钮目前直接发放钻石，方便后续替换为微信激励视频广告。
+
+## 浏览器预览版
+
+仓库根目录提供小程序浏览版生成命令：
+
+```bash
+npm run build:miniprogram-web
+npm run serve:miniprogram-web
+```
+
+访问 `http://localhost:4173` 可在浏览器里预览小程序版 UI 和主要交互。生成结果在 `build/miniprogram-web/`，用于本地快速确认，不替代微信开发者工具里的正式运行时。
