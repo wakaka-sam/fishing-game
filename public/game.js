@@ -1034,6 +1034,7 @@ function getPhaserModalSnapshot() {
   if (phaserUi.modal === 'result' || phaserUi.modal === 'miss') {
     return phaserUi.data ? { ...phaserUi.data, status: phaserUi.status } : null;
   }
+  if (phaserUi.modal === 'dex') return getPhaserDexSnapshot();
   return null;
 }
 
@@ -1044,6 +1045,7 @@ function openPhaserModal(type, data = null) {
   phaserUi.data = data;
   shopOverlay?.classList.add('hidden');
   resultOverlay?.classList.add('hidden');
+  dexOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1082,6 +1084,8 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'shop-buy') return purchaseBait(payload?.id, payload?.count || 1, { source: 'phaser' });
     if (action === 'shop-ad-reward') return claimAdReward();
     if (action === 'result-retry') return retryAfterMissWithAd({ source: 'phaser' });
+    if (action === 'dex-tab') return setPhaserDexTab(payload?.id);
+    if (action === 'dex-page') return setPhaserDexPage(payload?.delta || 0);
     return;
   }
   if (action === 'cast') {
@@ -1098,8 +1102,8 @@ function handlePhaserAction(action, payload = null) {
     return;
   }
   if (action === 'shop') return openPhaserModal('shop');
+  if (action === 'dex') return openPhaserDex();
   const domButtons = {
-    dex: 'dex-btn',
     rod: 'rod-btn',
     character: 'character-btn',
     accessory: 'accessory-btn',
@@ -1728,9 +1732,120 @@ function renderShop() {
 
 // ====== 图鉴 ======
 const dexOverlay = $('dex-overlay');
-$('dex-btn').onclick = () => { renderDex(); dexOverlay.classList.remove('hidden'); };
+$('dex-btn').onclick = () => {
+  if (openPhaserDex()) return;
+  renderDex();
+  dexOverlay.classList.remove('hidden');
+};
 
 let activeDexBait = 'worm';
+let activeDexPage = 0;
+const DEX_ITEMS_PER_PAGE = 6;
+
+function getDexTabs() {
+  const tabs = Object.entries(BAITS)
+    .filter(([, bait]) => !bait.hideDex)
+    .map(([id, bait]) => ({
+      id,
+      label: bait.dexName || bait.name,
+      active: id === activeDexBait,
+    }));
+  tabs.push({
+    id: '_rod_exclusive',
+    label: '鱼竿专属',
+    active: activeDexBait === '_rod_exclusive',
+  });
+  return tabs;
+}
+
+function normalizeActiveDexTab() {
+  const valid = getDexTabs().some(tab => tab.id === activeDexBait);
+  if (!valid) {
+    activeDexBait = 'worm';
+    activeDexPage = 0;
+  }
+}
+
+function getDexItems() {
+  normalizeActiveDexTab();
+  if (activeDexBait === '_rod_exclusive') {
+    return GAME_DATA.ALL_ROD_FISH.map((fish) => {
+      const dex = user.dex[fish.id];
+      const rod = GAME_DATA.ALL_RODS.find(r => r.id === fish.rodId);
+      return {
+        id: fish.id,
+        icon: dex ? fish.icon : '?',
+        name: dex ? fish.name : '???',
+        rarity: 'rod_exclusive',
+        rarityName: RARITY_NAME.rod_exclusive,
+        color: RARITY_COLOR.rod_exclusive,
+        extra: `鱼竿：${rod ? rod.name : fish.rodId}`,
+        stat: dex ? `x${dex.count} | 最大 ${dex.maxWeight}kg` : '未解锁',
+        unlocked: !!dex,
+      };
+    });
+  }
+  const bait = BAITS[activeDexBait] || BAITS.worm;
+  return bait.fishes.map((fish) => {
+    const dex = user.dex[fish.id];
+    return {
+      id: fish.id,
+      icon: dex ? fish.icon : '?',
+      name: dex ? fish.name : '???',
+      rarity: fish.rarity,
+      rarityName: RARITY_NAME[fish.rarity],
+      color: RARITY_COLOR[fish.rarity],
+      extra: fish.timeSlot ? `时段：${GAME_DATA.TIME_SLOT_NAMES[fish.timeSlot]}` : '',
+      stat: dex ? `x${dex.count} | 最大 ${dex.maxWeight}kg` : '未解锁',
+      unlocked: !!dex,
+    };
+  });
+}
+
+function getPhaserDexSnapshot() {
+  if (!phaserRenderer || !user) return null;
+  const tabs = getDexTabs();
+  const items = getDexItems();
+  const unlocked = items.filter(item => item.unlocked).length;
+  const pageCount = Math.max(1, Math.ceil(items.length / DEX_ITEMS_PER_PAGE));
+  activeDexPage = Math.max(0, Math.min(activeDexPage, pageCount - 1));
+  const bait = activeDexBait === '_rod_exclusive' ? null : (BAITS[activeDexBait] || BAITS.worm);
+  const title = activeDexBait === '_rod_exclusive'
+    ? '鱼竿专属图鉴'
+    : (bait.dexName || `${bait.name}图鉴`);
+  return {
+    type: 'dex',
+    title,
+    tabs,
+    page: activeDexPage,
+    pageCount,
+    items: items.slice(activeDexPage * DEX_ITEMS_PER_PAGE, (activeDexPage + 1) * DEX_ITEMS_PER_PAGE),
+    stats: [
+      `${title}：${unlocked} / ${items.length}`,
+      `累计钓获：${user.stats.totalCatches || 0} 次`,
+      `累计收入：${user.stats.totalEarned || 0} 金币`,
+      `累计钻石：${user.stats.totalDiamonds || 0} 钻石`,
+    ],
+  };
+}
+
+function openPhaserDex() {
+  activeDexPage = 0;
+  return openPhaserModal('dex');
+}
+
+function setPhaserDexTab(id) {
+  if (!id || id === activeDexBait) return;
+  activeDexBait = id;
+  activeDexPage = 0;
+  phaserUi.status = '';
+}
+
+function setPhaserDexPage(delta) {
+  const snapshot = getPhaserDexSnapshot();
+  if (!snapshot) return;
+  activeDexPage = Math.max(0, Math.min(activeDexPage + delta, snapshot.pageCount - 1));
+}
 
 function renderDex() {
   const tabs = $('dex-tabs');
@@ -1740,14 +1855,14 @@ function renderDex() {
     const btn = document.createElement('button');
     btn.textContent = b.dexName || b.name;
     if (id === activeDexBait) btn.classList.add('active');
-    btn.onclick = () => { activeDexBait = id; renderDex(); };
+    btn.onclick = () => { activeDexBait = id; activeDexPage = 0; renderDex(); };
     tabs.appendChild(btn);
   }
   // 鱼竿专属图鉴 tab
   const rodDexBtn = document.createElement('button');
   rodDexBtn.textContent = '🎣 鱼竿专属';
   if (activeDexBait === '_rod_exclusive') rodDexBtn.classList.add('active');
-  rodDexBtn.onclick = () => { activeDexBait = '_rod_exclusive'; renderDex(); };
+  rodDexBtn.onclick = () => { activeDexBait = '_rod_exclusive'; activeDexPage = 0; renderDex(); };
   tabs.appendChild(rodDexBtn);
 
   const list = $('dex-list');

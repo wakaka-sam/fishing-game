@@ -1,6 +1,14 @@
 module.exports = {
-  "version": "1.0.44",
+  "version": "1.0.45",
   "changelog": [
+    {
+      "version": "1.0.45",
+      "date": "2026-06-03",
+      "changes": [
+        "图鉴弹窗迁移到 Phaser 渲染",
+        "Phaser 图鉴支持分页和鱼竿专属页"
+      ]
+    },
     {
       "version": "1.0.44",
       "date": "2026-06-03",

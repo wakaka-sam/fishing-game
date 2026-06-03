@@ -242,6 +242,7 @@
     drawModal(modal) {
       if (modal.type === 'shop') this.drawShopModal(modal);
       if (modal.type === 'result' || modal.type === 'miss') this.drawResultModal(modal);
+      if (modal.type === 'dex') this.drawDexModal(modal);
     }
 
     drawShopModal(modal) {
@@ -311,6 +312,61 @@
       });
       if (modal.status) this.drawLabel(modal.status, WIDTH / 2, y + h - 44, '#4ec9b0', 12);
       this.drawButton('modal-close', '关闭', WIDTH / 2 - 45, y + h - 32, 90, 26, false);
+    }
+
+    drawDexModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 34;
+      const y = 24;
+      const w = WIDTH - 68;
+      const h = HEIGHT - 48;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '钓鱼图鉴', WIDTH / 2, y + 28, '#ffd700', 18);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+
+      const tabs = modal.tabs || [];
+      const tabY = y + 44;
+      const gap = 4;
+      const tabW = Math.floor((w - 36 - gap * Math.max(0, tabs.length - 1)) / Math.max(1, tabs.length));
+      tabs.forEach((tab, index) => {
+        this.drawButton('dex-tab', tab.label, x + 18 + index * (tabW + gap), tabY, tabW, 22, tab.active, { id: tab.id });
+      });
+
+      const items = modal.items || [];
+      const itemW = Math.floor((w - 48) / 2);
+      const itemH = 52;
+      const startY = y + 76;
+      items.forEach((item, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const itemX = x + 18 + col * (itemW + 12);
+        const itemY = startY + row * (itemH + 8);
+        const colorValue = Phaser.Display.Color.ValueToColor(item.color || '#888').color;
+        this.pixel.fillStyle(item.unlocked ? 0x0d1421 : 0x121827, item.unlocked ? 0.98 : 0.78);
+        this.pixel.fillRect(itemX, itemY, itemW, itemH);
+        this.pixel.lineStyle(2, colorValue, item.unlocked ? 1 : 0.5);
+        this.pixel.strokeRect(itemX, itemY, itemW, itemH);
+        this.drawLabel(item.icon || '?', itemX + 22, itemY + 30, item.unlocked ? '#ffffff' : '#94a3b8', 18);
+        this.drawLabel(item.name || '???', itemX + itemW / 2 + 8, itemY + 18, item.color || '#ffd700', 12);
+        this.drawLabel(item.rarityName || '', itemX + itemW / 2 + 8, itemY + 34, item.color || '#ffd700', 10);
+        const footer = item.extra ? `${item.extra}  ${item.stat || ''}` : (item.stat || '');
+        this.drawLabel(footer.slice(0, 23), itemX + itemW / 2 + 8, itemY + 49, item.unlocked ? '#cbd5e1' : '#94a3b8', 9);
+      });
+
+      const stats = modal.stats || [];
+      stats.slice(0, 2).forEach((line, index) => {
+        this.drawLabel(line, x + 156 + index * 234, y + h - 52, index === 0 ? '#4ec9b0' : '#e8e8e8', 11);
+      });
+      stats.slice(2, 4).forEach((line, index) => {
+        this.drawLabel(line, x + 156 + index * 234, y + h - 34, '#e8e8e8', 11);
+      });
+      this.drawButton('dex-page', '<', x + 18, y + h - 44, 34, 28, false, { delta: -1 }, modal.page <= 0);
+      this.drawLabel(`${(modal.page || 0) + 1} / ${modal.pageCount || 1}`, x + 92, y + h - 36, '#ffd700', 12);
+      this.drawButton('dex-page', '>', x + 128, y + h - 44, 34, 28, false, { delta: 1 }, modal.page >= (modal.pageCount || 1) - 1);
     }
 
     drawHitbar(hitbar) {
