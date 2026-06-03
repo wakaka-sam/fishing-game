@@ -24,7 +24,7 @@
       this.sceneGraphics = this.add.graphics();
       this.textLayer = this.add.group();
       this.actionHandler = pendingActionHandler;
-      this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
+      this.game.canvas.addEventListener('pointerdown', (event) => this.handlePointer({ event }));
     }
 
     setSnapshot(snapshot) {
@@ -84,8 +84,15 @@
     }
 
     handlePointer(pointer) {
-      const x = pointer.x;
-      const y = pointer.y;
+      const rect = this.game.canvas.getBoundingClientRect();
+      const rawX = pointer.event
+        ? (pointer.event.clientX - rect.left) * (WIDTH / rect.width)
+        : pointer.x;
+      const rawY = pointer.event
+        ? (pointer.event.clientY - rect.top) * (HEIGHT / rect.height)
+        : pointer.y;
+      const x = Math.round(rawX);
+      const y = Math.round(rawY);
       const zone = this.hitZones.slice().reverse().find((item) =>
         x >= item.x && x <= item.x + item.w && y >= item.y && y <= item.y + item.h
       );
@@ -234,6 +241,7 @@
 
     drawModal(modal) {
       if (modal.type === 'shop') this.drawShopModal(modal);
+      if (modal.type === 'result' || modal.type === 'miss') this.drawResultModal(modal);
     }
 
     drawShopModal(modal) {
@@ -266,6 +274,43 @@
         this.drawButton('shop-buy', '买1', x + w - 110, rowY + 4, 42, 21, false, { id: item.id, count: 1 });
         this.drawButton('shop-buy', '买10', x + w - 62, rowY + 4, 48, 21, false, { id: item.id, count: 10 });
       });
+    }
+
+    drawResultModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.74);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 76;
+      const y = 52;
+      const w = WIDTH - 152;
+      const h = HEIGHT - 104;
+      const accent = Phaser.Display.Color.ValueToColor(modal.color || '#ffd700').color;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, accent, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+
+      if (modal.type === 'miss') {
+        this.drawLabel(modal.icon || '💧', WIDTH / 2, y + 58, '#ffffff', 30);
+        this.drawLabel(modal.message || '鱼跑了', WIDTH / 2, y + 100, '#ffae42', 19);
+        if (modal.status) this.drawLabel(modal.status, WIDTH / 2, y + 133, '#4ec9b0', 12);
+        this.drawButton('result-retry', modal.retryLabel || '看广告再来一次', WIDTH / 2 - 78, y + 156, 156, 28, false, null, !modal.canRetry);
+        this.drawButton('modal-close', '关闭', WIDTH / 2 - 45, y + 194, 90, 26, false);
+        return;
+      }
+
+      this.drawLabel(modal.title || '钓获成功', WIDTH / 2, y + 34, '#ffd700', 18);
+      this.drawLabel(modal.icon || '🎣', WIDTH / 2, y + 72, '#ffffff', 27);
+      this.drawLabel(modal.name || '', WIDTH / 2, y + 106, modal.color || '#ffd700', 18);
+      this.drawLabel(`★ ${modal.rarityName || ''} ★`, WIDTH / 2, y + 132, modal.color || '#ffd700', 13);
+
+      const lines = [...(modal.detailLines || []), ...(modal.rewardLines || [])];
+      lines.slice(0, 6).forEach((line, index) => {
+        const color = index < (modal.detailLines || []).length ? '#e8e8e8' : '#4ec9b0';
+        this.drawLabel(line, WIDTH / 2, y + 157 + index * 19, color, 12);
+      });
+      if (modal.status) this.drawLabel(modal.status, WIDTH / 2, y + h - 44, '#4ec9b0', 12);
+      this.drawButton('modal-close', '关闭', WIDTH / 2 - 45, y + h - 32, 90, 26, false);
     }
 
     drawHitbar(hitbar) {

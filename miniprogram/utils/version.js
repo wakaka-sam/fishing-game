@@ -1,6 +1,14 @@
 module.exports = {
-  "version": "1.0.43",
+  "version": "1.0.44",
   "changelog": [
+    {
+      "version": "1.0.44",
+      "date": "2026-06-03",
+      "changes": [
+        "结果和失败弹窗迁移到 Phaser 渲染",
+        "修复 Phaser 画布缩放后的点击命中坐标"
+      ]
+    },
     {
       "version": "1.0.43",
       "date": "2026-06-03",

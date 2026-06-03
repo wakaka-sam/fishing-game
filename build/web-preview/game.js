@@ -732,6 +732,7 @@ let lastPhaserUiActionAt = 0;
 const phaserUi = {
   modal: null,
   status: '',
+  data: null,
 };
 if (phaserRenderer?.setActionHandler) {
   phaserRenderer.setActionHandler(handlePhaserAction);
@@ -1030,14 +1031,19 @@ function getPhaserModalSnapshot() {
         })),
     };
   }
+  if (phaserUi.modal === 'result' || phaserUi.modal === 'miss') {
+    return phaserUi.data ? { ...phaserUi.data, status: phaserUi.status } : null;
+  }
   return null;
 }
 
-function openPhaserModal(type) {
+function openPhaserModal(type, data = null) {
   if (!phaserRenderer) return false;
   phaserUi.modal = type;
   phaserUi.status = '';
+  phaserUi.data = data;
   shopOverlay?.classList.add('hidden');
+  resultOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1045,6 +1051,7 @@ function openPhaserModal(type) {
 function closePhaserModal() {
   phaserUi.modal = null;
   phaserUi.status = '';
+  phaserUi.data = null;
 }
 
 function triggerDomButton(id) {
@@ -1074,6 +1081,7 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'modal-close') return closePhaserModal();
     if (action === 'shop-buy') return purchaseBait(payload?.id, payload?.count || 1, { source: 'phaser' });
     if (action === 'shop-ad-reward') return claimAdReward();
+    if (action === 'result-retry') return retryAfterMissWithAd({ source: 'phaser' });
     return;
   }
   if (action === 'cast') {
@@ -1485,12 +1493,97 @@ function playCatchRodEffect() {
 // ====== 结果弹窗 ======
 const resultOverlay = $('result-overlay');
 const resultContent = $('result-content');
-$('result-close').onclick = () => resultOverlay.classList.add('hidden');
-$('result-close-bottom').onclick = () => resultOverlay.classList.add('hidden');
+$('result-close').onclick = () => { resultOverlay.classList.add('hidden'); closePhaserModal(); };
+$('result-close-bottom').onclick = () => { resultOverlay.classList.add('hidden'); closePhaserModal(); };
+
+function getCatchResultDetails(c) {
+  const rarity = c.kind === 'fish' ? c.item.rarity : c.kind;
+  const color = RARITY_COLOR[rarity] || '#ffd700';
+  const character = c.character || (c.characterId ? GAME_DATA.CHARACTERS.find(ch => ch.id === c.characterId) : null);
+  const detailLines = [];
+  if (c.kind === 'fish') {
+    detailLines.push(`重量：${c.weight} kg`);
+    detailLines.push(c.diamondValue ? `售价：${c.diamondValue} 钻石` : `单价：${c.item.price} 金/kg`);
+  } else if (c.kind === 'character_shard') {
+    const required = c.shardsRequired || GAME_DATA.CHARACTER_SHARDS_REQUIRED || 10;
+    const progress = c.unlockedCharacter ? required : (c.shardProgress || 0);
+    const characterName = character ? character.name : c.item.name;
+    detailLines.push(`${characterName} 碎片：${progress} / ${required}`);
+  }
+  const baitDrops = c.baitDrops || (c.baitDrop ? [c.baitDrop] : []);
+  const rewardLines = [];
+  if (c.value) rewardLines.push(`+${c.value} 金币`);
+  if (c.diamondValue) rewardLines.push(`+${c.diamondValue} 钻石`);
+  if (c.diamonds) rewardLines.push(`额外 +${c.diamonds} 钻石`);
+  for (const drop of baitDrops) rewardLines.push(`获得 ${BAITS[drop.id].name} ×${drop.count}`);
+  if (c.unlockedRod) rewardLines.push('解锁黑丝鱼竿');
+  if (c.unlockedCharacter && character) rewardLines.push(`解锁角色 ${character.name}`);
+  if (c.petBonusCoins) rewardLines.push(`宠物加成 +${c.petBonusCoins} 金币`);
+  if (c.petBonusDiamonds) rewardLines.push(`宠物加成 +${c.petBonusDiamonds} 钻石`);
+  return {
+    type: 'result',
+    title: '钓获成功',
+    icon: c.item.icon || '🎣',
+    name: c.item.name,
+    rarity,
+    rarityName: RARITY_NAME[rarity] || rarity,
+    color,
+    character,
+    detailLines,
+    rewardLines,
+    baitDrops,
+    statusText: `钓到了 ${c.item.name}！${rewardLines.join('，')}`,
+  };
+}
+
+function getMissResultDetails(msg) {
+  const canRetry = !isAdOnCooldown();
+  return {
+    type: 'miss',
+    title: '鱼跑了',
+    icon: '💧',
+    message: msg,
+    canRetry,
+    retryLabel: canRetry ? '看广告再来一次' : `冷却中 ${getAdCooldownRemain()}s`,
+  };
+}
+
+function retryAfterMissWithAd(options = {}) {
+  const source = options.source || 'dom';
+  if (isAdOnCooldown()) {
+    const msg = `广告冷却中，请${getAdCooldownRemain()}秒后再试`;
+    if (source === 'phaser') phaserUi.status = msg;
+    showAdToast(msg);
+    return;
+  }
+  const grantRewardAndRetry = (showToast = false) => {
+    user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
+    user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
+    refreshUI();
+    saveUser('wallet');
+    resultOverlay.classList.add('hidden');
+    closePhaserModal();
+    if (showToast) showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石，再来一次！`);
+    startCast();
+  };
+  if (typeof window.H5Union === 'undefined') {
+    adLastWatchTime = Date.now();
+    grantRewardAndRetry(true);
+    return;
+  }
+  if (source === 'phaser') phaserUi.status = '广告播放中...';
+  showRewardedAd(() => grantRewardAndRetry(false));
+}
 
 function showResult(c) {
   const retryBox = $('ad-retry-box');
   if (retryBox) retryBox.classList.add('hidden');
+  const resultDetails = getCatchResultDetails(c);
+  if (phaserRenderer) {
+    openPhaserModal('result', resultDetails);
+    statusEl.textContent = resultDetails.statusText;
+    return;
+  }
   const rarity = c.kind === 'fish' ? c.item.rarity : c.kind;
   const color = RARITY_COLOR[rarity];
   const character = c.character || (c.characterId ? GAME_DATA.CHARACTERS.find(ch => ch.id === c.characterId) : null);
@@ -1509,7 +1602,7 @@ function showResult(c) {
   const coinLine = c.value ? `<div class="value">+${c.value} 金币</div>` : '';
   const saleDiamondLine = c.diamondValue ? `<div class="diamond-value">+${c.diamondValue} 钻石</div>` : '';
   const diamondLine = c.diamonds ? `<div class="diamond-value">额外 +${c.diamonds} 钻石</div>` : '';
-  const baitDrops = c.baitDrops || (c.baitDrop ? [c.baitDrop] : []);
+  const baitDrops = resultDetails.baitDrops;
   const baitDropLine = baitDrops.map(drop => `<div class="bait-drop">获得 ${BAITS[drop.id].name} ×${drop.count}</div>`).join('');
   const rodLine = c.unlockedRod ? '<div class="rod-unlock">解锁 黑丝鱼竿</div>' : '';
   const characterLine = c.unlockedCharacter && character
@@ -1534,17 +1627,15 @@ function showResult(c) {
     </div>
   `;
   resultOverlay.classList.remove('hidden');
-  const rewards = [];
-  if (c.value) rewards.push(`+${c.value} 金币`);
-  if (c.diamondValue) rewards.push(`+${c.diamondValue} 钻石`);
-  if (c.diamonds) rewards.push(`额外 +${c.diamonds} 钻石`);
-  for (const drop of baitDrops) rewards.push(`获得 ${BAITS[drop.id].name} ×${drop.count}`);
-  if (c.unlockedRod) rewards.push('解锁黑丝鱼竿');
-  if (c.unlockedCharacter && character) rewards.push(`解锁角色 ${character.name}`);
-  statusEl.textContent = `钓到了 ${c.item.name}！${rewards.join('，')}`;
+  statusEl.textContent = resultDetails.statusText;
 }
 
 function showMiss(msg) {
+  if (phaserRenderer) {
+    openPhaserModal('miss', getMissResultDetails(msg));
+    statusEl.textContent = msg;
+    return;
+  }
   resultContent.innerHTML = `
     <div class="result-fish miss">
       <span class="icon">💧</span>
@@ -1558,25 +1649,7 @@ function showMiss(msg) {
     retryBtn.disabled = false;
     retryBtn.onclick = () => {
       retryBox.classList.add('hidden');
-      if (typeof window.H5Union === 'undefined') {
-        adLastWatchTime = Date.now();
-        user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
-        user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
-        refreshUI();
-        saveUser('wallet');
-        resultOverlay.classList.add('hidden');
-        showAdToast(`🎉 获得 ${AD_REWARD_DIAMONDS} 钻石，再来一次！`);
-        startCast();
-        return;
-      }
-      showRewardedAd(() => {
-        user.diamonds = (user.diamonds || 0) + AD_REWARD_DIAMONDS;
-        user.stats.totalDiamonds = (user.stats.totalDiamonds || 0) + AD_REWARD_DIAMONDS;
-        refreshUI();
-        saveUser('wallet');
-        resultOverlay.classList.add('hidden');
-        startCast();
-      });
+      retryAfterMissWithAd({ source: 'dom' });
     };
   } else if (retryBox) {
     retryBox.classList.add('hidden');
