@@ -23,6 +23,7 @@
       characters.forEach((character) => {
         if (character.spriteImage) this.load.image(`character:${character.id}`, character.spriteImage);
       });
+      this.load.image('group-qr', 'group_qr_code.jpg');
     }
 
     create() {
@@ -263,6 +264,8 @@
       if (modal.type === 'accessory') this.drawAccessoryModal(modal);
       if (modal.type === 'rank') this.drawRankModal(modal);
       if (modal.type === 'gacha') this.drawGachaModal(modal);
+      if (modal.type === 'redeem') this.drawRedeemModal(modal);
+      if (modal.type === 'share') this.drawShareModal(modal);
     }
 
     drawShopModal(modal) {
@@ -902,6 +905,86 @@
       if (modal.status && summary.length === 0) {
         this.drawLabel(modal.status, x + w - 154, y + h - 24, modal.status.includes('不足') || modal.status.includes('错误') ? '#ffae42' : '#4ec9b0', 11);
       }
+    }
+
+    drawRedeemModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 86;
+      const y = 58;
+      const w = WIDTH - 172;
+      const h = HEIGHT - 116;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '兑换码', WIDTH / 2, y + 32, '#ffd700', 20);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+
+      this.drawLabel('输入兑换码获取奖励', WIDTH / 2, y + 66, '#cbd5e1', 12);
+      const inputX = x + 54;
+      const inputY = y + 82;
+      const inputW = w - 108;
+      this.pixel.fillStyle(0x0b1220, 0.98);
+      this.pixel.fillRect(inputX, inputY, inputW, 34);
+      this.pixel.lineStyle(2, modal.canSubmit ? 0x4ec9b0 : 0x334155, 1);
+      this.pixel.strokeRect(inputX, inputY, inputW, 34);
+      const code = modal.code || '';
+      this.drawLabel(code || '键盘输入，最多20位', WIDTH / 2, inputY + 25, code ? '#ffffff' : '#64748b', 14);
+      this.drawLabel('Backspace 删除 / Enter 兑换 / Esc 关闭', WIDTH / 2, inputY + 55, '#94a3b8', 10);
+
+      const btnY = y + 150;
+      this.drawButton('redeem-paste', '粘贴', x + 72, btnY, 74, 28, false);
+      this.drawButton('redeem-clear', '清空', x + 166, btnY, 74, 28, false, null, !code);
+      this.drawButton('redeem-submit', '兑换', x + w - 146, btnY, 74, 28, false, null, !modal.canSubmit);
+      if (modal.status) {
+        const isError = modal.status.includes('失败') || modal.status.includes('错误') || modal.status.includes('请输入') || modal.status.includes('无法');
+        this.drawLabel(String(modal.status).slice(0, 42), WIDTH / 2, y + h - 28, isError ? '#ffae42' : '#4ec9b0', 11);
+      }
+    }
+
+    drawShareModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 58;
+      const y = 36;
+      const w = WIDTH - 116;
+      const h = HEIGHT - 72;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '分享到微信', WIDTH / 2, y + 30, '#ffd700', 18);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+
+      const leftX = x + 28;
+      const linkY = y + 82;
+      this.drawLabel(modal.rewardText || '复制链接可领取奖励', leftX + 152, y + 56, '#cbd5e1', 12);
+      this.pixel.fillStyle(0x0b1220, 0.98);
+      this.pixel.fillRect(leftX, linkY, 318, 38);
+      this.pixel.lineStyle(2, 0x334155, 1);
+      this.pixel.strokeRect(leftX, linkY, 318, 38);
+      this.drawLabel((modal.link || '').replace(/^https?:\/\//, '').slice(0, 34), leftX + 159, linkY + 25, '#e8e8e8', 10);
+      this.drawButton('share-copy', modal.rewardClaimed ? '复制链接' : '复制领奖', leftX + 88, linkY + 56, 96, 28, false);
+      const statusColor = modal.status && modal.status.includes('失败') ? '#ffae42' : '#4ec9b0';
+      this.drawLabel(modal.status || '复制后打开微信发送给好友', leftX + 168, linkY + 96, statusColor, 11);
+
+      const qrX = x + w - 132;
+      const qrY = y + 70;
+      this.pixel.fillStyle(0x0b1220, 0.96);
+      this.pixel.fillRect(qrX - 14, qrY - 14, 124, 146);
+      this.pixel.lineStyle(2, 0x334155, 1);
+      this.pixel.strokeRect(qrX - 14, qrY - 14, 124, 146);
+      if (this.textures.exists('group-qr')) {
+        const image = this.add.image(qrX + 48, qrY + 46, 'group-qr');
+        image.setOrigin(0.5);
+        image.setDisplaySize(102, 102);
+        this.spriteLayer.add(image);
+      } else {
+        this.drawLabel('微信群二维码', qrX + 48, qrY + 48, '#94a3b8', 10);
+      }
+      this.drawLabel('微信群二维码', qrX + 48, qrY + 126, '#94a3b8', 10);
+      this.drawLabel(modal.rewardClaimed ? '今日奖励已领取' : '今日可领取 10 金币', x + w / 2, y + h - 32, modal.rewardClaimed ? '#94a3b8' : '#ffd700', 12);
     }
 
     drawHitbar(hitbar) {

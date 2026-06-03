@@ -1042,6 +1042,8 @@ function getPhaserModalSnapshot() {
   if (phaserUi.modal === 'accessory') return getPhaserAccessorySnapshot();
   if (phaserUi.modal === 'rank') return getPhaserRankSnapshot();
   if (phaserUi.modal === 'gacha') return getPhaserGachaSnapshot();
+  if (phaserUi.modal === 'redeem') return getPhaserRedeemSnapshot();
+  if (phaserUi.modal === 'share') return getPhaserShareSnapshot();
   return null;
 }
 
@@ -1059,6 +1061,8 @@ function openPhaserModal(type, data = null) {
   accessoryOverlay?.classList.add('hidden');
   rankOverlay?.classList.add('hidden');
   gachaOverlay?.classList.add('hidden');
+  redeemOverlay?.classList.add('hidden');
+  shareOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1113,6 +1117,10 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'gacha-tab') return setGachaTab(payload?.currency, { source: 'phaser' });
     if (action === 'gacha-season') return setGachaSeason(payload?.currency, payload?.season, { source: 'phaser' });
     if (action === 'gacha-draw') return doGacha(payload?.count || 1, payload?.currency, payload?.season, { source: 'phaser' });
+    if (action === 'redeem-submit') return redeemCode({ source: 'phaser' });
+    if (action === 'redeem-clear') return clearPhaserRedeemCode();
+    if (action === 'redeem-paste') return pastePhaserRedeemCode();
+    if (action === 'share-copy') return copyShareLink({ source: 'phaser' });
     return;
   }
   if (action === 'cast') {
@@ -1136,9 +1144,9 @@ function handlePhaserAction(action, payload = null) {
   if (action === 'accessory') return openPhaserAccessory();
   if (action === 'rank') return openPhaserRank();
   if (action === 'gacha') return openPhaserGacha();
+  if (action === 'redeem') return openPhaserRedeem();
+  if (action === 'share') return openPhaserShare();
   const domButtons = {
-    redeem: 'redeem-btn',
-    share: 'share-btn',
     logout: 'logout-btn',
   };
   if (domButtons[action]) triggerDomButton(domButtons[action]);
@@ -1191,6 +1199,7 @@ function startCast(preferredBaitId = null, options = {}) {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (phaserUi.modal === 'redeem' && handlePhaserRedeemKey(e)) return;
   if (e.code === 'Space') {
     e.preventDefault();
     if (state.phase === 'idle') {
@@ -2754,7 +2763,9 @@ function updateRodInfo() {
 
 // ====== 兑换码 ======
 const redeemOverlay = $('redeem-overlay');
+let phaserRedeemCode = '';
 $('redeem-btn').onclick = () => {
+  if (openPhaserRedeem()) return;
   $('redeem-input').value = '';
   $('redeem-status').textContent = '';
   $('redeem-status').className = 'redeem-status';
@@ -2764,10 +2775,81 @@ $('redeem-btn').onclick = () => {
 $('redeem-submit').onclick = redeemCode;
 $('redeem-input').onkeydown = (e) => { if (e.key === 'Enter') redeemCode(); };
 
-async function redeemCode() {
-  const code = $('redeem-input').value.trim();
+function getPhaserRedeemSnapshot() {
+  return {
+    type: 'redeem',
+    title: '兑换码',
+    code: phaserRedeemCode,
+    status: phaserUi.status,
+    canSubmit: phaserRedeemCode.trim().length > 0,
+  };
+}
+
+function openPhaserRedeem() {
+  phaserRedeemCode = '';
+  if (!openPhaserModal('redeem')) return false;
+  phaserUi.status = '键盘输入兑换码，Enter 提交';
+  return true;
+}
+
+function clearPhaserRedeemCode() {
+  phaserRedeemCode = '';
+  phaserUi.status = '已清空';
+}
+
+async function pastePhaserRedeemCode() {
+  try {
+    const text = await navigator.clipboard.readText();
+    phaserRedeemCode = String(text || '').trim().slice(0, 20);
+    phaserUi.status = phaserRedeemCode ? '已粘贴兑换码' : '剪贴板为空';
+  } catch (e) {
+    phaserUi.status = '无法读取剪贴板';
+  }
+}
+
+function handlePhaserRedeemKey(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closePhaserModal();
+    return true;
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    redeemCode({ source: 'phaser' });
+    return true;
+  }
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    phaserRedeemCode = phaserRedeemCode.slice(0, -1);
+    phaserUi.status = '';
+    return true;
+  }
+  if (e.key.length === 1 && /^[a-zA-Z0-9_-]$/.test(e.key) && phaserRedeemCode.length < 20) {
+    e.preventDefault();
+    phaserRedeemCode += e.key;
+    phaserUi.status = '';
+    return true;
+  }
+  return false;
+}
+
+async function redeemCode(options = {}) {
+  const usePhaser = options.source === 'phaser';
+  const code = usePhaser ? phaserRedeemCode.trim() : $('redeem-input').value.trim();
   const status = $('redeem-status');
-  if (!code) { status.textContent = '请输入兑换码'; status.className = 'redeem-status error'; return; }
+  const setStatus = (message, kind = 'info') => {
+    if (usePhaser) {
+      phaserUi.status = message;
+    } else {
+      status.textContent = message;
+      status.className = 'redeem-status ' + kind;
+    }
+  };
+  if (!code) {
+    setStatus('请输入兑换码', 'error');
+    return;
+  }
+  if (usePhaser) phaserUi.status = '兑换中...';
   try {
     const res = await fetch(API_BASE + '/api/redeem/claim', {
       method: 'POST',
@@ -2783,69 +2865,109 @@ async function redeemCode() {
       let reward = '';
       if (rewardData.coins) reward += `+${rewardData.coins} 金币 `;
       if (rewardData.diamonds) reward += `+${rewardData.diamonds} 钻石 `;
-      status.innerHTML = `兑换成功！<br>${data.desc} ${reward}🎉`;
-      status.className = 'redeem-status success';
-      $('redeem-input').value = '';
+      if (usePhaser) {
+        phaserUi.status = `兑换成功！${data.desc} ${reward}🎉`;
+        phaserRedeemCode = '';
+      } else {
+        status.innerHTML = `兑换成功！<br>${data.desc} ${reward}🎉`;
+        status.className = 'redeem-status success';
+        $('redeem-input').value = '';
+      }
     } else {
-      status.textContent = data.error || '兑换失败';
-      status.className = 'redeem-status error';
+      setStatus(data.error || '兑换失败', 'error');
     }
   } catch (e) {
-    status.textContent = '网络错误，请重试';
-    status.className = 'redeem-status error';
+    setStatus('网络错误，请重试', 'error');
   }
 }
 
 // ====== 分享功能 ======
 const shareOverlay = $('share-overlay');
-$('share-btn').onclick = () => { openShare(); shareOverlay.classList.remove('hidden'); };
+$('share-btn').onclick = () => {
+  if (openPhaserShare()) return;
+  openShare();
+  shareOverlay.classList.remove('hidden');
+};
+
+function getShareLink() {
+  return window.location.origin + '?ref=' + encodeURIComponent(user.username);
+}
+
+function getShareInitialStatus() {
+  const todayKey = todayCN();
+  return user.lastShareDate === todayKey ? '今日已领取分享奖励' : '';
+}
 
 function openShare() {
-  const link = window.location.origin + '?ref=' + encodeURIComponent(user.username);
-  $('share-link').value = link;
+  $('share-link').value = getShareLink();
   const status = $('share-status');
+  const initialStatus = getShareInitialStatus();
+  status.textContent = initialStatus;
+  status.className = initialStatus ? 'share-status info' : 'share-status';
+}
+
+function getPhaserShareSnapshot() {
+  const link = getShareLink();
+  return {
+    type: 'share',
+    title: '分享到微信',
+    link,
+    status: phaserUi.status,
+    rewardClaimed: user.lastShareDate === todayCN(),
+    rewardText: '复制链接可领取 10 金币奖励',
+    qrImage: 'group-qr',
+  };
+}
+
+function openPhaserShare() {
+  if (!openPhaserModal('share')) return false;
+  phaserUi.status = getShareInitialStatus();
+  $('share-link').value = getShareLink();
+  return true;
+}
+
+function applyShareCopyReward() {
   const todayKey = todayCN();
-  if (user.lastShareDate === todayKey) {
-    status.textContent = '今日已领取分享奖励';
-    status.className = 'share-status info';
-  } else {
-    status.textContent = '';
-    status.className = 'share-status';
+  if (user.lastShareDate !== todayKey) {
+    user.money += 10;
+    user.lastShareDate = todayKey;
+    refreshUI();
+    saveUser('share');
+    return '链接已复制！获得 10 金币奖励 🎉';
+  }
+  return '链接已复制！（今日奖励已领取）';
+}
+
+async function copyShareLink(options = {}) {
+  const usePhaser = options.source === 'phaser';
+  const link = getShareLink();
+  const setStatus = (message, kind = 'info') => {
+    if (usePhaser) {
+      phaserUi.status = message;
+    } else {
+      const status = $('share-status');
+      status.textContent = message;
+      status.className = 'share-status ' + kind;
+    }
+  };
+  try {
+    await navigator.clipboard.writeText(link);
+    setStatus(applyShareCopyReward(), 'success');
+  } catch (e) {
+    if (!usePhaser) {
+      const input = $('share-link');
+      input.value = link;
+      input.select();
+      document.execCommand('copy');
+      setStatus(applyShareCopyReward(), 'success');
+      return;
+    }
+    phaserUi.status = '复制失败，请手动复制链接';
   }
 }
 
 $('copy-link-btn').onclick = () => {
-  const input = $('share-link');
-  const status = $('share-status');
-  navigator.clipboard.writeText(input.value).then(() => {
-    const todayKey = todayCN();
-    if (user.lastShareDate !== todayKey) {
-      user.money += 10;
-      user.lastShareDate = todayKey;
-      refreshUI();
-      saveUser('share');
-      status.textContent = '链接已复制！获得 10 金币奖励 🎉';
-      status.className = 'share-status success';
-    } else {
-      status.textContent = '链接已复制！（今日奖励已领取）';
-      status.className = 'share-status info';
-    }
-  }).catch(() => {
-    input.select();
-    document.execCommand('copy');
-    const todayKey = todayCN();
-    if (user.lastShareDate !== todayKey) {
-      user.money += 10;
-      user.lastShareDate = todayKey;
-      refreshUI();
-      saveUser('share');
-      status.textContent = '链接已复制！获得 10 金币奖励 🎉';
-      status.className = 'share-status success';
-    } else {
-      status.textContent = '链接已复制！（今日奖励已领取）';
-      status.className = 'share-status info';
-    }
-  });
+  copyShareLink();
 };
 
 // ====== 手机端按钮 ======
