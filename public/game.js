@@ -1041,6 +1041,7 @@ function getPhaserModalSnapshot() {
   if (phaserUi.modal === 'pet') return getPhaserPetSnapshot();
   if (phaserUi.modal === 'accessory') return getPhaserAccessorySnapshot();
   if (phaserUi.modal === 'rank') return getPhaserRankSnapshot();
+  if (phaserUi.modal === 'gacha') return getPhaserGachaSnapshot();
   return null;
 }
 
@@ -1057,6 +1058,7 @@ function openPhaserModal(type, data = null) {
   petOverlay?.classList.add('hidden');
   accessoryOverlay?.classList.add('hidden');
   rankOverlay?.classList.add('hidden');
+  gachaOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1108,6 +1110,9 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'rank-tab') return setPhaserRankTab(payload?.id);
     if (action === 'rank-page') return setPhaserRankPage(payload?.delta || 0);
     if (action === 'rank-refresh') return loadLeaderboard({ source: 'phaser' });
+    if (action === 'gacha-tab') return setGachaTab(payload?.currency, { source: 'phaser' });
+    if (action === 'gacha-season') return setGachaSeason(payload?.currency, payload?.season, { source: 'phaser' });
+    if (action === 'gacha-draw') return doGacha(payload?.count || 1, payload?.currency, payload?.season, { source: 'phaser' });
     return;
   }
   if (action === 'cast') {
@@ -1130,8 +1135,8 @@ function handlePhaserAction(action, payload = null) {
   if (action === 'pet') return openPhaserPet();
   if (action === 'accessory') return openPhaserAccessory();
   if (action === 'rank') return openPhaserRank();
+  if (action === 'gacha') return openPhaserGacha();
   const domButtons = {
-    gacha: 'gacha-btn',
     redeem: 'redeem-btn',
     share: 'share-btn',
     logout: 'logout-btn',
@@ -2880,8 +2885,10 @@ mobileBtn.addEventListener('mousedown', handleMobileAction);
 // ====== 抽奖系统 ======
 const gachaOverlay = $('gacha-overlay');
 let activeGachaCurrency = 'coins';
+let lastGachaResults = [];
 $('gacha-btn').onclick = () => {
-  $('gacha-result').classList.add('hidden');
+  if (openPhaserGacha()) return;
+  clearGachaResult();
   setGachaTab(activeGachaCurrency);
   gachaOverlay.classList.remove('hidden');
 };
@@ -2903,32 +2910,196 @@ $('gacha-diamond-s3-ten').onclick = () => doGacha(10, 'diamonds', 3);
 
 document.querySelectorAll('[data-diamond-season]').forEach((btn) => {
   btn.onclick = () => {
-    activeGachaDiamondSeason = parseInt(btn.dataset.diamondSeason);
-    document.querySelectorAll('[data-diamond-season]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.diamondSeason) === activeGachaDiamondSeason));
-    $('gacha-diamond-s1').classList.toggle('hidden', activeGachaDiamondSeason !== 1);
-    $('gacha-diamond-s2').classList.toggle('hidden', activeGachaDiamondSeason !== 2);
-    $('gacha-diamond-s3').classList.toggle('hidden', activeGachaDiamondSeason !== 3);
-    $('gacha-result').classList.add('hidden');
+    setGachaSeason('diamonds', parseInt(btn.dataset.diamondSeason, 10));
   };
 });
 document.querySelectorAll('[data-coin-season]').forEach((btn) => {
   btn.onclick = () => {
-    activeGachaCoinSeason = parseInt(btn.dataset.coinSeason);
-    document.querySelectorAll('[data-coin-season]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.coinSeason) === activeGachaCoinSeason));
-    $('gacha-coin-s1').classList.toggle('hidden', activeGachaCoinSeason !== 1);
-    $('gacha-coin-s2').classList.toggle('hidden', activeGachaCoinSeason !== 2);
-    $('gacha-result').classList.add('hidden');
+    setGachaSeason('coins', parseInt(btn.dataset.coinSeason, 10));
   };
 });
 
-function setGachaTab(currency) {
+const GACHA_PRIZES = {
+  coins: {
+    1: [
+      { label: '🌙 神秘暗夜竿', chance: '0.1%', tone: 'legendary' },
+      { label: '🐼 熊猫竿', chance: '1%', tone: 'rare' },
+      { label: '💰 1000金币', chance: '8.9%', tone: 'coin' },
+      { label: '🪙 1金币', chance: '90%', tone: 'common' },
+    ],
+    2: [
+      { label: '🐱 小猫咪 / 🐶 小狗狗', chance: '各0.1%', tone: 'ultimate' },
+      { label: '🦜 鹦鹉 / 🐧 企鹅 / 🐰 兔子 / 🦊 狐狸', chance: '各0.05%', tone: 'legendary' },
+      { label: '🐲 小龙 / 🦄 独角兽', chance: '各0.01%', tone: 'legendary' },
+      { label: '💎 10钻石', chance: '10%', tone: 'diamond' },
+      { label: '🪙 1金币', chance: '89.58%', tone: 'common' },
+    ],
+  },
+  diamonds: {
+    1: [
+      { label: '🔥 极品火麒麟鱼竿', chance: '1%', tone: 'ultimate' },
+      { label: '🐢 极品绿玄武鱼竿', chance: '1%', tone: 'ultimate' },
+      { label: '💎 10钻石', chance: '8%', tone: 'diamond' },
+      { label: '💰 1000金币', chance: '90%', tone: 'coin' },
+    ],
+    2: [
+      { label: '🎧 耳机竿', chance: '0.01%', tone: 'ultimate' },
+      { label: '🍬 Candy竿', chance: '0.99%', tone: 'legendary' },
+      { label: '💎 10钻石', chance: '10%', tone: 'diamond' },
+      { label: '💰 1000金币', chance: '90%', tone: 'coin' },
+    ],
+    3: [
+      { label: '💠 鳞光坠', chance: '10%', tone: 'rare' },
+      { label: '🌀 潮汐环', chance: '10%', tone: 'rare' },
+      { label: '✨ 星砂针', chance: '10%', tone: 'legendary' },
+      { label: '💰 100金币', chance: '70%', tone: 'coin' },
+    ],
+  },
+};
+
+function clearGachaResult() {
+  lastGachaResults = [];
+  $('gacha-result').classList.add('hidden');
+}
+
+function getGachaSeason(currency = activeGachaCurrency) {
+  return currency === 'diamonds' ? activeGachaDiamondSeason : activeGachaCoinSeason;
+}
+
+function setGachaTab(currency, options = {}) {
   activeGachaCurrency = currency === 'diamonds' ? 'diamonds' : 'coins';
   document.querySelectorAll('[data-gacha]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.gacha === activeGachaCurrency);
   });
   $('gacha-coins-panel').classList.toggle('hidden', activeGachaCurrency !== 'coins');
   $('gacha-diamonds-panel').classList.toggle('hidden', activeGachaCurrency !== 'diamonds');
-  $('gacha-result').classList.add('hidden');
+  clearGachaResult();
+  if (options.source === 'phaser') phaserUi.status = '';
+}
+
+function setGachaSeason(currency, season, options = {}) {
+  const nextSeason = parseInt(season, 10) || 1;
+  if (currency === 'diamonds') {
+    activeGachaDiamondSeason = Math.min(Math.max(nextSeason, 1), 3);
+    document.querySelectorAll('[data-diamond-season]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.diamondSeason, 10) === activeGachaDiamondSeason));
+    $('gacha-diamond-s1').classList.toggle('hidden', activeGachaDiamondSeason !== 1);
+    $('gacha-diamond-s2').classList.toggle('hidden', activeGachaDiamondSeason !== 2);
+    $('gacha-diamond-s3').classList.toggle('hidden', activeGachaDiamondSeason !== 3);
+  } else {
+    activeGachaCoinSeason = Math.min(Math.max(nextSeason, 1), 2);
+    document.querySelectorAll('[data-coin-season]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.coinSeason, 10) === activeGachaCoinSeason));
+    $('gacha-coin-s1').classList.toggle('hidden', activeGachaCoinSeason !== 1);
+    $('gacha-coin-s2').classList.toggle('hidden', activeGachaCoinSeason !== 2);
+  }
+  clearGachaResult();
+  if (options.source === 'phaser') phaserUi.status = '';
+}
+
+function getGachaResultItem(r) {
+  let cls = 'gacha-item';
+  let icon;
+  let name;
+  let tone = 'common';
+  if (r.type === 'pet') {
+    const pet = GAME_DATA.PETS.find(p => p.id === r.id);
+    icon = pet ? pet.icon : '🐾';
+    name = pet ? pet.name : r.id;
+    cls += ' gi-ultimate';
+    tone = 'ultimate';
+  } else if (r.type === 'rod') {
+    const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
+    icon = (rod && rod.emoji) || '🎣';
+    name = rod ? rod.name : r.id;
+    tone = (rod && rod.rarity) || 'rare';
+    cls += ' gi-' + tone;
+  } else if (r.type === 'accessory') {
+    const accessory = GAME_DATA.ACCESSORIES.find(a => a.id === r.id);
+    icon = accessory ? accessory.icon : '💍';
+    name = `${accessory ? accessory.name : r.id} ${r.star || 1}★`;
+    cls += ' gi-accessory';
+    tone = 'accessory';
+  } else if (r.type === 'diamonds') {
+    icon = '💎';
+    name = r.diamonds + ' 钻石';
+    cls += ' gi-diamond';
+    tone = 'diamond';
+  } else {
+    icon = r.coins >= 1000 ? '💰' : '🪙';
+    name = r.coins + ' 金币';
+    cls += r.coins >= 1000 ? ' gi-coin' : ' gi-common';
+    tone = r.coins >= 1000 ? 'coin' : 'common';
+  }
+  return { cls, icon, name, tone };
+}
+
+function getGachaSummaryParts(results) {
+  const rods = results.filter(r => r.type === 'rod');
+  const pets = results.filter(r => r.type === 'pet');
+  const accessories = results.filter(r => r.type === 'accessory');
+  const totalCoins = results.filter(r => r.type === 'coins').reduce((s, r) => s + r.coins, 0);
+  const totalDiamonds = results.filter(r => r.type === 'diamonds').reduce((s, r) => s + r.diamonds, 0);
+  const summaryParts = [];
+  if (pets.length > 0) {
+    summaryParts.push(...pets.map((r) => {
+      const pet = GAME_DATA.PETS.find(p => p.id === r.id);
+      return `🎉 获得宠物 ${pet ? pet.icon + ' ' + pet.name : r.id}！`;
+    }));
+  }
+  if (rods.length > 0) {
+    summaryParts.push(...rods.map((r) => {
+      const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
+      return `🎉 获得 ${rod ? rod.name : r.id}！`;
+    }));
+  }
+  if (accessories.length > 0) {
+    summaryParts.push(...accessories.map((r) => {
+      const accessory = GAME_DATA.ACCESSORIES.find(a => a.id === r.id);
+      return `🎉 获得首饰 ${accessory ? accessory.icon + ' ' + accessory.name : r.id} ${r.star || 1}★！`;
+    }));
+  }
+  if (totalDiamonds > 0) summaryParts.push(`💎 共获得 ${totalDiamonds} 钻石`);
+  if (totalCoins > 0) summaryParts.push(`💰 共获得 ${totalCoins} 金币`);
+  return summaryParts;
+}
+
+function getPhaserGachaSnapshot() {
+  const currency = activeGachaCurrency === 'diamonds' ? 'diamonds' : 'coins';
+  const season = getGachaSeason(currency);
+  const singleCost = getGachaCost(1, currency, season);
+  const tenCost = getGachaCost(10, currency, season);
+  const balance = currency === 'diamonds' ? (user.diamonds || 0) : user.money;
+  return {
+    type: 'gacha',
+    title: '幸运抽奖',
+    money: user.money,
+    diamonds: user.diamonds || 0,
+    currency,
+    season,
+    status: phaserUi.status,
+    currencyTabs: [
+      { currency: 'coins', label: '金币抽奖', active: currency === 'coins' },
+      { currency: 'diamonds', label: '钻石抽奖', active: currency === 'diamonds' },
+    ],
+    seasonTabs: Object.keys(GACHA_PRIZES[currency]).map(id => ({
+      currency,
+      season: Number(id),
+      label: `第${id}期`,
+      active: Number(id) === season,
+    })),
+    prizes: GACHA_PRIZES[currency][season] || [],
+    drawButtons: [
+      { label: `单抽 ${currency === 'diamonds' ? '💎' : '💰'}${singleCost}`, count: 1, cost: singleCost, disabled: balance < singleCost },
+      { label: `十连 ${currency === 'diamonds' ? '💎' : '💰'}${tenCost}`, count: 10, cost: tenCost, disabled: balance < tenCost },
+    ],
+    results: lastGachaResults.map(getGachaResultItem),
+    summary: getGachaSummaryParts(lastGachaResults),
+  };
+}
+
+function openPhaserGacha() {
+  clearGachaResult();
+  setGachaTab(activeGachaCurrency, { source: 'phaser' });
+  return openPhaserModal('gacha');
 }
 
 function countUnlockedBaitDex(baitId) {
@@ -2943,14 +3114,28 @@ function getGachaCost(count, currency, season) {
   return count === 1 ? 1000 : 9000;
 }
 
-async function doGacha(count, currency = activeGachaCurrency, season) {
+async function doGacha(count, currency = activeGachaCurrency, season, options = {}) {
+  const source = options.source || 'dom';
+  const usePhaser = source === 'phaser';
+  currency = currency === 'diamonds' ? 'diamonds' : 'coins';
   if (season === undefined) season = currency === 'coins' ? activeGachaCoinSeason : activeGachaDiamondSeason;
   const cost = getGachaCost(count, currency, season);
   if (currency === 'diamonds') {
-    if ((user.diamonds || 0) < cost) { alert('钻石不足！需要 ' + cost + ' 钻石'); return; }
+    if ((user.diamonds || 0) < cost) {
+      const msg = '钻石不足！需要 ' + cost + ' 钻石';
+      if (usePhaser) phaserUi.status = msg;
+      else alert(msg);
+      return;
+    }
   } else if (user.money < cost) {
-    alert('金币不足！需要 ' + cost + ' 金币');
+    const msg = '金币不足！需要 ' + cost + ' 金币';
+    if (usePhaser) phaserUi.status = msg;
+    else alert(msg);
     return;
+  }
+  if (usePhaser) {
+    phaserUi.status = '抽奖中...';
+    lastGachaResults = [];
   }
   try {
     const res = await fetch(API_BASE + '/api/gacha/draw', {
@@ -2959,13 +3144,23 @@ async function doGacha(count, currency = activeGachaCurrency, season) {
       body: JSON.stringify({ username: user.username, count, currency, season }),
     });
     const data = await res.json();
-    if (data.error) { alert(data.error); return; }
+    if (data.error) {
+      if (usePhaser) phaserUi.status = data.error;
+      else alert(data.error);
+      return;
+    }
     Object.assign(user, data.patch || {});
     ensureUserDefaults();
     refreshUI();
-    showGachaResult(data.results);
+    lastGachaResults = data.results || [];
+    if (usePhaser) {
+      phaserUi.status = count === 10 ? '十连抽奖完成' : '单抽完成';
+    } else {
+      showGachaResult(lastGachaResults);
+    }
   } catch (e) {
-    alert('网络错误，请重试');
+    if (usePhaser) phaserUi.status = '网络错误，请重试';
+    else alert('网络错误，请重试');
   }
 }
 
@@ -2974,63 +3169,12 @@ function showGachaResult(results) {
   el.classList.remove('hidden');
   let html = '<div class="gacha-result-items">';
   for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    let cls = 'gacha-item';
-    let icon, name;
-    if (r.type === 'pet') {
-      const pet = GAME_DATA.PETS.find(p => p.id === r.id);
-      icon = pet ? pet.icon : '🐾';
-      name = pet ? pet.name : r.id;
-      cls += ' gi-ultimate';
-    } else if (r.type === 'rod') {
-      const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
-      icon = (rod && rod.emoji) || '🎣';
-      name = rod ? rod.name : r.id;
-      cls += ' gi-' + ((rod && rod.rarity) || 'rare');
-    } else if (r.type === 'accessory') {
-      const accessory = GAME_DATA.ACCESSORIES.find(a => a.id === r.id);
-      icon = accessory ? accessory.icon : '💍';
-      name = `${accessory ? accessory.name : r.id} ${r.star || 1}★`;
-      cls += ' gi-accessory';
-    } else if (r.type === 'diamonds') {
-      icon = '💎';
-      name = r.diamonds + ' 钻石';
-      cls += ' gi-diamond';
-    } else {
-      icon = r.coins >= 1000 ? '💰' : '🪙';
-      name = r.coins + ' 金币';
-      cls += r.coins >= 1000 ? ' gi-coin' : ' gi-common';
-    }
+    const item = getGachaResultItem(results[i]);
     const delay = i * 0.1;
-    html += `<div class="${cls}" style="animation-delay:${delay}s"><span class="gi-icon">${icon}</span><span class="gi-name">${name}</span></div>`;
+    html += `<div class="${item.cls}" style="animation-delay:${delay}s"><span class="gi-icon">${item.icon}</span><span class="gi-name">${item.name}</span></div>`;
   }
   html += '</div>';
-  const rods = results.filter(r => r.type === 'rod');
-  const pets = results.filter(r => r.type === 'pet');
-  const accessories = results.filter(r => r.type === 'accessory');
-  const totalCoins = results.filter(r => r.type === 'coins').reduce((s, r) => s + r.coins, 0);
-  const totalDiamonds = results.filter(r => r.type === 'diamonds').reduce((s, r) => s + r.diamonds, 0);
-  const summaryParts = [];
-  if (pets.length > 0) {
-    summaryParts.push(pets.map((r) => {
-      const pet = GAME_DATA.PETS.find(p => p.id === r.id);
-      return `🎉 获得宠物 ${pet ? pet.icon + ' ' + pet.name : r.id}！`;
-    }).join('<br>'));
-  }
-  if (rods.length > 0) {
-    summaryParts.push(rods.map((r) => {
-      const rod = GAME_DATA.GACHA_RODS.find(g => g.id === r.id);
-      return `🎉 获得 ${rod ? rod.name : r.id}！`;
-    }).join('<br>'));
-  }
-  if (accessories.length > 0) {
-    summaryParts.push(accessories.map((r) => {
-      const accessory = GAME_DATA.ACCESSORIES.find(a => a.id === r.id);
-      return `🎉 获得首饰 ${accessory ? accessory.icon + ' ' + accessory.name : r.id} ${r.star || 1}★！`;
-    }).join('<br>'));
-  }
-  if (totalDiamonds > 0) summaryParts.push(`💎 共获得 ${totalDiamonds} 钻石`);
-  if (totalCoins > 0) summaryParts.push(`💰 共获得 ${totalCoins} 金币`);
+  const summaryParts = getGachaSummaryParts(results);
   const summary = `<div class="gacha-summary">${summaryParts.join('<br>')}</div>`;
   el.innerHTML = html + summary;
 }

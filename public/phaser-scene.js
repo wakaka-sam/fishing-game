@@ -262,6 +262,7 @@
       if (modal.type === 'pet') this.drawPetModal(modal);
       if (modal.type === 'accessory') this.drawAccessoryModal(modal);
       if (modal.type === 'rank') this.drawRankModal(modal);
+      if (modal.type === 'gacha') this.drawGachaModal(modal);
     }
 
     drawShopModal(modal) {
@@ -796,6 +797,111 @@
       this.drawButton('rank-page', '>', x + 128, y + h - 44, 34, 28, false, { delta: 1 }, modal.page >= (modal.pageCount || 1) - 1);
       this.drawLabel(`共 ${modal.totalRows || 0} 条`, x + 218, y + h - 36, '#94a3b8', 11);
       this.drawButton('rank-refresh', '刷新', x + w - 78, y + h - 44, 54, 28, false);
+    }
+
+    getToneColor(tone) {
+      return {
+        ultimate: '#ffae42',
+        legendary: '#c4b5fd',
+        rare: '#4ec9b0',
+        coin: '#ffd700',
+        diamond: '#66e6ff',
+        accessory: '#e8d28a',
+        common: '#94a3b8',
+      }[tone] || '#ffd700';
+    }
+
+    drawGachaModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 34;
+      const y = 22;
+      const w = WIDTH - 68;
+      const h = HEIGHT - 44;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '幸运抽奖', WIDTH / 2, y + 28, '#ffd700', 18);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+      this.drawLabel(`金币 ${modal.money || 0}   钻石 ${modal.diamonds || 0}`, x + w - 138, y + 54, '#e8e8e8', 12);
+
+      const currencyTabs = modal.currencyTabs || [];
+      currencyTabs.forEach((tab, index) => {
+        this.drawButton('gacha-tab', tab.label, x + 18 + index * 100, y + 44, 92, 22, tab.active, { currency: tab.currency });
+      });
+
+      const seasonTabs = modal.seasonTabs || [];
+      seasonTabs.forEach((tab, index) => {
+        this.drawButton('gacha-season', tab.label, x + 18 + index * 70, y + 72, 62, 22, tab.active, { currency: tab.currency, season: tab.season });
+      });
+
+      const prizeX = x + 18;
+      const prizeY = y + 106;
+      const prizeW = 236;
+      const prizeH = 144;
+      this.pixel.fillStyle(0x0b1220, 0.96);
+      this.pixel.fillRect(prizeX, prizeY, prizeW, prizeH);
+      this.pixel.lineStyle(2, 0x334155, 1);
+      this.pixel.strokeRect(prizeX, prizeY, prizeW, prizeH);
+      this.drawLabel('奖池概率', prizeX + prizeW / 2, prizeY + 22, '#ffd700', 13);
+      (modal.prizes || []).slice(0, 5).forEach((item, index) => {
+        const rowY = prizeY + 34 + index * 21;
+        const color = this.getToneColor(item.tone);
+        this.pixel.fillStyle(0x0d1421, 0.92);
+        this.pixel.fillRect(prizeX + 10, rowY, prizeW - 20, 17);
+        this.pixel.lineStyle(1, Phaser.Display.Color.ValueToColor(color).color, 0.8);
+        this.pixel.strokeRect(prizeX + 10, rowY, prizeW - 20, 17);
+        this.drawLabel((item.label || '').slice(0, 17), prizeX + 90, rowY + 14, color, 9);
+        this.drawLabel(item.chance || '', prizeX + prizeW - 38, rowY + 14, '#94a3b8', 8);
+      });
+
+      const resultX = x + 270;
+      const resultY = y + 76;
+      const resultW = w - 288;
+      const resultH = 174;
+      this.pixel.fillStyle(0x0b1220, 0.96);
+      this.pixel.fillRect(resultX, resultY, resultW, resultH);
+      this.pixel.lineStyle(2, 0x334155, 1);
+      this.pixel.strokeRect(resultX, resultY, resultW, resultH);
+      this.drawLabel('抽奖结果', resultX + resultW / 2, resultY + 22, '#4ec9b0', 13);
+
+      const results = modal.results || [];
+      if (results.length === 0) {
+        this.drawLabel('选择奖池后开始抽奖', resultX + resultW / 2, resultY + 88, '#94a3b8', 12);
+      } else {
+        const itemW = Math.floor((resultW - 24) / 2);
+        results.slice(0, 10).forEach((item, index) => {
+          const col = index % 2;
+          const row = Math.floor(index / 2);
+          const itemX = resultX + 8 + col * (itemW + 8);
+          const itemY = resultY + 34 + row * 23;
+          const color = this.getToneColor(item.tone);
+          this.pixel.fillStyle(0x0d1421, 0.95);
+          this.pixel.fillRect(itemX, itemY, itemW, 19);
+          this.pixel.lineStyle(1, Phaser.Display.Color.ValueToColor(color).color, 0.9);
+          this.pixel.strokeRect(itemX, itemY, itemW, 19);
+          this.drawLabel(item.icon || '🎁', itemX + 14, itemY + 15, '#ffffff', 11);
+          this.drawLabel((item.name || '').slice(0, 9), itemX + itemW / 2 + 8, itemY + 15, color, 8);
+        });
+      }
+
+      const summary = modal.summary || [];
+      summary.slice(0, 2).forEach((line, index) => {
+        this.drawLabel(line.slice(0, 30), resultX + resultW / 2, resultY + resultH + 18 + index * 16, index === 0 ? '#ffd700' : '#4ec9b0', 9);
+      });
+
+      const buttons = modal.drawButtons || [];
+      buttons.forEach((button, index) => {
+        this.drawButton('gacha-draw', button.label, prizeX + index * 118, y + h - 44, 108, 28, false, {
+          count: button.count,
+          currency: modal.currency,
+          season: modal.season,
+        }, button.disabled);
+      });
+      if (modal.status && summary.length === 0) {
+        this.drawLabel(modal.status, x + w - 154, y + h - 24, modal.status.includes('不足') || modal.status.includes('错误') ? '#ffae42' : '#4ec9b0', 11);
+      }
     }
 
     drawHitbar(hitbar) {
