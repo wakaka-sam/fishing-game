@@ -747,6 +747,7 @@ function render() {
       pet: activePet,
       accessoryDef,
       accessoryStar: accessory ? GAME_DATA.clampAccessoryStar(accessory.star) : 1,
+      hitbar: getPhaserHitbarSnapshot(),
     });
     return;
   }
@@ -1002,6 +1003,7 @@ window.addEventListener('keydown', (e) => {
 });
 canvas.addEventListener('click', () => {
   if (state.phase === 'hooked') startHitbar();
+  else if (state.phase === 'reeling') hitbarClick();
 });
 
 // ====== 命中条小游戏 ======
@@ -1028,6 +1030,21 @@ const hb = {
   rafId: null,
   active: false,
 };
+
+function getPhaserHitbarSnapshot() {
+  if (!phaserRenderer || !hb.active) return null;
+  return {
+    active: hb.active,
+    hitsNeeded: hb.hitsNeeded,
+    hits: hb.hits,
+    cursorPos: hb.cursorPos,
+    zoneStart: hb.zoneStart,
+    zoneWidth: hb.zoneWidth,
+    timeLeft: hb.timeLeft,
+    message: hitbarMsg ? hitbarMsg.textContent : '',
+    color: hitbarMsg ? hitbarMsg.style.color : '#ffae42',
+  };
+}
 
 function startHitbar() {
   if (state.phase !== 'hooked') return;
@@ -1075,7 +1092,8 @@ function startHitbar() {
   hitbarMsg.style.color = RARITY_COLOR[rarity];
   hitsNeededEl.textContent = hb.hitsNeeded;
   hitsCurrentEl.textContent = 0;
-  hitbarOverlay.classList.remove('hidden');
+  if (!phaserRenderer) hitbarOverlay.classList.remove('hidden');
+  else hitbarOverlay.classList.add('hidden');
   hb.active = true;
   randomizeZone();
   hb.timerId = setInterval(tickTimer, 100);
@@ -1098,10 +1116,12 @@ function rafLoop() {
   if (hb.cursorPos >= 1) { hb.cursorPos = 1; hb.cursorDir = -1; }
   if (hb.cursorPos <= 0) { hb.cursorPos = 0; hb.cursorDir = 1; }
 
-  const barW = hitbarZoneEl.parentElement.offsetWidth;
-  hitbarZoneEl.style.left = (hb.zoneStart * barW) + 'px';
-  hitbarZoneEl.style.width = (hb.zoneWidth * barW) + 'px';
-  hitbarCursorEl.style.left = (hb.cursorPos * barW) + 'px';
+  if (!phaserRenderer) {
+    const barW = hitbarZoneEl.parentElement.offsetWidth;
+    hitbarZoneEl.style.left = (hb.zoneStart * barW) + 'px';
+    hitbarZoneEl.style.width = (hb.zoneWidth * barW) + 'px';
+    hitbarCursorEl.style.left = (hb.cursorPos * barW) + 'px';
+  }
   hb.rafId = requestAnimationFrame(rafLoop);
 }
 
@@ -1143,6 +1163,7 @@ function endHitbar(success, failMsg) {
   hitbarOverlay.classList.add('hidden');
   state.phase = 'idle';
   state.castBait = null;
+  if (typeof updateMobileBtn === 'function') updateMobileBtn();
 
   if (success) {
     applyCatch(hb.catch);

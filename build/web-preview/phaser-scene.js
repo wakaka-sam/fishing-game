@@ -152,6 +152,48 @@
 
       if (phase === 'waiting') this.drawLabel('等待鱼上钩...', WIDTH / 2, HEIGHT - 24, '#ffffff', 12);
       if (phase === 'hooked') this.drawLabel('!!! 鱼上钩了 !!!', WIDTH / 2, HEIGHT - 24, '#ff5722', 16);
+      if (snapshot.hitbar && snapshot.hitbar.active) this.drawHitbar(snapshot.hitbar);
+    }
+
+    drawHitbar(hitbar) {
+      this.pixel.fillStyle(0x000000, 0.82);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const panelX = 56;
+      const panelY = 70;
+      const panelW = WIDTH - panelX * 2;
+      const panelH = 220;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(panelX, panelY, panelW, panelH);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(panelX, panelY, panelW, panelH);
+
+      const color = hitbar.color || '#ffae42';
+      this.drawLabel(hitbar.message || '鱼上钩了！', WIDTH / 2, panelY + 54, color, 22);
+      this.drawLabel(`${hitbar.hits || 0} / ${hitbar.hitsNeeded || 0} 命中`, WIDTH / 2, panelY + 90, '#4ec9b0', 16);
+      this.drawLabel(`${Math.max(0, hitbar.timeLeft || 0).toFixed(1)}s`, WIDTH / 2, panelY + 118, '#ff5722', 15);
+
+      const barX = panelX + 42;
+      const barY = panelY + 142;
+      const barW = panelW - 84;
+      const barH = 34;
+      this.pixel.fillStyle(0x2c3e50, 1);
+      this.pixel.fillRect(barX, barY, barW, barH);
+      this.pixel.lineStyle(3, 0xffd700, 1);
+      this.pixel.strokeRect(barX, barY, barW, barH);
+
+      this.pixel.fillStyle(0xff5722, 1);
+      this.pixel.fillRect(barX + barW * hitbar.zoneStart, barY, barW * hitbar.zoneWidth, barH);
+      this.pixel.lineStyle(2, 0xffffff, 1);
+      this.pixel.beginPath();
+      this.pixel.moveTo(barX + barW * hitbar.zoneStart, barY);
+      this.pixel.lineTo(barX + barW * hitbar.zoneStart, barY + barH);
+      this.pixel.moveTo(barX + barW * (hitbar.zoneStart + hitbar.zoneWidth), barY);
+      this.pixel.lineTo(barX + barW * (hitbar.zoneStart + hitbar.zoneWidth), barY + barH);
+      this.pixel.strokePath();
+
+      this.pixel.fillStyle(0xffffff, 1);
+      this.pixel.fillRect(barX + barW * hitbar.cursorPos - 2, barY - 4, 4, barH + 8);
+      this.drawLabel('空格 / 点击画面 / 手机按钮：击中', WIDTH / 2, panelY + 198, '#ffd700', 13);
     }
 
     drawAccessoryParticles(def, star, rodBaseX, rodBaseY, rodTipX, rodTipY, t) {

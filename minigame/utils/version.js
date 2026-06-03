@@ -1,6 +1,14 @@
 module.exports = {
-  "version": "1.0.40",
+  "version": "1.0.41",
   "changelog": [
+    {
+      "version": "1.0.41",
+      "date": "2026-06-03",
+      "changes": [
+        "命中条小游戏迁移到 Phaser 渲染",
+        "保留空格点击和移动端击中操作"
+      ]
+    },
     {
       "version": "1.0.40",
       "date": "2026-06-03",
