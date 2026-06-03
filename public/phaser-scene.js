@@ -261,6 +261,7 @@
       if (modal.type === 'character') this.drawCharacterModal(modal);
       if (modal.type === 'pet') this.drawPetModal(modal);
       if (modal.type === 'accessory') this.drawAccessoryModal(modal);
+      if (modal.type === 'rank') this.drawRankModal(modal);
     }
 
     drawShopModal(modal) {
@@ -710,6 +711,91 @@
       this.drawButton('accessory-page', '<', x + 18, y + h - 44, 34, 28, false, { delta: -1 }, modal.page <= 0);
       this.drawLabel(`${(modal.page || 0) + 1} / ${modal.pageCount || 1}`, x + 92, y + h - 36, '#ffd700', 12);
       this.drawButton('accessory-page', '>', x + 128, y + h - 44, 34, 28, false, { delta: 1 }, modal.page >= (modal.pageCount || 1) - 1);
+    }
+
+    drawRankModal(modal) {
+      this.pixel.fillStyle(0x000000, 0.76);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 34;
+      const y = 22;
+      const w = WIDTH - 68;
+      const h = HEIGHT - 44;
+      this.pixel.fillStyle(0x1a1a2e, 1);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.drawLabel(modal.title || '排行榜', WIDTH / 2, y + 28, '#ffd700', 18);
+      this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
+
+      const tabs = modal.tabs || [];
+      const tabY = y + 44;
+      const gap = 6;
+      const tabW = Math.floor((w - 36 - gap * Math.max(0, tabs.length - 1)) / Math.max(1, tabs.length));
+      tabs.forEach((tab, index) => {
+        this.drawButton('rank-tab', tab.label, x + 18 + index * (tabW + gap), tabY, tabW, 22, tab.active, { id: tab.id });
+      });
+
+      const hasSide = !!modal.rewardBanner || (modal.history || []).length > 0;
+      const listX = x + 18;
+      const listY = y + 80;
+      const listW = hasSide ? 354 : w - 36;
+      const headerH = 22;
+      this.pixel.fillStyle(0x0b1220, 0.96);
+      this.pixel.fillRect(listX, listY, listW, headerH);
+      this.pixel.lineStyle(1, 0x334155, 1);
+      this.pixel.strokeRect(listX, listY, listW, headerH);
+      this.drawLabel('#', listX + 28, listY + 17, '#94a3b8', 10);
+      this.drawLabel('玩家', listX + 132, listY + 17, '#94a3b8', 10);
+      this.drawLabel(modal.valueLabel || '数量', listX + listW - 44, listY + 17, '#94a3b8', 10);
+
+      const rows = modal.rows || [];
+      const rowH = 25;
+      if (modal.loading) {
+        this.drawLabel('加载中...', listX + listW / 2, listY + 88, '#ffd700', 15);
+      } else if (rows.length === 0) {
+        this.drawLabel(modal.status || '暂无数据', listX + listW / 2, listY + 88, modal.status ? '#ffae42' : '#94a3b8', 15);
+      } else {
+        rows.forEach((row, index) => {
+          const rowY = listY + headerH + index * rowH;
+          const rankColor = row.rank === 1 ? '#ffd700' : (row.rank === 2 ? '#c0c0c0' : (row.rank === 3 ? '#cd7f32' : '#cbd5e1'));
+          this.pixel.fillStyle(row.isMe ? 0x0f3b32 : 0x0d1421, row.isMe ? 0.98 : 0.88);
+          this.pixel.fillRect(listX, rowY, listW, rowH - 2);
+          this.pixel.lineStyle(1, row.isMe ? 0x4ec9b0 : 0x1f2937, 1);
+          this.pixel.strokeRect(listX, rowY, listW, rowH - 2);
+          this.drawLabel(row.medal || String(row.rank), listX + 28, rowY + 18, rankColor, row.rank <= 3 ? 12 : 10);
+          this.drawLabel(String(row.username || '').slice(0, hasSide ? 14 : 22), listX + 148, rowY + 18, row.isMe ? '#4ec9b0' : '#e8e8e8', 11);
+          this.drawLabel(row.valueText || '0', listX + listW - 44, rowY + 18, '#4ec9b0', 11);
+        });
+      }
+
+      if (hasSide) {
+        const sideX = listX + listW + 12;
+        const sideW = x + w - 18 - sideX;
+        this.pixel.fillStyle(0x0b1220, 0.94);
+        this.pixel.fillRect(sideX, listY, sideW, 174);
+        this.pixel.lineStyle(2, 0x334155, 1);
+        this.pixel.strokeRect(sideX, listY, sideW, 174);
+        if (modal.rewardBanner) {
+          this.drawLabel('今日奖励', sideX + sideW / 2, listY + 24, '#ffd700', 13);
+          this.drawLabel('第一名 5000 钻石', sideX + sideW / 2, listY + 48, '#ffd700', 11);
+          this.drawLabel('每晚 23:59 结算', sideX + sideW / 2, listY + 66, '#94a3b8', 10);
+        }
+        const history = modal.history || [];
+        if (history.length > 0) {
+          this.drawLabel('近期获奖记录', sideX + sideW / 2, listY + 92, '#4ec9b0', 11);
+          history.slice(0, 4).forEach((item, index) => {
+            const text = `${item.date} ${item.username} ${item.catches}次 +${item.diamonds}`;
+            this.drawLabel(text.slice(0, 22), sideX + sideW / 2, listY + 116 + index * 16, '#cbd5e1', 9);
+          });
+        }
+      }
+
+      if (modal.status && !modal.loading) this.drawLabel(modal.status, WIDTH / 2, y + h - 12, modal.status.includes('失败') ? '#ffae42' : '#4ec9b0', 11);
+      this.drawButton('rank-page', '<', x + 18, y + h - 44, 34, 28, false, { delta: -1 }, modal.page <= 0);
+      this.drawLabel(`${(modal.page || 0) + 1} / ${modal.pageCount || 1}`, x + 92, y + h - 36, '#ffd700', 12);
+      this.drawButton('rank-page', '>', x + 128, y + h - 44, 34, 28, false, { delta: 1 }, modal.page >= (modal.pageCount || 1) - 1);
+      this.drawLabel(`共 ${modal.totalRows || 0} 条`, x + 218, y + h - 36, '#94a3b8', 11);
+      this.drawButton('rank-refresh', '刷新', x + w - 78, y + h - 44, 54, 28, false);
     }
 
     drawHitbar(hitbar) {

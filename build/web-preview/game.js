@@ -1040,6 +1040,7 @@ function getPhaserModalSnapshot() {
   if (phaserUi.modal === 'character') return getPhaserCharacterSnapshot();
   if (phaserUi.modal === 'pet') return getPhaserPetSnapshot();
   if (phaserUi.modal === 'accessory') return getPhaserAccessorySnapshot();
+  if (phaserUi.modal === 'rank') return getPhaserRankSnapshot();
   return null;
 }
 
@@ -1055,6 +1056,7 @@ function openPhaserModal(type, data = null) {
   characterOverlay?.classList.add('hidden');
   petOverlay?.classList.add('hidden');
   accessoryOverlay?.classList.add('hidden');
+  rankOverlay?.classList.add('hidden');
   updateAdButtons();
   return true;
 }
@@ -1103,6 +1105,9 @@ function handlePhaserAction(action, payload = null) {
     if (action === 'accessory-toggle') return toggleAccessory(payload?.uid, { source: 'phaser' });
     if (action === 'accessory-upgrade') return upgradeAccessory(payload?.uid, { source: 'phaser' });
     if (action === 'accessory-page') return setPhaserAccessoryPage(payload?.delta || 0);
+    if (action === 'rank-tab') return setPhaserRankTab(payload?.id);
+    if (action === 'rank-page') return setPhaserRankPage(payload?.delta || 0);
+    if (action === 'rank-refresh') return loadLeaderboard({ source: 'phaser' });
     return;
   }
   if (action === 'cast') {
@@ -1124,8 +1129,8 @@ function handlePhaserAction(action, payload = null) {
   if (action === 'character') return openPhaserCharacter();
   if (action === 'pet') return openPhaserPet();
   if (action === 'accessory') return openPhaserAccessory();
+  if (action === 'rank') return openPhaserRank();
   const domButtons = {
-    rank: 'rank-btn',
     gacha: 'gacha-btn',
     redeem: 'redeem-btn',
     share: 'share-btn',
@@ -2404,6 +2409,14 @@ function upgradeAccessory(uid, options = {}) {
 const rankOverlay = $('rank-overlay');
 let activeRankTab = 'today-catches';
 let rankData = null;
+let activeRankPage = 0;
+const RANK_ITEMS_PER_PAGE = 6;
+const RANK_TABS = [
+  { id: 'today-catches', label: '今日钓鱼数', sortKey: 'todayCatches', valueLabel: '数量' },
+  { id: 'today-weight', label: '今日总重量', sortKey: 'todayWeight', valueLabel: '重量(kg)', isWeight: true },
+  { id: 'total-catches', label: '累计钓鱼数', sortKey: 'totalCatches', valueLabel: '数量' },
+  { id: 'total-weight', label: '累计总重量', sortKey: 'totalWeight', valueLabel: '重量(kg)', isWeight: true },
+];
 
 function showPendingRankRewards(rewards) {
   if (!rewards || rewards.length === 0) return;
@@ -2419,6 +2432,7 @@ function showPendingRankRewards(rewards) {
 }
 
 $('rank-btn').onclick = () => {
+  if (openPhaserRank()) return;
   rankOverlay.classList.remove('hidden');
   loadLeaderboard();
 };
@@ -2427,39 +2441,122 @@ $('rank-tabs').onclick = (e) => {
   const btn = e.target.closest('button[data-rank]');
   if (!btn) return;
   activeRankTab = btn.dataset.rank;
+  activeRankPage = 0;
   $('rank-tabs').querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderLeaderboard();
 };
 
 let rankHistory = null;
-async function loadLeaderboard() {
+async function loadLeaderboard(options = {}) {
+  const usePhaser = options.source === 'phaser';
   const loading = $('rank-loading');
   const list = $('rank-list');
-  loading.classList.remove('hidden');
-  list.innerHTML = '';
+  if (usePhaser) {
+    phaserUi.status = '加载中...';
+  } else {
+    loading.classList.remove('hidden');
+    list.innerHTML = '';
+  }
   try {
     const [lbRes, histRes] = await Promise.all([fetch(API_BASE + '/api/leaderboard'), fetch(API_BASE + '/api/rank-history')]);
     rankData = await lbRes.json();
     rankHistory = (await histRes.json()).history || [];
-    renderLeaderboard();
+    activeRankPage = 0;
+    if (usePhaser) {
+      phaserUi.status = '';
+    } else {
+      renderLeaderboard();
+    }
   } catch (e) {
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:#ff5722">加载失败</div>';
+    if (usePhaser) {
+      phaserUi.status = '加载失败';
+    } else {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:#ff5722">加载失败</div>';
+    }
   }
-  loading.classList.add('hidden');
+  if (!usePhaser) {
+    loading.classList.add('hidden');
+  }
+}
+
+function getRankTab(tabId = activeRankTab) {
+  return RANK_TABS.find(tab => tab.id === tabId) || RANK_TABS[0];
+}
+
+function getRankRows(tabId = activeRankTab) {
+  const tab = getRankTab(tabId);
+  if (!Array.isArray(rankData)) return [];
+  const medalMap = { 1: '🥇', 2: '🥈', 3: '🥉' };
+  return [...rankData]
+    .map(entry => ({ ...entry, value: Number(entry[tab.sortKey] || 0) }))
+    .filter(entry => entry.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .map((entry, index) => {
+      const rank = index + 1;
+      return {
+        rank,
+        medal: medalMap[rank] || String(rank),
+        username: entry.username,
+        value: entry.value,
+        valueText: tab.isWeight ? entry.value.toFixed(2) : String(entry.value),
+        isMe: !!(user && entry.username === user.username),
+      };
+    });
+}
+
+function getPhaserRankSnapshot() {
+  const rows = getRankRows(activeRankTab);
+  const pageCount = Math.max(1, Math.ceil(rows.length / RANK_ITEMS_PER_PAGE));
+  activeRankPage = Math.min(Math.max(activeRankPage, 0), pageCount - 1);
+  const start = activeRankPage * RANK_ITEMS_PER_PAGE;
+  const currentRows = rows.slice(start, start + RANK_ITEMS_PER_PAGE);
+  const tab = getRankTab(activeRankTab);
+  return {
+    type: 'rank',
+    title: '排行榜',
+    status: phaserUi.status,
+    loading: phaserUi.status === '加载中...',
+    tabs: RANK_TABS.map(item => ({ id: item.id, label: item.label, active: item.id === activeRankTab })),
+    activeLabel: tab.label,
+    valueLabel: tab.valueLabel,
+    rewardBanner: activeRankTab === 'today-catches' ? '今日钓鱼数第一名可获得 5000 钻石（每晚 23:59 结算）' : '',
+    rows: currentRows,
+    totalRows: rows.length,
+    history: activeRankTab === 'today-catches' && Array.isArray(rankHistory) ? rankHistory.slice(0, 5) : [],
+    page: activeRankPage,
+    pageCount,
+  };
+}
+
+function openPhaserRank() {
+  activeRankPage = 0;
+  if (!openPhaserModal('rank')) return false;
+  loadLeaderboard({ source: 'phaser' });
+  return true;
+}
+
+function setPhaserRankTab(tabId) {
+  if (!RANK_TABS.some(tab => tab.id === tabId)) return;
+  activeRankTab = tabId;
+  activeRankPage = 0;
+  $('rank-tabs').querySelectorAll('button').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.rank === activeRankTab);
+  });
+  phaserUi.status = '';
+}
+
+function setPhaserRankPage(delta) {
+  const rows = getRankRows(activeRankTab);
+  const pageCount = Math.max(1, Math.ceil(rows.length / RANK_ITEMS_PER_PAGE));
+  activeRankPage = Math.min(Math.max(activeRankPage + delta, 0), pageCount - 1);
 }
 
 function renderLeaderboard() {
   const list = $('rank-list');
   if (!rankData) return;
-  const sortKey = {
-    'today-catches': 'todayCatches',
-    'today-weight': 'todayWeight',
-    'total-catches': 'totalCatches',
-    'total-weight': 'totalWeight',
-  }[activeRankTab];
-  const isWeight = activeRankTab.includes('weight');
-  const sorted = [...rankData].sort((a, b) => b[sortKey] - a[sortKey]).filter(e => e[sortKey] > 0);
+  const tab = getRankTab(activeRankTab);
+  const sorted = getRankRows(activeRankTab);
 
   let html = '';
   if (activeRankTab === 'today-catches') {
@@ -2469,14 +2566,10 @@ function renderLeaderboard() {
   if (sorted.length === 0) {
     html += '<div style="text-align:center;padding:20px;color:#888">暂无数据</div>';
   } else {
-    const medalMap = { 1: '🥇', 2: '🥈', 3: '🥉' };
-    html += '<table><tr><th>#</th><th>玩家</th><th style="text-align:right">' + (isWeight ? '重量 (kg)' : '数量') + '</th></tr>';
-    sorted.forEach((e, i) => {
-      const rank = i + 1;
-      const isMe = user && e.username === user.username;
-      const medal = medalMap[rank] || rank;
-      const rankClass = rank <= 3 ? ` rank-${rank}` : '';
-      html += `<tr class="${isMe ? 'me' : ''}"><td class="rank-num${rankClass}">${medal}</td><td>${e.username}</td><td class="rank-val">${isWeight ? e[sortKey].toFixed(2) : e[sortKey]}</td></tr>`;
+    html += '<table><tr><th>#</th><th>玩家</th><th style="text-align:right">' + tab.valueLabel + '</th></tr>';
+    sorted.forEach((e) => {
+      const rankClass = e.rank <= 3 ? ` rank-${e.rank}` : '';
+      html += `<tr class="${e.isMe ? 'me' : ''}"><td class="rank-num${rankClass}">${e.medal}</td><td>${e.username}</td><td class="rank-val">${e.valueText}</td></tr>`;
     });
     html += '</table>';
   }
