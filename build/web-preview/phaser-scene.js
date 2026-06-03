@@ -33,6 +33,7 @@
       this.spriteLayer = this.add.group();
       this.textLayer = this.add.group();
       this.actionHandler = pendingActionHandler;
+      this.game.canvas.tabIndex = 0;
       this.game.canvas.addEventListener('pointerdown', (event) => this.handlePointer({ event }));
     }
 
@@ -207,6 +208,11 @@
 
       if (snapshot.pet) this.drawPet(snapshot.pet, t);
 
+      if (snapshot.login) {
+        this.drawLogin(snapshot.login, t);
+        return;
+      }
+
       if (!hasOverlay && phase === 'waiting') this.drawLabel('等待鱼上钩...', WIDTH / 2, HEIGHT - 24, '#ffffff', 12);
       if (!hasOverlay && phase === 'hooked') this.drawLabel('!!! 鱼上钩了 !!!', WIDTH / 2, HEIGHT - 24, '#ff5722', 16);
       if (!hasOverlay && snapshot.hud) this.drawHud(snapshot.hud);
@@ -221,6 +227,47 @@
       this.pixel.lineStyle(2, disabled ? 0x64748b : (active ? 0xffae42 : 0xffd700), 1);
       this.pixel.strokeRect(x, y, w, h);
       this.drawLabel(label, x + w / 2, y + h / 2 + 6, disabled ? '#94a3b8' : (active ? '#ffffff' : '#ffd700'), 11);
+    }
+
+    drawLogin(login, t) {
+      this.pixel.fillStyle(0x000000, 0.2);
+      this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
+      const x = 148;
+      const y = 72;
+      const w = WIDTH - 296;
+      const h = HEIGHT - 144;
+      this.pixel.fillStyle(0x1a1a2e, 0.98);
+      this.pixel.fillRect(x, y, w, h);
+      this.pixel.lineStyle(4, 0xffd700, 1);
+      this.pixel.strokeRect(x, y, w, h);
+      this.pixel.lineStyle(2, 0x0d1421, 1);
+      this.pixel.strokeRect(x - 7, y - 7, w + 14, h + 14);
+      this.pixel.lineStyle(2, 0xffd700, 1);
+      this.pixel.strokeRect(x - 12, y - 12, w + 24, h + 24);
+
+      this.drawLabel(login.title || '像素钓鱼', WIDTH / 2, y + 38, '#ffd700', 23);
+      this.drawLabel('输入用户名开始游戏', WIDTH / 2, y + 72, '#cbd5e1', 12);
+
+      const inputX = x + 42;
+      const inputY = y + 92;
+      const inputW = w - 84;
+      this.pixel.fillStyle(0x0b1220, 0.98);
+      this.pixel.fillRect(inputX, inputY, inputW, 34);
+      this.pixel.lineStyle(2, 0xffd700, 1);
+      this.pixel.strokeRect(inputX, inputY, inputW, 34);
+      const username = login.username || '';
+      const cursor = Math.floor(t * 2) % 2 === 0 && !login.loading ? '_' : '';
+      this.drawLabel(username ? username + cursor : '用户名', WIDTH / 2, inputY + 25, username ? '#f0e68c' : '#64748b', 14);
+
+      this.drawButton('login-clear', '清空', inputX, inputY + 48, 66, 28, false, null, !username || login.loading);
+      this.drawButton('login-submit', login.loading ? '登录中' : '开始钓鱼', WIDTH / 2 - 58, inputY + 48, 116, 28, false, null, login.loading);
+      this.drawLabel('数据将以用户名为键保存到服务器', WIDTH / 2, y + h - 35, '#94a3b8', 10);
+      if (login.status) {
+        const isError = login.status.includes('失败') || login.status.includes('请输入') || login.status.includes('检测到');
+        this.drawLabel(login.status.slice(0, 44), WIDTH / 2, y + h - 12, isError ? '#ffae42' : '#4ec9b0', 11);
+      } else if (login.version) {
+        this.drawLabel(`v${login.version}`, x + w - 34, y + h - 12, '#64748b', 10);
+      }
     }
 
     drawHud(hud) {

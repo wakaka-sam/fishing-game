@@ -430,18 +430,57 @@ if (vipAutoBtn) {
 });
 
 // ====== 登录 ======
+let phaserLoginStatus = '';
+let phaserLoginLoading = false;
+let versionData = null;
+let versionReady = null;
+
+function sanitizeUsername(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 24);
+}
+
+function setLoginStatus(message) {
+  phaserLoginStatus = message || '';
+  const errEl = $('login-error');
+  if (errEl) errEl.textContent = phaserLoginStatus;
+}
+
+function focusPhaserCanvas() {
+  const phaserCanvas = phaserRenderer?.getCanvas?.();
+  if (!phaserCanvas || typeof phaserCanvas.focus !== 'function') return;
+  phaserCanvas.tabIndex = 0;
+  setTimeout(() => phaserCanvas.focus(), 0);
+}
+
+function showLoginScreen() {
+  if (phaserRenderer) {
+    loginScreen.classList.remove('active');
+    gameScreen.classList.add('active', 'phaser-login-active');
+    gameScreen.classList.remove('phaser-hud-active');
+    focusPhaserCanvas();
+  } else {
+    loginScreen.classList.add('active');
+    gameScreen.classList.remove('active', 'phaser-login-active', 'phaser-hud-active');
+  }
+}
+
 $('login-btn').onclick = login;
 usernameInput.onkeydown = (e) => { if (e.key === 'Enter') login(); };
 
-async function login() {
-  const errEl = $('login-error');
-  errEl.textContent = '';
-  const name = usernameInput.value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '');
-  if (!name) { errEl.textContent = '请输入有效用户名（字母数字下划线）'; return; }
-  if (location.protocol === 'file:') {
-    errEl.innerHTML = '检测到 file:// 协议。<br>请通过 <b>http://localhost:3456</b> 访问';
+async function login(options = {}) {
+  setLoginStatus('');
+  const name = sanitizeUsername(usernameInput.value);
+  usernameInput.value = name;
+  if (!name) {
+    setLoginStatus('请输入有效用户名（字母数字下划线）');
     return;
   }
+  if (location.protocol === 'file:') {
+    setLoginStatus('检测到 file:// 协议，请通过 http://localhost:3456 访问');
+    return;
+  }
+  phaserLoginLoading = true;
+  if (options.source === 'phaser') setLoginStatus('正在连接服务器...');
   try {
     const res = await fetch(API_BASE + '/api/session/login', {
       method: 'POST',
@@ -457,8 +496,10 @@ async function login() {
     enterGame();
     showPendingRankRewards(pendingRewards);
   } catch (e) {
-    errEl.textContent = '登录失败: ' + e.message + '（请确认服务器已启动）';
+    setLoginStatus('登录失败: ' + e.message + '（请确认服务器已启动）');
     console.error(e);
+  } finally {
+    phaserLoginLoading = false;
   }
 }
 
@@ -469,9 +510,7 @@ $('logout-btn').onclick = () => {
   phaserModalQueue.length = 0;
   closePhaserModal();
   try { localStorage.removeItem('fishing_username'); } catch (_) {}
-  loginScreen.classList.add('active');
-  gameScreen.classList.remove('phaser-hud-active');
-  gameScreen.classList.remove('active');
+  showLoginScreen();
 };
 
 // 自动登录
@@ -480,6 +519,7 @@ $('logout-btn').onclick = () => {
     const saved = localStorage.getItem('fishing_username');
     if (saved && location.protocol !== 'file:') {
       usernameInput.value = saved;
+      phaserLoginStatus = '正在恢复存档...';
       const res = await fetch(API_BASE + '/api/session/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -493,8 +533,11 @@ $('logout-btn').onclick = () => {
         enterGame();
         showPendingRankRewards(pendingRewards);
       }
+      if (!res.ok) phaserLoginStatus = '';
     }
-  } catch (_) {}
+  } catch (_) {
+    phaserLoginStatus = '';
+  }
 })();
 
 function pickUserFields(fields) {
@@ -541,8 +584,12 @@ function enterGame() {
   ensureUserDefaults();
   resetVipAutoForUser();
   loginScreen.classList.remove('active');
+  gameScreen.classList.remove('phaser-login-active');
   gameScreen.classList.add('active');
   gameScreen.classList.toggle('phaser-hud-active', !!phaserRenderer);
+  setLoginStatus('');
+  phaserLoginLoading = false;
+  focusPhaserCanvas();
   refreshUI();
 }
 
@@ -741,6 +788,7 @@ const phaserModalQueue = [];
 if (phaserRenderer?.setActionHandler) {
   phaserRenderer.setActionHandler(handlePhaserAction);
 }
+if (phaserRenderer && !user) showLoginScreen();
 
 const W = 640;
 const H = 360;
@@ -772,8 +820,9 @@ function render() {
       accessoryDef,
       accessoryStar: accessory ? GAME_DATA.clampAccessoryStar(accessory.star) : 1,
       hud: getPhaserHudSnapshot(),
+      login: getPhaserLoginSnapshot(),
       modal: getPhaserModalSnapshot(),
-      hitbar: getPhaserHitbarSnapshot(),
+      hitbar: user ? getPhaserHitbarSnapshot() : null,
     });
     return;
   }
@@ -969,6 +1018,18 @@ function drawText(txt, x, y, color, size) {
   ctx.fillText(txt, x, y);
 }
 
+function getPhaserLoginSnapshot() {
+  if (!phaserRenderer || user) return null;
+  return {
+    type: 'login',
+    title: '像素钓鱼',
+    username: usernameInput.value || '',
+    status: phaserLoginStatus,
+    loading: phaserLoginLoading,
+    version: versionData?.version || '',
+  };
+}
+
 function getPhaserHudSnapshot() {
   if (!phaserRenderer || !user) return null;
   const baitId = state.castBait || baitSelect.value || user.currentBait || 'worm';
@@ -1112,7 +1173,14 @@ function selectAdjacentBait(offset) {
 
 function handlePhaserAction(action, payload = null) {
   lastPhaserUiActionAt = Date.now();
-  if (!user && action !== 'logout') return;
+  if (!user) {
+    if (action === 'login-submit') return login({ source: 'phaser' });
+    if (action === 'login-clear') {
+      usernameInput.value = '';
+      setLoginStatus('');
+    }
+    return;
+  }
   if (phaserUi.modal) {
     if (action === 'modal-close') return closePhaserModal();
     if (action === 'shop-buy') return purchaseBait(payload?.id, payload?.count || 1, { source: 'phaser' });
@@ -1171,7 +1239,7 @@ function handlePhaserAction(action, payload = null) {
 }
 
 function loop() {
-  if (user) render();
+  if (user || phaserRenderer) render();
   requestAnimationFrame(loop);
 }
 loop();
@@ -1216,7 +1284,36 @@ function startCast(preferredBaitId = null, options = {}) {
   return true;
 }
 
+function handlePhaserLoginKey(e) {
+  if (!phaserRenderer || user) return false;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    login({ source: 'phaser' });
+    return true;
+  }
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    usernameInput.value = usernameInput.value.slice(0, -1);
+    setLoginStatus('');
+    return true;
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    usernameInput.value = '';
+    setLoginStatus('');
+    return true;
+  }
+  if (e.key.length === 1 && /^[a-zA-Z0-9_-]$/.test(e.key) && usernameInput.value.length < 24) {
+    e.preventDefault();
+    usernameInput.value = sanitizeUsername(usernameInput.value + e.key);
+    setLoginStatus('');
+    return true;
+  }
+  return false;
+}
+
 window.addEventListener('keydown', (e) => {
+  if (handlePhaserLoginKey(e)) return;
   if (phaserUi.modal === 'redeem' && handlePhaserRedeemKey(e)) return;
   if (e.code === 'Space') {
     e.preventDefault();
@@ -3343,10 +3440,9 @@ function showGachaResult(results) {
 }
 
 // ====== 版本与公告 ======
-let versionData = null;
 const ANNOUNCEMENT_PAGE_SIZE = 3;
 const announceOverlay = $('announce-overlay');
-let versionReady = fetch('/version.json?t=' + Date.now()).then(r => r.json()).then(d => {
+versionReady = fetch('/version.json?t=' + Date.now()).then(r => r.json()).then(d => {
   versionData = d;
   $('version-tag').textContent = 'v' + d.version;
 }).catch(() => {});
