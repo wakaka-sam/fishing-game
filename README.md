@@ -33,6 +33,17 @@ python3 -m http.server 3000 --directory public
 
 访问 `http://localhost:3000`。
 
+## 微信小程序
+
+小程序工程位于 `miniprogram/`：
+
+1. 用微信开发者工具导入 `miniprogram/`。
+2. 将 `miniprogram/project.config.json` 中的 `appid` 改成正式小程序 AppID。
+3. 在微信公众平台后台配置 request 合法域名：`https://fish.wakaka007.cn`。
+4. 编译预览即可运行。
+
+小程序版使用 `https://fish.wakaka007.cn/api/*` 同步登录、存档、兑换码和排行榜；网络不可用时会使用本地缓存兜底。
+
 ## 目录结构
 
 ```
@@ -43,6 +54,7 @@ python3 -m http.server 3000 --directory public
 │   ├── data.js        # 鱼饵 / 鱼 / 概率配置
 │   ├── game.js        # 游戏逻辑
 │   └── version.json   # 版本信息
+├── miniprogram/        # 微信小程序工程
 └── scripts/
     └── bump-version.sh  # 版本递增工具
 ```

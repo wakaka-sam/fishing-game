@@ -1,0 +1,10 @@
+page {
+  min-height: 100vh;
+  background: #0d1421;
+  color: #e8e8e8;
+  font-family: "Courier New", "Microsoft YaHei", monospace;
+}
+
+button {
+  font-family: inherit;
+}

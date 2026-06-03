@@ -1,0 +1,259 @@
+<view wx:if="{{!isLoggedIn}}" class="login-screen">
+  <view class="login-box">
+    <image class="app-icon" src="/assets/app-icon-144.png" mode="aspectFit" />
+    <text class="login-title">像素钓鱼</text>
+    <text class="login-copy">输入用户名开始游戏</text>
+    <input class="login-input" maxlength="24" value="{{usernameInput}}" placeholder="用户名" bindinput="onUsernameInput" bindconfirm="login" />
+    <button class="primary login-btn" bindtap="login">开始钓鱼</button>
+    <text class="login-hint">数据会同步到线上，断网时保存在本机缓存</text>
+    <text wx:if="{{loginError}}" class="error-msg">{{loginError}}</text>
+  </view>
+</view>
+
+<view wx:else class="game-screen">
+  <view class="topbar">
+    <view class="user-info">
+      <text class="player-name">{{userView.username}}</text>
+      <text class="money">金币 {{userView.money}}</text>
+      <text class="diamonds">钻石 {{userView.diamonds}}</text>
+      <text class="version-tag" bindtap="openAnnouncement">v{{version}}</text>
+    </view>
+    <view class="actions">
+      <button wx:for="{{menuButtons}}" wx:key="key" class="tool-btn" data-menu="{{item.key}}" bindtap="openMenu">{{item.label}}</button>
+      <button wx:if="{{canUseVipAuto}}" class="tool-btn vip-auto {{vipAutoClass}}" bindtap="toggleVipAuto">{{vipAutoText}}</button>
+      <button class="tool-btn logout" bindtap="logout">退出</button>
+    </view>
+  </view>
+
+  <canvas class="game-canvas" canvas-id="gameCanvas" id="gameCanvas" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;" bindtap="onCanvasTap" disable-scroll="true"></canvas>
+
+  <view class="gamebar">
+    <view wx:if="{{syncStatus}}" class="sync-status">{{syncStatus}}</view>
+    <view class="bait-info">
+      <text>当前鱼饵</text>
+      <picker mode="selector" range="{{baitOptions}}" range-key="label" value="{{selectedBaitIndex}}" bindchange="onBaitChange">
+        <view class="picker-value">{{selectedBaitLabel}}</view>
+      </picker>
+      <text class="bait-count">{{baitCountText}}</text>
+    </view>
+    <view class="rod-info">{{rodInfo}}</view>
+    <button class="primary cast-btn" disabled="{{castDisabled}}" bindtap="startCastTap">抛竿钓鱼</button>
+    <view class="status">{{status}}</view>
+  </view>
+
+  <view class="mobile-action-btn" style="background: {{mobileButtonBg}}" bindtap="mobileAction">
+    <text>{{mobileButtonText}}</text>
+  </view>
+
+  <view wx:if="{{hitbarVisible}}" class="hitbar-overlay">
+    <view class="hitbar-info">
+      <view class="hitbar-msg" style="color: {{hitbar.color}}">{{hitbar.message}}</view>
+      <view class="hitbar-progress">{{hitbar.hits}} / {{hitbar.hitsNeeded}} 命中</view>
+      <view class="hitbar-timer">{{hitbar.timeLeft}}s</view>
+    </view>
+    <view class="hitbar">
+      <view class="hitbar-zone" style="left: {{hitbar.zoneLeft}}%; width: {{hitbar.zoneWidth}}%;"></view>
+      <view class="hitbar-cursor" style="left: {{hitbar.cursorLeft}}%;"></view>
+    </view>
+    <button class="primary big" bindtap="hitbarTap">击 中</button>
+  </view>
+
+  <view wx:if="{{modal}}" class="overlay">
+    <view class="modal {{modalWide ? 'wide' : ''}}" catchtap="noop">
+      <button class="close-x" bindtap="closeModal">×</button>
+
+      <block wx:if="{{modal === 'result'}}">
+        <view class="result-fish {{result.isMiss ? 'miss' : ''}}">
+          <text class="result-icon">{{result.icon}}</text>
+          <text class="result-name" style="color: {{result.color}}">{{result.name}}</text>
+          <text wx:if="{{result.rarityName}}" class="result-rarity" style="color: {{result.color}}">★ {{result.rarityName}} ★</text>
+          <text wx:for="{{result.lines}}" wx:key="*this" class="result-line">{{item}}</text>
+          <text wx:for="{{result.rewards}}" wx:key="*this" class="result-reward">{{item}}</text>
+        </view>
+        <button wx:if="{{result.canRetry}}" class="primary retry-btn" bindtap="retryAfterReward">免费领钻再来一次</button>
+        <button class="result-bottom-close" bindtap="closeModal">关闭</button>
+      </block>
+
+      <block wx:elif="{{modal === 'shop'}}">
+        <view class="modal-title">鱼饵商店</view>
+        <view class="ad-reward-box">
+          <view>
+            <view class="ad-title">看广告领钻石</view>
+            <view class="ad-desc">当前版本直接发放 50 钻石</view>
+          </view>
+          <button class="primary small" disabled="{{adRewardDisabled}}" bindtap="claimAdReward">{{adRewardText}}</button>
+        </view>
+        <view class="shop-list">
+          <view wx:for="{{shopItems}}" wx:key="id" class="shop-item">
+            <view class="shop-head" style="color: {{item.color}}">{{item.name}}</view>
+            <view class="desc">{{item.desc}}</view>
+            <view class="row"><text>{{item.priceText}} / 个</text><text>已有 {{item.owned}}</text></view>
+            <view class="row">
+              <button data-id="{{item.id}}" data-n="1" bindtap="buyBait">买 ×1</button>
+              <button data-id="{{item.id}}" data-n="10" bindtap="buyBait">买 ×10</button>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'dex'}}">
+        <view class="modal-title">钓鱼图鉴</view>
+        <view class="tabs">
+          <button wx:for="{{dexTabs}}" wx:key="id" class="{{item.active ? 'active' : ''}}" data-id="{{item.id}}" bindtap="selectDexTab">{{item.label}}</button>
+        </view>
+        <view class="dex-list">
+          <view wx:for="{{dexItems}}" wx:key="id" class="dex-item {{item.unlocked ? 'unlocked' : 'locked'}}" style="border-color: {{item.color}}">
+            <text class="dex-icon">{{item.icon}}</text>
+            <text class="dex-name" style="color: {{item.color}}">{{item.name}}</text>
+            <text class="dex-info">{{item.rarityName}}</text>
+            <text wx:for="{{item.infoLines}}" wx:key="*this" class="dex-info">{{item}}</text>
+          </view>
+        </view>
+        <view class="dex-stats">
+          <text wx:for="{{dexStats}}" wx:key="*this">{{item}}</text>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'rod'}}">
+        <view class="modal-title">鱼竿收藏</view>
+        <view class="rod-list">
+          <view wx:for="{{rodItems}}" wx:key="id" class="rod-item {{item.unlocked ? 'unlocked' : 'locked'}} {{item.active ? 'active' : ''}}" data-id="{{item.id}}" bindtap="equipRod">
+            <view class="rod-preview">
+              <view class="rod-line" style="background: {{item.rodColor}};"></view>
+              <view class="rod-line rod-line-light" style="background: {{item.rodHighlight}};"></view>
+            </view>
+            <view class="rod-name" style="color: {{item.rodHighlight}}">{{item.name}}</view>
+            <view class="rod-desc">{{item.desc}}</view>
+            <view class="rod-req">{{item.reqText}}</view>
+          </view>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'character'}}">
+        <view class="modal-title">角色</view>
+        <view class="character-list">
+          <view wx:for="{{characterItems}}" wx:key="id" class="character-item {{item.active ? 'active' : ''}} {{item.owned ? '' : 'locked'}}" data-id="{{item.id}}" bindtap="equipCharacter">
+            <view class="character-stage">
+              <image wx:if="{{item.spriteImage}}" src="{{item.spriteImage}}" mode="aspectFit" />
+              <view wx:else class="character-fallback" style="background: {{item.coat}}; border-color: {{item.trim}};">🎣</view>
+            </view>
+            <view class="character-name">{{item.name}}</view>
+            <view class="character-title">{{item.title}}</view>
+            <view class="character-bio">{{item.bio}}</view>
+            <button wx:if="{{item.canSynthesize}}" class="primary small" data-id="{{item.id}}" catchtap="synthesizeCharacter">合成角色</button>
+            <view wx:else class="badge">{{item.obtainLine}}</view>
+          </view>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'pet'}}">
+        <view class="modal-title">宠物</view>
+        <view class="pet-list">
+          <view wx:for="{{petItems}}" wx:key="id" class="pet-item {{item.active ? 'active' : ''}} {{item.owned ? '' : 'locked'}}" data-id="{{item.id}}" bindtap="equipPet">
+            <text class="pet-icon">{{item.icon}}</text>
+            <view class="pet-name">{{item.name}}</view>
+            <view class="pet-desc">{{item.desc}}</view>
+            <view wx:if="{{item.ability}}" class="pet-ability">{{item.ability}}</view>
+            <view class="badge">{{item.badge}}</view>
+          </view>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'accessory'}}">
+        <view class="modal-title">首饰</view>
+        <view class="accessory-summary">{{accessorySummary}}</view>
+        <view class="accessory-status {{accessoryStatusClass}}">{{accessoryStatus}}</view>
+        <view class="accessory-list">
+          <view wx:if="{{accessoryItems.length === 0}}" class="accessory-empty">暂无首饰，可在钻石抽奖第三期获得。</view>
+          <view wx:for="{{accessoryItems}}" wx:key="uid" class="accessory-item {{item.active ? 'active' : ''}}" style="border-color: {{item.color}}">
+            <view class="accessory-head">
+              <text class="accessory-icon">{{item.icon}}</text>
+              <view>
+                <view class="accessory-name" style="color: {{item.color}}">{{item.name}}</view>
+                <view class="stars">{{item.stars}}</view>
+              </view>
+            </view>
+            <view class="desc">{{item.desc}}</view>
+            <view class="accessory-effect">{{item.effect}}</view>
+            <view class="row">
+              <button data-uid="{{item.uid}}" bindtap="equipAccessory">{{item.active ? '卸下' : '装备'}}</button>
+              <button data-uid="{{item.uid}}" disabled="{{item.upgradeDisabled}}" bindtap="upgradeAccessory">{{item.upgradeText}}</button>
+            </view>
+            <view class="muted">{{item.materialText}}</view>
+          </view>
+        </view>
+        <view class="accessory-catalog">
+          <view wx:for="{{accessoryCatalog}}" wx:key="id"><text>{{item.icon}}</text> <text style="color: {{item.color}}">{{item.name}}</text> <text>{{item.desc}}</text></view>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'rank'}}">
+        <view class="modal-title">本地排行</view>
+        <view class="rank-reward-banner">优先展示线上排行榜中的当前玩家统计</view>
+        <view class="rank-list">
+          <view wx:for="{{rankItems}}" wx:key="label" class="rank-row">
+            <text>{{item.label}}</text>
+            <text>{{item.value}}</text>
+          </view>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'gacha'}}">
+        <view class="modal-title">幸运抽奖</view>
+        <view class="tabs">
+          <button class="{{activeGachaCurrency === 'coins' ? 'active' : ''}}" data-currency="coins" bindtap="setGachaCurrency">金币抽奖</button>
+          <button class="{{activeGachaCurrency === 'diamonds' ? 'active' : ''}}" data-currency="diamonds" bindtap="setGachaCurrency">钻石抽奖</button>
+        </view>
+        <view class="tabs season-tabs">
+          <button wx:for="{{gachaSeasons}}" wx:key="value" class="{{item.active ? 'active' : ''}}" data-season="{{item.value}}" bindtap="setGachaSeason">{{item.label}}</button>
+        </view>
+        <view class="gacha-prizes">
+          <view wx:for="{{gachaPrizes}}" wx:key="name" class="gacha-prize {{item.className}}"><text>{{item.name}}</text><text>{{item.rate}}</text></view>
+        </view>
+        <view class="gacha-buttons">
+          <button class="primary" data-count="1" bindtap="doGacha">单抽 {{gachaSingleCost}}</button>
+          <button class="primary" data-count="10" bindtap="doGacha">十连 {{gachaTenCost}}</button>
+        </view>
+        <view wx:if="{{gachaResults.length}}" class="gacha-result">
+          <view class="gacha-result-items">
+            <view wx:for="{{gachaResults}}" wx:key="index" class="gacha-item {{item.className}}">
+              <text class="gi-icon">{{item.icon}}</text>
+              <text>{{item.name}}</text>
+            </view>
+          </view>
+          <view class="gacha-summary">{{gachaSummary}}</view>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'redeem'}}">
+        <view class="modal-title">兑换码</view>
+        <view class="redeem-content">
+          <text>输入兑换码获取奖励</text>
+          <input class="redeem-input" value="{{redeemInput}}" placeholder="输入兑换码" bindinput="onRedeemInput" bindconfirm="redeemCode" />
+          <button class="primary" bindtap="redeemCode">兑换</button>
+          <view class="redeem-status {{redeemStatusClass}}">{{redeemStatus}}</view>
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'share'}}">
+        <view class="modal-title">分享</view>
+        <view class="share-content">
+          <text>分享给好友，每日首次分享可获得 10 金币。</text>
+          <button class="primary" open-type="share">分享小程序</button>
+          <view class="share-status">{{shareStatus}}</view>
+          <image class="share-qr" src="/assets/group_qr_code.jpg" mode="aspectFit" />
+        </view>
+      </block>
+
+      <block wx:elif="{{modal === 'announce'}}">
+        <view class="modal-title">更新公告</view>
+        <scroll-view scroll-y class="announce-content">
+          <view wx:for="{{announceEntries}}" wx:key="version" class="announce-entry">
+            <view class="announce-version">v{{item.version}} <text>{{item.date}}</text></view>
+            <view wx:for="{{item.changes}}" wx:key="*this" class="announce-line">• {{item}}</view>
+          </view>
+        </scroll-view>
+      </block>
+    </view>
+  </view>
+</view>

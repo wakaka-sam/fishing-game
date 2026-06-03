@@ -1,0 +1,13 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "像素钓鱼",
+    "navigationBarBackgroundColor": "#0d1421",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0d1421"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
