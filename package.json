@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Pixel fishing game with bestiary — frontend only",
   "scripts": {
-    "build:miniprogram-web": "node scripts/build-miniprogram-web.js",
-    "serve:miniprogram-web": "python3 -m http.server 4173 --directory build/miniprogram-web"
+    "build:web-preview": "node scripts/build-web-preview.js",
+    "serve:web-preview": "python3 -m http.server 4173 --directory build/web-preview"
   }
 }
