@@ -12,7 +12,7 @@
   const TOPBAR = { x: 0, y: 0, w: WIDTH, h: 164 };
   const GAMEBAR = { x: 0, y: 542, w: WIDTH, h: 174 };
   const UI_FONT = '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif';
-  const TEXT_RESOLUTION = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
+  const TEXT_RESOLUTION = Math.min(4, Math.max(3, Math.ceil((window.devicePixelRatio || 1) * 2)));
   let sceneInstance = null;
   let pendingActionHandler = null;
 
@@ -123,9 +123,18 @@
         fontSize: `${Math.max(8, Math.round(size * Math.min(this.drawScaleX, this.drawScaleY)))}px`,
         fontStyle: 'bold',
         color,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        stroke: '#07101d',
+        strokeThickness: Math.max(1, Math.round(size / 12)),
+        shadow: {
+          offsetX: 0,
+          offsetY: 1,
+          color: '#07101d',
+          blur: 0,
+          stroke: true,
+          fill: true,
+        },
         align: 'center',
-        padding: { x: 6, y: 2 },
+        padding: { x: 2, y: 1 },
         resolution: TEXT_RESOLUTION,
       });
       label.setOrigin(0.5, 0);
@@ -369,25 +378,27 @@
 
       const actions = (hud.actions || []).filter(item => item.action !== 'logout');
       const actionLayout = [
-        ['shop', 'dex', 'rod', 'character', 'accessory'],
-        ['pet', 'rank', 'gacha', 'vip-auto'],
-        ['redeem', 'share', 'logout'],
+        ['shop', 'dex', 'rod', 'character'],
+        ['accessory', 'pet', 'rank', 'gacha'],
+        hud.vipVisible ? ['redeem', 'share', 'vip-auto', 'logout'] : ['redeem', 'share', 'logout'],
       ];
       const actionMap = new Map(actions.map(item => [item.action, item]));
       actionMap.set('logout', { action: 'logout', label: '退出' });
       if (hud.vipVisible) actionMap.set('vip-auto', { action: 'vip-auto', label: hud.vipLabel || 'VIP自动', active: hud.vipActive });
-      const rowY = [24, 74, 124];
-      const rowX = [198, 264, 424];
-      const buttonW = [90, 90, 90];
+      const gridX = 204;
+      const gridY = 20;
+      const colW = 108;
+      const rowH = 36;
+      const gapX = 10;
+      const gapY = 10;
       actionLayout.forEach((row, rowIndex) => {
-        let x = rowX[rowIndex];
-        row.forEach((action) => {
+        row.forEach((action, colIndex) => {
           const item = actionMap.get(action);
           if (!item) return;
           const label = actionIcons[action] ? `${actionIcons[action]} ${item.label}` : item.label;
-          const width = action === 'vip-auto' ? 124 : buttonW[rowIndex];
-          this.drawButton(item.action, label, x, rowY[rowIndex], width, 42, !!item.active);
-          x += width + 10;
+          const x = gridX + colIndex * (colW + gapX);
+          const y = gridY + rowIndex * (rowH + gapY);
+          this.drawButton(item.action, label, x, y, colW, rowH, !!item.active);
         });
       });
 
