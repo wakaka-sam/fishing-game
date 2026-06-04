@@ -151,6 +151,11 @@ input, select {
 #game-screen.phaser-login-active #game {
   margin-top: 0;
   border: 0;
+  image-rendering: auto;
+}
+#game-screen.phaser-hud-active #game canvas,
+#game-screen.phaser-login-active #game canvas {
+  image-rendering: auto;
 }
 .bait-info { display: flex; gap: 12px; align-items: center; font-size: 14px; }
 #status { font-size: 13px; color: #4ec9b0; min-height: 18px; }

@@ -11,6 +11,8 @@
   const SCENE = { x: 30, y: 172, w: WORLD_WIDTH, h: WORLD_HEIGHT };
   const TOPBAR = { x: 0, y: 0, w: WIDTH, h: 164 };
   const GAMEBAR = { x: 0, y: 542, w: WIDTH, h: 174 };
+  const UI_FONT = '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif';
+  const TEXT_RESOLUTION = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
   let sceneInstance = null;
   let pendingActionHandler = null;
 
@@ -117,16 +119,18 @@
 
     drawLabel(value, x, y, color, size) {
       const label = this.add.text(this.mapX(x), this.mapY(y - size), value, {
-        fontFamily: 'Courier New, monospace',
+        fontFamily: UI_FONT,
         fontSize: `${Math.max(8, Math.round(size * Math.min(this.drawScaleX, this.drawScaleY)))}px`,
         fontStyle: 'bold',
         color,
         backgroundColor: 'rgba(0,0,0,0.6)',
         align: 'center',
         padding: { x: 6, y: 2 },
+        resolution: TEXT_RESOLUTION,
       });
       label.setOrigin(0.5, 0);
       label.setDepth(this.overlayMode ? 30 : 10);
+      if (typeof label.setResolution === 'function') label.setResolution(TEXT_RESOLUTION);
       this.textLayer.add(label);
     }
 
@@ -1038,52 +1042,68 @@
     drawGachaModal(modal) {
       this.pixel.fillStyle(0x000000, 0.76);
       this.pixel.fillRect(0, 0, WIDTH, HEIGHT);
-      const x = 34;
-      const y = 22;
-      const w = WIDTH - 68;
-      const h = HEIGHT - 44;
+      const x = 46;
+      const y = 48;
+      const w = WIDTH - 92;
+      const h = HEIGHT - 96;
       this.pixel.fillStyle(0x1a1a2e, 1);
       this.pixel.fillRect(x, y, w, h);
       this.pixel.lineStyle(4, 0xffd700, 1);
       this.pixel.strokeRect(x, y, w, h);
-      this.drawLabel(modal.title || '幸运抽奖', WIDTH / 2, y + 28, '#ffd700', 18);
+      this.drawLabel(`🎰 ${modal.title || '幸运抽奖'}`, WIDTH / 2, y + 34, '#ffd700', 22);
       this.drawButton('modal-close', '×', x + w - 36, y + 8, 26, 24, false);
-      this.drawLabel(`金币 ${modal.money || 0}   钻石 ${modal.diamonds || 0}`, x + w - 138, y + 54, '#e8e8e8', 12);
+      this.drawLabel(`💰 ${modal.money || 0}   💎 ${modal.diamonds || 0}`, x + w - 132, y + 62, '#e8e8e8', 12);
 
       const currencyTabs = modal.currencyTabs || [];
       currencyTabs.forEach((tab, index) => {
-        this.drawButton('gacha-tab', tab.label, x + 18 + index * 100, y + 44, 92, 22, tab.active, { currency: tab.currency });
+        this.drawButton('gacha-tab', tab.label, x + 28 + index * 128, y + 58, 118, 32, tab.active, { currency: tab.currency });
       });
 
       const seasonTabs = modal.seasonTabs || [];
       seasonTabs.forEach((tab, index) => {
-        this.drawButton('gacha-season', tab.label, x + 18 + index * 70, y + 72, 62, 22, tab.active, { currency: tab.currency, season: tab.season });
+        this.drawButton('gacha-season', tab.label, x + 28 + index * 82, y + 98, 72, 28, tab.active, { currency: tab.currency, season: tab.season });
       });
 
-      const prizeX = x + 18;
-      const prizeY = y + 106;
-      const prizeW = 236;
-      const prizeH = 144;
-      this.pixel.fillStyle(0x0b1220, 0.96);
-      this.pixel.fillRect(prizeX, prizeY, prizeW, prizeH);
-      this.pixel.lineStyle(2, 0x334155, 1);
-      this.pixel.strokeRect(prizeX, prizeY, prizeW, prizeH);
-      this.drawLabel('奖池概率', prizeX + prizeW / 2, prizeY + 22, '#ffd700', 13);
-      (modal.prizes || []).slice(0, 5).forEach((item, index) => {
-        const rowY = prizeY + 34 + index * 21;
+      const poolName = modal.currency === 'diamonds' ? '钻石抽奖' : '金币抽奖';
+      this.drawLabel(`${poolName} · 第${modal.season || 1}期`, x + w / 2, y + 132, '#4ec9b0', 13);
+
+      const prizeX = x + 34;
+      const prizeY = y + 154;
+      const prizeGap = 10;
+      const prizeW = Math.floor((w - 78) / 2);
+      const prizeH = 58;
+      (modal.prizes || []).slice(0, 6).forEach((item, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const cardX = prizeX + col * (prizeW + prizeGap);
+        const cardY = prizeY + row * (prizeH + prizeGap);
         const color = this.getToneColor(item.tone);
-        this.pixel.fillStyle(0x0d1421, 0.92);
-        this.pixel.fillRect(prizeX + 10, rowY, prizeW - 20, 17);
-        this.pixel.lineStyle(1, Phaser.Display.Color.ValueToColor(color).color, 0.8);
-        this.pixel.strokeRect(prizeX + 10, rowY, prizeW - 20, 17);
-        this.drawLabel((item.label || '').slice(0, 17), prizeX + 90, rowY + 14, color, 9);
-        this.drawLabel(item.chance || '', prizeX + prizeW - 38, rowY + 14, '#94a3b8', 8);
+        const chars = Array.from(item.label || '🎁 奖品');
+        const icon = chars[0] || '🎁';
+        const name = chars.slice(1).join('').trim() || item.label || '奖品';
+        this.pixel.fillStyle(0x0d1421, 0.96);
+        this.pixel.fillRect(cardX, cardY, prizeW, prizeH);
+        this.pixel.lineStyle(2, Phaser.Display.Color.ValueToColor(color).color, 0.95);
+        this.pixel.strokeRect(cardX, cardY, prizeW, prizeH);
+        this.drawLabel(icon, cardX + 26, cardY + 38, '#ffffff', 22);
+        this.drawLabel(name.slice(0, 16), cardX + prizeW / 2 + 20, cardY + 25, color, 12);
+        this.drawLabel(item.chance || '', cardX + prizeW / 2 + 20, cardY + 47, '#94a3b8', 10);
       });
 
-      const resultX = x + 270;
-      const resultY = y + 76;
-      const resultW = w - 288;
-      const resultH = 174;
+      const buttons = modal.drawButtons || [];
+      const buttonY = y + 366;
+      buttons.forEach((button, index) => {
+        this.drawButton('gacha-draw', button.label, WIDTH / 2 - 164 + index * 176, buttonY, 152, 38, false, {
+          count: button.count,
+          currency: modal.currency,
+          season: modal.season,
+        }, button.disabled, 'primary');
+      });
+
+      const resultX = x + 34;
+      const resultY = y + 424;
+      const resultW = w - 68;
+      const resultH = 134;
       this.pixel.fillStyle(0x0b1220, 0.96);
       this.pixel.fillRect(resultX, resultY, resultW, resultH);
       this.pixel.lineStyle(2, 0x334155, 1);
@@ -1092,39 +1112,33 @@
 
       const results = modal.results || [];
       if (results.length === 0) {
-        this.drawLabel('选择奖池后开始抽奖', resultX + resultW / 2, resultY + 88, '#94a3b8', 12);
+        this.drawLabel('选择奖池后开始抽奖', resultX + resultW / 2, resultY + 82, '#94a3b8', 12);
       } else {
-        const itemW = Math.floor((resultW - 24) / 2);
+        const itemGap = 6;
+        const itemW = Math.floor((resultW - 40 - itemGap * 4) / 5);
+        const itemH = 42;
         results.slice(0, 10).forEach((item, index) => {
-          const col = index % 2;
-          const row = Math.floor(index / 2);
-          const itemX = resultX + 8 + col * (itemW + 8);
-          const itemY = resultY + 34 + row * 23;
+          const col = index % 5;
+          const row = Math.floor(index / 5);
+          const itemX = resultX + 20 + col * (itemW + itemGap);
+          const itemY = resultY + 36 + row * (itemH + 8);
           const color = this.getToneColor(item.tone);
           this.pixel.fillStyle(0x0d1421, 0.95);
-          this.pixel.fillRect(itemX, itemY, itemW, 19);
-          this.pixel.lineStyle(1, Phaser.Display.Color.ValueToColor(color).color, 0.9);
-          this.pixel.strokeRect(itemX, itemY, itemW, 19);
-          this.drawLabel(item.icon || '🎁', itemX + 14, itemY + 15, '#ffffff', 11);
-          this.drawLabel((item.name || '').slice(0, 9), itemX + itemW / 2 + 8, itemY + 15, color, 8);
+          this.pixel.fillRect(itemX, itemY, itemW, itemH);
+          this.pixel.lineStyle(2, Phaser.Display.Color.ValueToColor(color).color, 0.85);
+          this.pixel.strokeRect(itemX, itemY, itemW, itemH);
+          this.drawLabel(item.icon || '🎁', itemX + itemW / 2, itemY + 23, '#ffffff', 14);
+          this.drawLabel((item.name || '').slice(0, 8), itemX + itemW / 2, itemY + 39, color, 8);
         });
       }
 
       const summary = modal.summary || [];
-      summary.slice(0, 2).forEach((line, index) => {
-        this.drawLabel(line.slice(0, 30), resultX + resultW / 2, resultY + resultH + 18 + index * 16, index === 0 ? '#ffd700' : '#4ec9b0', 9);
+      summary.slice(0, 3).forEach((line, index) => {
+        this.drawLabel(line.slice(0, 36), resultX + resultW / 2, resultY + resultH + 20 + index * 17, index === 0 ? '#ffd700' : '#4ec9b0', 10);
       });
 
-      const buttons = modal.drawButtons || [];
-      buttons.forEach((button, index) => {
-        this.drawButton('gacha-draw', button.label, prizeX + index * 118, y + h - 44, 108, 28, false, {
-          count: button.count,
-          currency: modal.currency,
-          season: modal.season,
-        }, button.disabled);
-      });
       if (modal.status && summary.length === 0) {
-        this.drawLabel(modal.status, x + w - 154, y + h - 24, modal.status.includes('不足') || modal.status.includes('错误') ? '#ffae42' : '#4ec9b0', 11);
+        this.drawLabel(modal.status, WIDTH / 2, y + h - 18, modal.status.includes('不足') || modal.status.includes('错误') ? '#ffae42' : '#4ec9b0', 11);
       }
     }
 
@@ -1298,7 +1312,13 @@
     width: WIDTH,
     height: HEIGHT,
     backgroundColor: '#87ceeb',
-    pixelArt: true,
+    pixelArt: false,
+    render: {
+      antialias: true,
+      antialiasGL: true,
+      pixelArt: false,
+      roundPixels: false,
+    },
     scale: {
       mode: Phaser.Scale.NONE,
     },

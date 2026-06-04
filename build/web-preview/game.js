@@ -69,6 +69,7 @@ const CSJ_CONFIG = {
 };
 const AD_REWARD_DIAMONDS = 50;
 const AD_COOLDOWN_MS = 120000;
+const HITBAR_SPEED_MULTIPLIER = 1.65;
 let adReady = false;
 let adLastWatchTime = 0;
 let adInstance = null;
@@ -1407,7 +1408,7 @@ function startHitbar() {
     rod_exclusive: { speed: 1.4, zone: 0.14 },
     character_shard: { speed: 1.5, zone: 0.13 },
   }[difficultyRarity] || { speed: 0.8, zone: 0.22 };
-  hb.cursorSpeed = difficulty.speed;
+  hb.cursorSpeed = difficulty.speed * HITBAR_SPEED_MULTIPLIER;
   const rodSkin = GAME_DATA.getCurrentRodSkin(user.dex, user.rodSkin, user.ownedRods);
   if (rodSkin.speedBonus && rodSkin.speedBonus[difficultyRarity]) {
     hb.cursorSpeed *= (1 + rodSkin.speedBonus[difficultyRarity]);
